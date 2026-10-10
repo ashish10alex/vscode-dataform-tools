@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronRight, ChevronDown, ExternalLink, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { PanelState, ActionCounts } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration } from '../../../src/shared/jobTiming';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
+import { SHOW_RUN_DETAILS_EVENT } from './RunStatusPill';
 import { IncludedTargetsList } from './IncludedTargetsList';
 import { RunViaTag, WorkflowActionsTable, executionModeLabel, useTick, getStatusIcon, workflowDurationMs } from './WorkflowActionsTable';
 
@@ -64,6 +65,17 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     // A CLI run's entry is sent only when its jobs change, so the time it has run for is counted here
     useTick(latest?.executionMode === 'cli' && !(latest.state && TERMINAL_WORKFLOW_STATES.has(latest.state)));
 
+    // The pill in the header asks for the details from wherever the panel is scrolled to
+    const banner = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const show = () => {
+            setExpanded(true);
+            banner.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
+        return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
+    }, []);
+
     useEffect(() => {
         if (!fullWidth) { return; }
         const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { setFullWidth(false); } };
@@ -90,7 +102,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     const elapsedSec = Math.max(0, Math.floor((Date.now() - latest.timestamp) / 1000));
 
     return (
-        <div className={fullWidth
+        <div ref={banner} className={fullWidth
             ? 'fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-[var(--vscode-editor-background)] p-4'
             : 'mt-3 flex flex-col gap-2 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background)] p-2.5'}>
             <div className="flex items-center gap-2 text-xs">

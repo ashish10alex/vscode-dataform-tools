@@ -207,6 +207,21 @@ export function failedJobRows(rows: WorkflowAction[]): FailedAction[] {
 }
 
 /**
+ * How far a run in the history has come, for where it is told in a line: by the counts the host kept with it, else by
+ * its rows. A cancelled row counts as failed, a skipped one not at all.
+ */
+export function runProgress(entry: { actionCounts?: Partial<ActionCounts>; actions?: WorkflowAction[] }): { total: number; running: number; succeeded: number; failed: number; pending: number } {
+    const counts = entry.actionCounts ?? countJobRows(entry.actions ?? []);
+    return {
+        total: counts.total ?? 0,
+        running: counts.running ?? 0,
+        succeeded: counts.succeeded ?? 0,
+        failed: (counts.failed ?? 0) + (counts.cancelled ?? 0),
+        pending: counts.pending ?? 0,
+    };
+}
+
+/**
  * The state a run ended in. The CLI's exit code says when the terminal gave one; otherwise the jobs do. A run the
  * user cancelled is CANCELLED however it ended, unless it did all it had to.
  */

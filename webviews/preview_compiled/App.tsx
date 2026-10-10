@@ -26,6 +26,7 @@ import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
 import { DbtPanel } from './components/DbtPanel';
 import { ProjectInfoTab, useProjectInfoRequest } from './components/ProjectInfoTab';
 import { PanelHeader, HeaderTab, HeaderMenu } from './components/PanelHeader';
+import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from './components/RunStatusPill';
 
 /** The panel of a Dataform Project, and of a file in no Project */
 function DataformPanel({ state }: { state: PanelSlices }) {
@@ -168,6 +169,12 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   }
 
 
+  // The run's details are under the compiled query, which is drawn only once its tab is the one on show
+  const showRunDetails = () => {
+    setActiveTab('compilation');
+    setTimeout(() => window.dispatchEvent(new Event(SHOW_RUN_DETAILS_EVENT)), 50);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
       <PanelHeader
@@ -193,7 +200,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
             <HeaderTab active={activeTab === 'project'} onClick={() => setActiveTab('project')} title="Project (P)">Project</HeaderTab>
           </>
         )}
-        actions={
+        actions={<>
+          {!isConfigFile && <RunStatusPill state={state} onDetails={showRunDetails} />}
           <HeaderMenu
             snoozeTimeLeft={isSnoozed ? timeLeftFormatted : undefined}
             onStartSnooze={handleStartSnooze}
@@ -207,7 +215,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
               { label: 'Project', hint: 'P', onSelect: () => setActiveTab('project') },
             ]}
           />
-        }
+        </>}
       />
 
       {/* Main Content Area */}

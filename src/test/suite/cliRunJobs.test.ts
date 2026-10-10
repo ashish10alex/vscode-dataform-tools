@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import {
     BigQueryJobMetadata, NO_JOBS_MS, QUIET_MS, cliJobProject, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix,
-    jobIdPrefix, jobPrefixFlag, jobTargetMatcher, newRunId, quietVerdict, runJobRows, withJobPrefix, withRunAdded,
+    jobIdPrefix, jobPrefixFlag, jobTargetMatcher, newRunId, quietVerdict, runJobRows, runProgress, withJobPrefix, withRunAdded,
 } from '../../shared/cliRunJobs';
 import type { WorkflowActionJobStats } from '../../types';
 
@@ -140,6 +140,14 @@ suite('cliRunJobs', () => {
         // No job yet: the CLI may still be compiling
         assert.strictEqual(quietVerdict({ now: startedAt + QUIET_MS, startedAt, sawJobs: false }), undefined);
         assert.strictEqual(quietVerdict({ now: startedAt + NO_JOBS_MS, startedAt, sawJobs: false }), 'no jobs');
+    });
+
+    test("a run's progress is its kept counts, else its rows, with a cancelled one among the failed", () => {
+        const rows = [{ target: 'a', state: 'RUNNING' }, { target: 'b', state: 'SUCCEEDED' }, { target: 'c', state: 'CANCELLED' }, { target: 'd', state: 'PENDING' }];
+        assert.deepStrictEqual(runProgress({ actions: rows }), { total: 4, running: 1, succeeded: 1, failed: 1, pending: 1 });
+        // A run kept before its counts had every field
+        assert.deepStrictEqual(runProgress({ actions: rows, actionCounts: { total: 9, succeeded: 4, failed: 2 } }), { total: 9, running: 0, succeeded: 4, failed: 2, pending: 0 });
+        assert.deepStrictEqual(runProgress({}), { total: 0, running: 0, succeeded: 0, failed: 0, pending: 0 });
     });
 
     test('the history keeps the newest runs', () => {
