@@ -15,7 +15,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const root = path.join(repo, 'website', 'public');
 const posters = !process.argv.includes('--no-posters');
 // The panel's part of the hero's frame on a wide screen (website/components/landing/live-demo.tsx)
-const PANEL = { width: 652, height: 580 };
+const PANEL = { width: 652, height: 874 };
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
 // The page the panels are checked in: as the website does, it holds them in iframes and hears what they tell
@@ -82,6 +82,10 @@ for (const backend of ['dataform', 'dbt']) {
             await frame.getByText('268.88 MiB').first().waitFor({ timeout: 5000 });
             await frame.getByText('fct_player_transfers').first().waitFor();
             await page.waitForFunction(() => window.told.some((message) => message.type === 'rendered'), null, { timeout: 5000 });
+            const [{ height }] = await told('rendered');
+            if (height > PANEL.height) {
+                throw new Error(`the panel needs ${height}px to show its compiled query without scrolling: the frame of the website is not that tall (FRAME_HEIGHT in live-demo.tsx)`);
+            }
             const notes = await told('note');
             if (notes.length) {
                 throw new Error(`the panel asked for what the demo has no answer to, before any click: ${notes.map((note) => note.command).join(', ')}`);
@@ -139,6 +143,27 @@ for (const backend of ['dataform', 'dbt']) {
             throw new Error(errors.join(' | '));
         }
     });
+    await context.close();
+}
+
+// The file with an error, which the landing page shows for its diagnostics
+for (const theme of ['dark', 'light']) {
+    const { context, page, frame, errors, told } = await open('panel', 'diagnostics', theme);
+    await check(`diagnostics ${theme}: the panel tells of the error`, async () => {
+        await frame.getByText('Function not found: URRENT_DATE').first().waitFor({ timeout: 15_000 });
+        await page.waitForFunction(() => window.told.some((message) => message.type === 'rendered'), null, { timeout: 5000 });
+        const [{ height }] = await told('rendered');
+        if (height > PANEL.height) {
+            throw new Error(`the panel needs ${height}px`);
+        }
+        if (errors.length) {
+            throw new Error(errors.join(' | '));
+        }
+    });
+    if (posters) {
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: path.join(root, 'demo', `poster-diagnostics-${theme}.png`) });
+    }
     await context.close();
 }
 

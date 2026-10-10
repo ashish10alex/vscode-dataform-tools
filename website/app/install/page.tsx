@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import FeatureReels from "@/components/feature-reels";
 import { CodeBlock } from "@/components/code-block";
 import { InstallationStepHeader } from "@/components/installation-step-header";
+import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Install",
@@ -107,7 +108,7 @@ export default function InstallationGuidePage() {
                   </div>
                   <div className="mt-2 text-sm text-muted-foreground dark:text-gray-300">
                     <p>
-                      Trouble installing or looking for a specific customization? Please see <a href="/faq" className="font-medium underline underline-offset-4">FAQ section</a>, if you are still stuck, please <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" className="font-medium underline underline-offset-4">raise an issue here</a>.
+                      Trouble installing or looking for a specific customization? Please see the <a href={site.faqUrl} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-4">FAQ on GitHub</a>, if you are still stuck, please <a href="https://github.com/ashish10alex/vscode-dataform-tools/issues" className="font-medium underline underline-offset-4">raise an issue here</a>.
                     </p>
                   </div>
                 </div>

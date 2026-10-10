@@ -19,6 +19,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // The FAQ page is gone from the website: a link to it goes to the FAQ in the repository
+  async redirects() {
+    return [
+      {
+        source: "/faq",
+        destination: "https://github.com/ashish10alex/vscode-dataform-tools/blob/main/FAQ.md",
+        permanent: false,
+      },
+    ];
+  },
   allowedDevOrigins: [
     "localhost:3000",
     "127.0.0.1:3000",

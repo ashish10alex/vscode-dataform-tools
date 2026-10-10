@@ -14,7 +14,6 @@ const navLinks = [
   { href: "/changelog", label: "Changelog" },
   { href: "/install", label: "Install" },
   { href: "/blog", label: "Blog" },
-  { href: "/faq", label: "FAQ" },
 ];
 
 function Wordmark() {

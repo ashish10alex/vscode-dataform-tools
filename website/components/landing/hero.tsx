@@ -45,7 +45,7 @@ export function Hero() {
         className="reveal mx-auto max-w-6xl px-4 sm:px-6"
         style={{ "--reveal-delay": "160ms" } as React.CSSProperties}
       >
-        <LiveDemo sources={demoSources()} />
+        <LiveDemo sources={demoSources()} pulse />
         <p
           className="mt-3 text-center text-xs text-muted-foreground"
         >

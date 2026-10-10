@@ -3,7 +3,8 @@
 // see scripts/demo) and answers its clicks with more of them. Nothing is asked of BigQuery, dbt or Dataform.
 (() => {
   const query = new URLSearchParams(location.search);
-  const backend = query.get('backend') === 'dbt' ? 'dbt' : 'dataform';
+  // Which recorded states to show: a demo Project's, or those of the file with an error (website/demo)
+  const backend = ['dbt', 'diagnostics'].includes(query.get('backend')) ? query.get('backend') : 'dataform';
   const tell = (message) => window.parent !== window && window.parent.postMessage({ source: 'vdt-demo', backend, ...message }, location.origin);
   /** The panel listens for the host's messages on its own window */
   const send = (message) => window.postMessage(message, location.origin);
@@ -45,8 +46,9 @@
     const check = () => {
       const root = document.getElementById('root');
       const run = runButton();
-      if (root && run) {
-        tell({ type: 'rendered' });
+      if (root && (run || (!state.run && root.innerText.length > 80))) {
+        tell({ type: 'rendered', height: neededHeight() });
+        new MutationObserver(tellHeightSoon).observe(root, { childList: true, subtree: true, characterData: true });
         return;
       }
       if (Date.now() - started < 15000) {
@@ -54,6 +56,19 @@
       }
     };
     check();
+  }
+
+  /** How tall the frame must be for the panel to show all it has without scrolling */
+  function neededHeight() {
+    const scrolling = [document.scrollingElement, ...document.querySelectorAll('#root *')].filter((element) => element.scrollHeight - element.clientHeight > 1 && (element === document.scrollingElement || /auto|scroll/.test(getComputedStyle(element).overflowY)));
+    return window.innerHeight + Math.max(0, ...scrolling.map((element) => element.scrollHeight - element.clientHeight));
+  }
+
+  let heightTimer;
+  /** The panel has changed, a run's row has come say: the page is told the height once the change has settled */
+  function tellHeightSoon() {
+    clearTimeout(heightTimer);
+    heightTimer = setTimeout(() => tell({ type: 'height', height: neededHeight() }), 120);
   }
 
   // The button that runs the file: "File" in a Dataform Project's panel, "Run" in a dbt Project's
@@ -150,6 +165,11 @@
           tell({ type: 'note', command: 'demo.running' });
           return;
         }
+        if (!state.run) {
+          // The file with an error: no run of it was recorded
+          tell({ type: 'note', command: message.command });
+          return;
+        }
         const api = message.command === 'dataform.runApi' || (message.command === 'repeatLastRun' && lastRunWas === 'api');
         if (backend === 'dbt') {
           playDbtRun();
@@ -167,7 +187,8 @@
         answerPoll();
         return;
       case 'preview':
-        tell({ type: 'preview' });
+        // No rows were made up for the file with an error: its query does not run
+        tell(state.preview ? { type: 'preview' } : { type: 'note', command: 'preview' });
         return;
       case 'projectInfoShown':
       case 'refreshProjectInfo':

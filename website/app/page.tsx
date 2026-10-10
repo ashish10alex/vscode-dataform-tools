@@ -4,6 +4,8 @@ import { ReleaseHighlight } from "@/components/landing/release-highlight";
 import { FeatureSpotlight } from "@/components/landing/feature-spotlight";
 import { RecentlyShipped } from "@/components/landing/recently-shipped";
 import { AboutAuthor } from "@/components/landing/about-author";
+import { LiveDemo } from "@/components/landing/live-demo";
+import { diagnosticsSource } from "@/lib/demo-source";
 
 export default function Home() {
   return (
@@ -14,14 +16,9 @@ export default function Home() {
       <FeatureSpotlight
         theme="compile"
         index={1}
-        slides={[
-          {
-            label: "Diagnostics",
-            title: "Compiled query preview — dry run",
-            media: { light: "/diagnostics_light.png", dark: "/diagnostics_dark.png" },
-            alt: "Inline diagnostics on a .sqlx file alongside the compiled query webview",
-          },
-        ]}
+        heading="Errors, before anything runs"
+        blurb="A dry run checks every save against BigQuery. What it rejects is marked on the line you wrote, listed in Problems and told in the panel. This file has one: it is the real panel again."
+        demo={<LiveDemo sources={[diagnosticsSource()]} />}
       />
       <FeatureSpotlight
         theme="graph"

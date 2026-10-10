@@ -11,6 +11,8 @@ export const site = {
   repoUrl: "https://github.com/ashish10alex/vscode-dataform-tools",
   changelogSourceUrl:
     "https://github.com/ashish10alex/vscode-dataform-tools/blob/main/CHANGELOG.md",
+  /** The FAQ is kept in the repository only */
+  faqUrl: "https://github.com/ashish10alex/vscode-dataform-tools/blob/main/FAQ.md",
   googleRecommendationUrl:
     "https://github.com/dataform-co/dataform/blob/main/vscode/README.md",
   marketplace: {
