@@ -46,7 +46,8 @@
       const root = document.getElementById('root');
       const run = runButton();
       if (root && run) {
-        tell({ type: 'rendered' });
+        tell({ type: 'rendered', height: neededHeight() });
+        new MutationObserver(tellHeightSoon).observe(root, { childList: true, subtree: true, characterData: true });
         return;
       }
       if (Date.now() - started < 15000) {
@@ -54,6 +55,19 @@
       }
     };
     check();
+  }
+
+  /** How tall the frame must be for the panel to show all it has without scrolling */
+  function neededHeight() {
+    const scrolling = [document.scrollingElement, ...document.querySelectorAll('#root *')].filter((element) => element.scrollHeight - element.clientHeight > 1 && (element === document.scrollingElement || /auto|scroll/.test(getComputedStyle(element).overflowY)));
+    return window.innerHeight + Math.max(0, ...scrolling.map((element) => element.scrollHeight - element.clientHeight));
+  }
+
+  let heightTimer;
+  /** The panel has changed, a run's row has come say: the page is told the height once the change has settled */
+  function tellHeightSoon() {
+    clearTimeout(heightTimer);
+    heightTimer = setTimeout(() => tell({ type: 'height', height: neededHeight() }), 120);
   }
 
   // The button that runs the file: "File" in a Dataform Project's panel, "Run" in a dbt Project's

@@ -22,7 +22,8 @@ interface Terminal {
 
 /** What the stand-in host tells this page */
 type DemoMessage =
-  | { source: "vdt-demo"; backend?: Backend; type: "rendered" | "preview" | "results shown" }
+  | { source: "vdt-demo"; backend?: Backend; type: "preview" | "results shown" }
+  | { source: "vdt-demo"; backend?: Backend; type: "rendered" | "height"; height: number }
   | { source: "vdt-demo"; backend?: Backend; type: "terminal"; terminal: Terminal }
   | { source: "vdt-demo"; backend?: Backend; type: "note"; command: string };
 
@@ -83,8 +84,11 @@ const TOKEN_CLASS: Record<TokenKind, string> = {
 };
 
 const EDITOR = "bg-white text-black dark:bg-[#1e1e1e] dark:text-[#d4d4d4]";
-// As tall as the window leaves under the header and the headline, so that the whole frame is in view on arrival
-const FRAME_HEIGHT = "h-[clamp(420px,calc(100svh-14.5rem),760px)]";
+// The frame is as tall as the panel's compiled query needs, so the panel does not scroll. These are what the two
+// panels need beside the source file; the panel tells its real need once it has loaded (see `height` below).
+const FRAME_HEIGHT: Record<Backend, number> = { dataform: 804, dbt: 912 };
+/** A tab of the panel with a long list, the Project tab say, scrolls rather than stretch the page */
+const TALLEST = 1060;
 // Scrolls as an editor does, without a bar
 const NO_BAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
@@ -148,6 +152,8 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
   /** The panel is mounted only once the page has loaded, so that it does not hold up the hero's first paint */
   const [mounted, setMounted] = useState(false);
   const [rendered, setRendered] = useState(false);
+  /** What the panel on show has said it needs. The frame grows to it and does not shrink, so a click does not make the page jump twice */
+  const [height, setHeight] = useState<number | null>(null);
   const [narrowView, setNarrowView] = useState<"panel" | "source">("panel");
   const [bottom, setBottom] = useState<"terminal" | "results" | null>(null);
   const [terminal, setTerminal] = useState<{ terminal: Terminal; run: number } | null>(null);
@@ -198,7 +204,11 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
         return;
       }
       switch (message.type) {
+        case "height":
+          setHeight((last) => Math.min(TALLEST, Math.max(last ?? 0, message.height)));
+          return;
         case "rendered":
+          setHeight(Math.min(TALLEST, message.height));
           setRendered(true);
           if (!pulsed.current) {
             pulsed.current = true;
@@ -230,6 +240,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
     setBackend((current) => {
       if (current !== next) {
         setRendered(false);
+        setHeight(null);
         setBottom(null);
         setTerminal(null);
         setNote(null);
@@ -291,7 +302,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
         ))}
       </div>
 
-      <div className={cn("relative grid md:grid-cols-[minmax(0,9fr)_minmax(0,13fr)]", FRAME_HEIGHT)}>
+      <div className="relative grid transition-[height] duration-200 md:grid-cols-[minmax(0,9fr)_minmax(0,13fr)]" style={{ height: height ?? FRAME_HEIGHT[backend] }}>
         <div className={cn("min-h-0 border-r", narrowView === "source" ? "block" : "hidden md:block")}>
           <Source source={source} />
         </div>
@@ -324,7 +335,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
         </div>
 
         {bottom && (
-          <div className="absolute inset-x-0 bottom-0 flex h-[56%] flex-col border-t shadow-[0_-12px_24px_-16px_rgb(0_0_0/0.4)] motion-safe:animate-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-200">
+          <div className="absolute inset-x-0 bottom-0 flex h-[min(56%,360px)] flex-col border-t shadow-[0_-12px_24px_-16px_rgb(0_0_0/0.4)] motion-safe:animate-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-200">
             <div className="flex h-8 shrink-0 items-center border-b bg-muted text-[11px] uppercase tracking-wide">
               {(["terminal", "results"] as const).map((pane) => {
                 const available = pane === "terminal" ? !!terminal : previews > 0;
