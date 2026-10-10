@@ -572,6 +572,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           label="Target"
           tone={targetTone}
           summary={targetSummary}
+          // Open, each action is named under the line, with its own copy button
+          openSummary={<span className="text-[var(--vscode-descriptionForeground)]">{models.length === 1 ? "1 action" : `${models.length} actions`}{failedModels.length > 0 ? ` · ${failedModels.length} failed the dry run` : ""}</span>}
+          openActions={null}
           actions={first?.target && (
             <button
               onClick={() => {
