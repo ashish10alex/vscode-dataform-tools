@@ -51,6 +51,54 @@ export function workflowDurationMs(entry: WorkflowUrlEntry | undefined): number 
 }
 
 /**
+ * The first cell of a row: the state as an icon, and the action's name, which opens its BigQuery job in the Cloud
+ * console. The name is the link so that it is in view however narrow the panel is: a column of its own was the last
+ * one, out of sight until the table was scrolled. The dataset is on a line above the table, so neither wraps mid-word.
+ */
+function TargetCell({ action, workflowInvocationId, isCli }: { action: WorkflowAction; workflowInvocationId: string | undefined; isCli: boolean }) {
+    const parts = action.target.split('.');
+    // A job that no action could be told for goes by the end of its ID, which has no dataset
+    const dataset = parts.length > 1 ? parts[parts.length - 2] : undefined;
+    const name = (
+        <>
+            {dataset && <span className="block text-[10px] text-[var(--vscode-descriptionForeground)]">{dataset}</span>}
+            <span className="font-medium">{parts[parts.length - 1]}</span>
+        </>
+    );
+    const canOpen = !!action.jobId && !!workflowInvocationId;
+    return (
+        <div className="flex items-start gap-1.5 font-mono text-xs">
+            <span className="mt-0.5 flex-shrink-0" title={action.state}>
+                {getStatusIcon(action.state)}
+                <span className="sr-only">{action.state}</span>
+            </span>
+            {canOpen ? (
+                <button
+                    onClick={() => vscode.postMessage({ command: 'dataform.openBigQueryJob', workflowInvocationId: workflowInvocationId!, action: action.target, jobId: action.jobId })}
+                    className="group/link min-w-0 p-0 border-0 bg-transparent text-left break-all text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline"
+                    title={`Open the BigQuery job of ${action.target} in the Cloud console\n${action.jobId}`}
+                >
+                    {name}
+                    <ExternalLink className="inline w-3 h-3 ml-1 align-[-1px] opacity-60 group-hover/link:opacity-100" />
+                </button>
+            ) : (
+                <span className="min-w-0 break-all text-[var(--vscode-foreground)]" title={action.target}>{name}</span>
+            )}
+            {canOpen && !isCli && (
+                <button
+                    onClick={() => vscode.postMessage({ command: 'dataform.openExecutedSql', workflowInvocationId: workflowInvocationId!, action: action.target })}
+                    className="ml-auto flex-shrink-0 p-0.5 rounded border-0 bg-transparent hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
+                    title="View executed SQL"
+                    aria-label="View executed SQL"
+                >
+                    <FileCode className="w-3.5 h-3.5" />
+                </button>
+            )}
+        </div>
+    );
+}
+
+/**
  * Totals cover the whole workflow regardless of the table's filters: `jobStatsSummary` for BigQuery stats, and the
  * invocation's wall-clock time for Duration, since actions run in parallel.
  */
@@ -58,28 +106,17 @@ function buildActionColumns(workflowInvocationId: string | undefined, summary: W
     const jobCount = (actions: WorkflowAction[]) => actions.filter(a => a.jobStats && !a.jobStats.error).length;
     return [
     {
-        accessorKey: 'target',
+        // The state is in this column, as an icon, so the column sorts by it first and its filter takes it too
+        id: 'target',
         header: 'Target',
-        size: 320,
-        cell: ({ row }) => (
-            <span className="font-mono text-xs text-[var(--vscode-foreground)] break-all">{row.original.target}</span>
-        ),
+        size: 300,
+        accessorFn: (action) => `${action.state} ${action.target}`,
+        cell: ({ row }) => <TargetCell action={row.original} workflowInvocationId={workflowInvocationId} isCli={isCli} />,
         footer: summary ? ({ table }) => (
             <span className="text-xs font-semibold text-[var(--vscode-foreground)]">
                 Total ({jobCount(table.getCoreRowModel().rows.map(r => r.original))} BigQuery jobs)
             </span>
         ) : undefined,
-    },
-    {
-        accessorKey: 'state',
-        header: 'State',
-        size: 140,
-        cell: ({ row }) => (
-            <span className="inline-flex items-center gap-1">
-                {getStatusIcon(row.original.state)}
-                <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]">{row.original.state}</span>
-            </span>
-        ),
     },
     {
         id: 'duration',
@@ -156,32 +193,6 @@ function buildActionColumns(workflowInvocationId: string | undefined, summary: W
                 {row.original.failureReason || ''}
             </span>
         ),
-    },
-    {
-        id: 'job',
-        header: 'Job',
-        size: 70,
-        enableSorting: false,
-        cell: ({ row }) => row.original.jobId ? (
-            <span className="inline-flex items-center gap-1">
-                {!isCli && <button
-                    onClick={() => workflowInvocationId && vscode.postMessage({ command: 'dataform.openExecutedSql', workflowInvocationId, action: row.original.target })}
-                    className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
-                    title="View executed SQL"
-                    aria-label="View executed SQL"
-                >
-                    <FileCode className="w-3.5 h-3.5" />
-                </button>}
-                <button
-                    onClick={() => workflowInvocationId && vscode.postMessage({ command: 'dataform.openBigQueryJob', workflowInvocationId, action: row.original.target, jobId: row.original.jobId })}
-                    className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
-                    title={`Open BigQuery job ${row.original.jobId}`}
-                    aria-label="Open BigQuery job in the Cloud Console"
-                >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                </button>
-            </span>
-        ) : null,
     },
     ];
 }
@@ -271,7 +282,8 @@ export function WorkflowActionsTable({ entry, className }: { entry: WorkflowUrlE
                     data={rows}
                     paginated={false}
                     autoFocusColumnId="target"
-                    initialSorting={[{ id: 'state', desc: false }]}
+                    initialSorting={[{ id: 'target', desc: false }]}
+                    stickyFirstColumn
                     footerPosition="top"
                 />
             </div>
