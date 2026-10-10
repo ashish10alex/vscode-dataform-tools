@@ -20,7 +20,7 @@ export function Hero() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4 pb-3.5 pt-5 sm:px-6">
         <div className="reveal">
           <h1 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
-            See what your Dataform and dbt code will do — <span className="text-brand">before it runs.</span>
+            Dataform &amp; dbt on BigQuery with <span className="text-brand">one UI</span>
           </h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Compiled SQL, dry-run cost, schema, preview and runs on BigQuery. This is the real panel: click around.
