@@ -14,6 +14,8 @@ import {
     cliJobProject, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix, isActiveJob, jobIdPrefix, jobPrefixFlag,
     jobTargetMatcher, newRunId, quietVerdict, runJobRows, withJobPrefix, withRunAdded,
 } from './shared/cliRunJobs';
+import { RunStages, SILENT_SHELL_MS } from './shared/runStages';
+import { runSentUntracked, takeRunStages, whenCliSaysRunning } from './runFeedback';
 import { SupportedCurrency, Target, WorkflowAction, WorkflowUrlEntry } from './types';
 import { defaultCredentialFile } from './utils/googleAccounts';
 import { runCommandInTerminal } from './utils/vscodeUi';
@@ -46,6 +48,8 @@ interface TrackedRun {
     idPrefix: string;
     projectId: string;
     startedAt: number;
+    /** When each stage on the way to the run's first job was reached */
+    stages: RunStages;
     terminal?: vscode.Terminal;
     nameOf: (job: BigQueryJobMetadata) => string | undefined;
     /** The terminal told of the command's start, so it will tell of its end */
@@ -199,6 +203,7 @@ async function writeEntry(context: vscode.ExtensionContext, run: TrackedRun): Pr
     entry.jobStatsSummary = summariseJobStats(run.rows, currency());
     const failed = failedJobRows(run.rows);
     entry.failedActions = failed.length > 0 ? failed : undefined;
+    entry.stages = run.stages;
     entry.jobsNote = run.listError ? `The run's BigQuery jobs can't be listed in ${run.projectId}: ${run.listError}` : undefined;
     if (run.ended) {
         const toldHow = run.ended.exitCode !== undefined;
@@ -252,6 +257,11 @@ async function poll(context: vscode.ExtensionContext, run: TrackedRun): Promise<
                 run.sawJobs = true;
                 run.lastActiveAt = now;
             }
+            if (run.rows.length > 0 && !run.stages.firstJobAt) {
+                // The job was started before it was listed, and after the stage the run was last known to be in
+                const { compiledAt, startedAt, sentAt, invokedAt } = run.stages;
+                run.stages.firstJobAt = Math.min(now, Math.max(compiledAt ?? startedAt ?? sentAt ?? invokedAt, run.rows[0].startTime ?? now));
+            }
             if (active.length > 0) {
                 run.lastActiveAt = now;
             }
@@ -266,6 +276,9 @@ async function poll(context: vscode.ExtensionContext, run: TrackedRun): Promise<
             if (run.cancelling && active.length > 0) {
                 await cancelJobs(run, active);
             }
+        }
+        if (!run.stages.startedAt && !run.resumed) {
+            run.stages.silentShell = !!run.stages.firstJobAt || now - (run.stages.sentAt ?? run.startedAt) >= SILENT_SHELL_MS;
         }
         if (!run.ended && !run.sawStart) {
             // Nothing will tell of the run's end, so its jobs do
@@ -299,7 +312,7 @@ async function poll(context: vscode.ExtensionContext, run: TrackedRun): Promise<
     run.timer = setTimeout(() => poll(context, run), POLL_MS);
 }
 
-function track(context: vscode.ExtensionContext, run: Pick<TrackedRun, 'id' | 'flag' | 'idPrefix' | 'projectId' | 'startedAt'> & Partial<TrackedRun>, root?: string) {
+function track(context: vscode.ExtensionContext, run: Pick<TrackedRun, 'id' | 'flag' | 'idPrefix' | 'projectId' | 'startedAt' | 'stages'> & Partial<TrackedRun>, root?: string) {
     const tracked: TrackedRun = {
         nameOf: jobTargetMatcher(matchedActions(root)),
         sawStart: false,
@@ -326,14 +339,14 @@ function track(context: vscode.ExtensionContext, run: Pick<TrackedRun, 'id' | 'f
 export async function runDataformRunInTerminal(workspaceFolder: string, command: string, selection: CliRunSelection): Promise<void> {
     const context = extensionContext;
     if (!context || !trackingEnabled(workspaceFolder)) {
-        runCommandInTerminal(command);
+        runSentUntracked(runCommandInTerminal(command));
         return;
     }
     const cliPath = resolveDataformOptions(workspaceFolder, 'cli').cli?.path ?? 'dataform';
     if (!(await cliPrefixesJobs(cliPath))) {
         hint = `The BigQuery jobs of CLI runs are not listed: the Dataform CLI at ${cliPath} has no --job-prefix option. Update it with \`npm i -g @dataform/cli@latest\`.`;
         showHistory();
-        runCommandInTerminal(command);
+        runSentUntracked(runCommandInTerminal(command));
         return;
     }
     hint = undefined;
@@ -355,6 +368,7 @@ export async function runDataformRunInTerminal(workspaceFolder: string, command:
         projectId: place.projectId,
         location: place.location,
         state: 'RUNNING',
+        stages: takeRunStages(startedAt),
         invocationStartTime: startedAt,
         includedTags: selection.tags,
         includedTargets: selection.targets,
@@ -368,7 +382,7 @@ export async function runDataformRunInTerminal(workspaceFolder: string, command:
 
     const terminal = runCommandInTerminal(withJobPrefix(command, flag));
     if (place.projectId) {
-        track(context, { id: entry.workflowInvocationId!, flag, idPrefix: entry.jobPrefix!, projectId: place.projectId, startedAt, terminal }, workspaceFolder);
+        track(context, { id: entry.workflowInvocationId!, flag, idPrefix: entry.jobPrefix!, projectId: place.projectId, startedAt, stages: entry.stages!, terminal }, workspaceFolder);
     }
 }
 
@@ -416,7 +430,7 @@ async function resumeRuns(context: vscode.ExtensionContext) {
             changed = true;
             continue;
         }
-        track(context, { id: entry.workflowInvocationId, flag, idPrefix: entry.jobPrefix!, projectId: entry.projectId, startedAt: entry.timestamp, resumed: true, rows: entry.actions ?? [] });
+        track(context, { id: entry.workflowInvocationId, flag, idPrefix: entry.jobPrefix!, projectId: entry.projectId, startedAt: entry.timestamp, stages: entry.stages ?? { invokedAt: entry.timestamp, sentAt: entry.timestamp }, resumed: true, rows: entry.actions ?? [] });
     }
     if (changed) {
         await context.workspaceState.update(HISTORY_KEY, entries);
@@ -424,7 +438,7 @@ async function resumeRuns(context: vscode.ExtensionContext) {
     }
 }
 
-interface ShellExecutionEvent { execution: { commandLine?: { value?: string } }; exitCode?: number }
+interface ShellExecutionEvent { execution: { commandLine?: { value?: string }; read?: () => AsyncIterable<string> }; exitCode?: number }
 
 export function initCliRunJobs(context: vscode.ExtensionContext) {
     extensionContext = context;
@@ -439,6 +453,13 @@ export function initCliRunJobs(context: vscode.ExtensionContext) {
                 const run = runOf(event.execution.commandLine?.value);
                 if (run) {
                     run.sawStart = true;
+                    run.stages.startedAt ??= Date.now();
+                    run.stages.silentShell = undefined;
+                    whenCliSaysRunning(event.execution, () => {
+                        run.stages.compiledAt ??= Date.now();
+                        void poll(context, run);
+                    });
+                    void poll(context, run);
                 }
             }),
             events.onDidEndTerminalShellExecution((event) => {

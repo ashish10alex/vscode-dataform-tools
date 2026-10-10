@@ -30,6 +30,7 @@ import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
 import { initCliRunJobs } from './cliRunJobs';
+import { initRunFeedback } from './runFeedback';
 import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, onDidPostPanelMessage, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
@@ -105,6 +106,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     initRemoteCompiler(context);
     initLastRun(context);
+    initRunFeedback(context);
     initCliRunJobs(context);
     initChangedActions(context);
     initProjects(context);

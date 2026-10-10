@@ -8,11 +8,16 @@ import { GitService } from "./gitClient";
 import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
 import { beginRun } from './defer/deferRun';
 import { runDataformRunInTerminal } from './cliRunJobs';
+import { withRunFeedback } from './runFeedback';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { dataformRunCommand } from './project/dataformBackend';
 import { extensionConfiguration } from './project/settings';
 
-export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+export function runMultipleTagsFromSelection(...args: Parameters<typeof runMultipleTagsFromSelectionNow>): ReturnType<typeof runMultipleTagsFromSelectionNow> {
+    return withRunFeedback('cli', () => runMultipleTagsFromSelectionNow(...args));
+}
+
+async function runMultipleTagsFromSelectionNow(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     if (!(await beginRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
     let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, includDependencies, includeDownstreamDependents, fullRefresh);
     await runDataformRunInTerminal(workspaceFolder, runmultitagscommand, { tags: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
@@ -50,7 +55,7 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
         let workspaceFolder = await getWorkspaceFolder({ explain: true });
         if (!workspaceFolder) { return; }
 
-        if(executionMode === "cli"){
+        if(executionMode === "cli"){ await withRunFeedback('cli', async () => {
             if (!(await beginRun({ kind: 'tags', items: [selection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
 
             let cmd = "";
@@ -65,7 +70,7 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
                 // The command has never had --full-refresh, whatever was asked
                 await runDataformRunInTerminal(workspaceFolder, cmd, { tags: [selection], includeDependencies, includeDependents: !includeDependencies && includeDependents, fullRefresh: false });
             }
-        } else if (executionMode === "api"){
+        }); } else if (executionMode === "api"){
             runTagWtApi(context, [selection],includeDependencies, includeDependents, fullRefresh, executionMode);
 
         }
@@ -73,7 +78,11 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
     });
 }
 
-export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
+export function runTagWtApi(...args: Parameters<typeof runTagWtApiNow>): ReturnType<typeof runTagWtApiNow> {
+    return withRunFeedback(args[5] === 'api_workspace' ? 'api_workspace' : 'api', () => runTagWtApiNow(...args));
+}
+
+async function runTagWtApiNow(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
     // Prepares defer to prod and saves the run once it is about to dispatch, so a cancelled run does not replace the last one.
     const recordThisRun = (workspaceFolder: string) => beginRun({
         kind: 'tags',

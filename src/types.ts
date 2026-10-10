@@ -1,3 +1,4 @@
+import type { RunStages } from './shared/runStages';
 import { TextDocument } from "vscode";
 import { protos } from '@google-cloud/dataform';
 import type { ActionTypeCounts } from './shared/actionTypes';
@@ -566,6 +567,8 @@ export interface WorkflowUrlEntry {
     jobPrefix?: string;
     /** CLI run: why its jobs are not listed, or not all of them */
     jobsNote?: string;
+    /** When each stage between the run's invocation and its first job was reached; absent on older entries */
+    stages?: RunStages;
     /** CLI run: the window was closed or reloaded while it ran, so how it ended is told by its jobs alone */
     interrupted?: boolean;
     projectId?: string;

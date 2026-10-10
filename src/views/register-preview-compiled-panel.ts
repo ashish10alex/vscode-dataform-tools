@@ -41,6 +41,7 @@ import { loadDataformTools } from "../lazySdk";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
 import { cancelCliRun, cliRunHint } from "../cliRunJobs";
+import { pendingRun } from "../runFeedback";
 import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
 import { timestampToMs } from "../shared/jobTiming";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
@@ -265,7 +266,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
                 const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls, cliRunHint: cliRunHint() });
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls, cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.snoozeCompilation', async () => {
@@ -1490,7 +1491,7 @@ export class CompiledQueryPanel {
               }
               case 'dataform.loadWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls, cliRunHint: cliRunHint() });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls, cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
                 return;
               case 'dataform.clearWorkflowUrls':
                 await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
@@ -1795,7 +1796,7 @@ export class CompiledQueryPanel {
         // Every render that gets this far sends these, as the payloads of a compiled file used to
         this.updateDataformBlock({
             workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
-            cliRunHint: cliRunHint(),
+            cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null,
             lastRun: getLastRunView(),
             // Of the Project of the file on show: the one shown before may have been compiled another way, by another tool
             compilationInfo: getCompilationInfo(currentDataformRoot()),

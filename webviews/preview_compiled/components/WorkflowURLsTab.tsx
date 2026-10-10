@@ -6,6 +6,7 @@ import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { IncludedTargetsList } from './IncludedTargetsList';
 import { RunViaTag, WorkflowActionsTable, executionModeLabel } from './WorkflowActionsTable';
+import { RunStartSummary } from './RunStages';
 import { panelProblem } from '../utils/panelProblem';
 
 interface WorkflowURLsTabProps {
@@ -351,6 +352,7 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                         <td colSpan={7} className="px-4 py-3">
                                             <div className="flex flex-col gap-1">
                                                 {item.jobsNote && <div className="text-[11px] text-[var(--vscode-descriptionForeground)]">{item.jobsNote}</div>}
+                                                <RunStartSummary entry={item} />
                                                 <WorkflowActionsTable entry={item} className="max-h-[28rem] overflow-auto" />
                                             </div>
                                         </td>

@@ -14,6 +14,7 @@ import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { showLoadingProgress } from './vscodeUi';
 import { runDataformRunInTerminal } from '../cliRunJobs';
+import { withRunFeedback } from '../runFeedback';
 import { clearCompiled, compiledIndices, compiledJson, fileBackendHints, projects } from '../project';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
@@ -462,7 +463,11 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return Array.isArray(selectedFiles) ? selectedFiles : [selectedFiles];
 }
 
-export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
+export function runMultipleFilesFromSelection(...args: Parameters<typeof runMultipleFilesFromSelectionNow>): ReturnType<typeof runMultipleFilesFromSelectionNow> {
+    return withRunFeedback(args[6], () => runMultipleFilesFromSelectionNow(...args));
+}
+
+async function runMultipleFilesFromSelectionNow(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
     let dataformCompiledJson = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
@@ -500,7 +505,11 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
  * Runs the given actions with the CLI or the Dataform API, preparing defer to prod and recording `lastRunRequest` just
  * before dispatching. Resolves to true when it created a workflow invocation on the pushed branch.
  */
-export async function runIncludedTargets(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>): Promise<boolean> {
+export function runIncludedTargets(...args: Parameters<typeof runIncludedTargetsNow>): ReturnType<typeof runIncludedTargetsNow> {
+    return withRunFeedback(args[6], () => runIncludedTargetsNow(...args));
+}
+
+async function runIncludedTargetsNow(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>): Promise<boolean> {
     const invocationConfig = {
         includedTargets: includedTargets,
         transitiveDependenciesIncluded: includeDependencies,
