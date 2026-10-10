@@ -20,7 +20,6 @@ import { ModifierSwitch } from "./ModifierSwitch";
 import { DeferralBanner, deferralSummary, SWITCH_TITLE as DEFER_SWITCH_TITLE } from "./DeferralBanner";
 import {
   Play,
-  Tag,
   Network,
   GitCompareArrows,
   ListTree,
@@ -41,9 +40,6 @@ import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constant
 import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
 import { CompilerOverrides, overrideLabels } from "./CompilerOverrides";
 import { PropertyGraphSection } from "./PropertyGraphSection";
-import StyledMultiSelect from "../../dependancy_graph/components/StyledMultiSelect";
-import { OptionType } from "../../dependancy_graph/components/StyledSelect";
-import { MultiValue } from "react-select";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 import { panelProblem } from "../utils/panelProblem";
 import { fileView } from "../utils/fileView";
@@ -113,7 +109,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [loadingLineage, setLoadingLineage] = useState(false);
   const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.dataform.tagCostEstimate?.tags || []);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
-  const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
   const tagPopoverRef = useRef<HTMLDivElement>(null);
 
   // The tags of a cost estimate become the tags chosen for a run
@@ -149,14 +145,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     };
   }, [tagPopoverOpen]);
 
-  const tagOptions: OptionType[] = useMemo(
-    () => (state.project?.tags || []).map(tag => ({ value: tag, label: tag })),
-    [state.project?.tags]
-  );
-  const selectedTagRunOptions: OptionType[] = useMemo(
-    () => selectedTagsForRun.map(tag => ({ value: tag, label: tag })),
-    [selectedTagsForRun]
-  );
+  const shownTags = (state.project?.tags ?? []).filter((tag) => tag.toLowerCase().includes(tagFilter.trim().toLowerCase()));
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   /** The query on show, by its key. The first one when none was chosen, or the one chosen is of another file */
   const [sqlTab, setSqlTab] = useState<string | null>(null);
@@ -251,13 +240,19 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     : `Run ${selectedTagsForRun.length} tag${selectedTagsForRun.length === 1 ? "" : "s"}`;
 
   const handleTagPopoverKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "Enter" || selectedTagsForRun.length === 0) { return; }
-    // Cmd/Ctrl+Enter always runs. Plain Enter runs only when the react-select
-    // menu is closed, otherwise react-select owns Enter to toggle the focused option.
-    if (e.metaKey || e.ctrlKey || !tagMenuOpen) {
+    if (e.key !== "Enter") { return; }
+    // Cmd/Ctrl+Enter runs what is chosen. Plain Enter in the filter chooses the one tag it has left
+    if (e.metaKey || e.ctrlKey) {
+      if (selectedTagsForRun.length > 0) {
+        e.preventDefault();
+        handleRunTag();
+        setTagPopoverOpen(false);
+      }
+    } else if (e.target instanceof HTMLInputElement && shownTags.length === 1) {
       e.preventDefault();
-      handleRunTag();
-      setTagPopoverOpen(false);
+      const [only] = shownTags;
+      setSelectedTagsForRun((chosen) => chosen.includes(only) ? chosen : [...chosen, only]);
+      setTagFilter("");
     }
   };
 
@@ -758,7 +753,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     <ModifierSwitch chip label="Full refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental tables from scratch (--full-refresh)" warning />
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 ml-auto">
+                <div className="relative flex items-center gap-1.5 ml-auto">
                   {showTestRun && (
                     <button onClick={handleRunTest} disabled={compiling} className={hasRunnableActions ? ROW_BUTTON : ROW_PRIMARY_BUTTON}>
                       <Play className="w-3 h-3" /> Run Tests
@@ -768,51 +763,63 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     <RunBackendSwitch backend={runBackend} isRemoteMode={isRemoteMode} disabled={compiling} onChange={setPreferredBackend} />
                   )}
                   {hasTags && (
-                    <div ref={tagPopoverRef} className="relative">
+                    // The picker opens from the end of the row, not from under the button: it is as wide as a narrow panel
+                    <div ref={tagPopoverRef}>
                       <button
-                        onClick={() => setTagPopoverOpen((open) => !open)}
+                        onClick={() => { setTagFilter(""); setTagPopoverOpen((open) => !open); }}
                         disabled={compiling}
                         aria-haspopup="dialog"
                         aria-expanded={tagPopoverOpen}
                         title={`Pick tag(s) to run via the Dataform ${runBackend === "api" ? "API" : "CLI"}`}
                         className={hasRunnableActions ? ROW_BUTTON : ROW_PRIMARY_BUTTON}
                       >
-                        <Tag className="w-3 h-3" /> {hasRunnableActions ? <span className="sr-only">Run Tag…</span> : "Run Tag…"}
+                        {hasRunnableActions ? "Tag" : "Run Tag…"}
                       </button>
                       {tagPopoverOpen && (
                         <div
                           role="dialog"
                           aria-label="Run by tag"
                           onKeyDown={handleTagPopoverKeyDown}
-                          className="absolute top-full right-0 mt-1 z-20 w-[min(320px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
+                          className="absolute top-full right-0 mt-1 z-20 w-[min(340px,calc(100vw-1.5rem))] rounded-md border border-[var(--vscode-menu-border,var(--vscode-widget-border))] bg-[var(--vscode-menu-background,var(--vscode-editor-background))] shadow-lg text-xs"
                         >
-                          <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run via the Dataform {runBackend === "api" ? "API" : "CLI"}:</p>
-                          <StyledMultiSelect
-                            options={tagOptions}
-                            value={selectedTagRunOptions}
-                            onChange={(opts: MultiValue<OptionType>) => setSelectedTagsForRun(opts.map(o => o.value))}
-                            onMenuOpen={() => setTagMenuOpen(true)}
-                            onMenuClose={() => setTagMenuOpen(false)}
-                            placeholder="Search and select tags..."
-                            isSearchable
-                            closeMenuOnSelect
-                            blurInputOnSelect={false}
-                            autoFocus
-                          />
-                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
-                            <button
-                              onClick={() => setTagPopoverOpen(false)}
-                              className="px-3 py-1.5 text-xs bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded"
-                            >
-                              Cancel
-                            </button>
+                          <div className="flex items-center gap-2 px-2.5 pt-2">
+                            <span className="font-medium text-[var(--vscode-foreground)]">Run by tag</span>
+                            <span className="text-[var(--vscode-descriptionForeground)]">via the {runBackend === "api" ? "API" : "CLI"}</span>
+                            <input
+                              autoFocus
+                              type="text"
+                              value={tagFilter}
+                              onChange={(e) => setTagFilter(e.target.value)}
+                              placeholder="Filter…"
+                              aria-label="Filter the tags"
+                              className="ml-auto w-[112px] h-6 px-2 rounded bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border,var(--vscode-widget-border))] text-xs text-[var(--vscode-input-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)] focus:outline-none focus:border-[var(--vscode-focusBorder)]"
+                            />
+                          </div>
+                          <div role="group" aria-label="Tags" className="flex flex-wrap gap-1 max-h-[168px] overflow-y-auto px-2.5 py-2">
+                            {shownTags.map((tag) => (
+                              <ModifierSwitch
+                                key={tag}
+                                chip
+                                label={tag}
+                                checked={selectedTagsForRun.includes(tag)}
+                                onChange={(checked) => setSelectedTagsForRun((chosen) => checked ? [...chosen, tag] : chosen.filter((other) => other !== tag))}
+                                title={selectedTagsForRun.includes(tag) ? `Leave the tag ${tag} out of the run` : `Run the tag ${tag}`}
+                              />
+                            ))}
+                            {shownTags.length === 0 && <span className="py-1 italic text-[var(--vscode-descriptionForeground)]">No tag has "{tagFilter}" in its name</span>}
+                          </div>
+                          <div className="flex items-center gap-2 px-2.5 py-2 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))]">
+                            <span className="text-[var(--vscode-descriptionForeground)]">{selectedTagsForRun.length === 0 ? "None chosen" : `${selectedTagsForRun.length} chosen`}</span>
+                            {selectedTagsForRun.length > 0 && (
+                              <button onClick={() => setSelectedTagsForRun([])} className="bg-transparent border-0 p-0 text-[var(--vscode-textLink-foreground)] hover:underline">Clear</button>
+                            )}
                             <button
                               onClick={() => { handleRunTag(); setTagPopoverOpen(false); }}
                               disabled={selectedTagsForRun.length === 0}
-                              className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                              className={clsx(ROW_PRIMARY_BUTTON, "ml-auto")}
                             >
-                              <Play className="w-3.5 h-3.5 mr-1.5" /> {runTagLabel}
-                              <span className="ml-2 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
+                              <Play className="w-3 h-3" /> {runTagLabel}
+                              <span className="ml-1 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
                             </button>
                           </div>
                         </div>
