@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { CompilationErrorType, ExecutionMode, Target, PanelState, WorkflowUrlEntry } from "../types";
 import { previewSection, targetId } from "../../../src/shared/compiledGraph";
-import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
 import { LastRunCard, formatAgo, useRerun } from "./LastRunCard";
@@ -12,7 +11,10 @@ import { SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
 import { clock, runVia } from "./RunStages";
 import { workflowDurationMs, useTick } from "./WorkflowActionsTable";
 import { LineageColumns } from "./LineageColumns";
-import { ROW_BUTTON, ROW_LABEL, ROW_PRIMARY_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
+import { ROW_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
+import { FULL_REFRESH_RING, RUN_GROUP, RUN_MAIN_PART, RUN_PART, RunModifiers, RunRow, TagRunPart } from "./RunParts";
+import { SqlBlock, SqlTabs, shownSqlBlock, sqlTabLabels } from "./SqlTabs";
+import { CopyTableIdButton, DryRunResult, KindBadge, TargetAction, TargetRow } from "./TargetRow";
 import { RunChangedButton } from "./RunChangedButton";
 import { API_COLOR, RunBackend, RunBackendSwitch } from "./RunBackendSwitch";
 import { ApiRunGitChip } from "./ApiRunGitChip";
@@ -28,20 +30,13 @@ import {
   ShieldCheck,
   Wand2,
   RotateCcw,
-  Copy,
-  Check,
   Loader2,
-  Clock,
-  AlertCircle,
 } from "lucide-react";
-import clsx from "clsx";
 import { tableActions } from "../../../src/shared/columnLineage/tableActions";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
-import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
 import { CompilerOverrides, overrideLabels } from "./CompilerOverrides";
 import { PropertyGraphSection } from "./PropertyGraphSection";
-import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
 import { panelProblem } from "../utils/panelProblem";
 import { fileView } from "../utils/fileView";
 import { onlyAvailable } from "../utils/runTags";
@@ -55,11 +50,6 @@ import { runProgress } from "../../../src/shared/cliRunJobs";
 import { runStage } from "../../../src/shared/runStages";
 import { formatDuration } from "../../../src/shared/jobTiming";
 
-// A part of the group of run buttons. Its corners are the group's, which rounds its ends
-const RUN_PART_BASE = "flex items-center gap-1 h-6 px-2 rounded-[inherit] border-0 text-xs whitespace-nowrap disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
-/** A run that is not the file's own: in the button colour, thinned, so it is an action and second to the main one */
-export const RUN_PART = `${RUN_PART_BASE} text-[var(--vscode-foreground)] bg-[color-mix(in_srgb,var(--run-tint,var(--vscode-button-background))_28%,transparent)] hover:bg-[color-mix(in_srgb,var(--run-tint,var(--vscode-button-background))_45%,transparent)]`;
-const RUN_MAIN_PART = `${RUN_PART_BASE} text-[var(--vscode-button-foreground)] bg-[var(--run-solid,var(--vscode-button-background))] hover:bg-[var(--run-solid-hover,var(--vscode-button-hoverBackground))]`;
 /**
  * The run buttons while their runs go through the Dataform API: in the colour the switch has for it, so where a run
  * goes is seen on the button that starts it. The solid one is darkened, for its text to be read on it in a dark theme.
@@ -75,29 +65,6 @@ const CLI_RUN_COLORS = {
   "--run-solid": "var(--vscode-button-background)",
   "--run-solid-hover": "var(--vscode-button-hoverBackground)",
 } as React.CSSProperties;
-// The colour of the Full refresh chip while it is on
-const FULL_REFRESH_COLOR = "var(--vscode-charts-orange, #d18616)";
-
-/**
- * A stat line ending in UNKNOWN_ACCURACY_STAT means BigQuery could not estimate the bytes.
- * Render it as a warning chip rather than plain text, so it is impossible to mistake for a
- * normal estimate at a glance; the tooltip explains what BigQuery actually reported.
- */
-export const renderDryRunStatLine = (line: string) => {
-  if (!line.endsWith(UNKNOWN_ACCURACY_STAT)) {
-    return line;
-  }
-  const label = line.slice(0, -UNKNOWN_ACCURACY_STAT.length);
-  return (
-    <span title={UNKNOWN_ACCURACY_TOOLTIP}>
-      {label}
-      <span className="px-1.5 py-0.5 rounded font-semibold" style={UNKNOWN_ACCURACY_CHIP_STYLE}>
-        {UNKNOWN_ACCURACY_STAT}
-      </span>
-    </span>
-  );
-};
-
 interface CompiledQueryTabProps {
   state: PanelState;
 }
@@ -129,10 +96,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const [formatting, setFormatting] = useState(false);
   const [loadingLineage, setLoadingLineage] = useState(false);
   const [selectedTagsForRun, setSelectedTagsForRun] = useState<string[]>(state.dataform.tagCostEstimate?.tags || []);
-  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
-  const [tagFilter, setTagFilter] = useState("");
-  const tagPopoverRef = useRef<HTMLDivElement>(null);
-
   // The tags of a cost estimate become the tags chosen for a run
   const estimatedTags = state.dataform.tagCostEstimate?.tags;
   useEffect(() => {
@@ -148,26 +111,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     setSelectedTagsForRun((chosen) => onlyAvailable(chosen, availableTags === "" ? [] : availableTags.split("\n")));
   }, [availableTags]);
 
-  useEffect(() => {
-    if (!tagPopoverOpen) { return; }
-    const onDocMouseDown = (e: MouseEvent) => {
-      if (tagPopoverRef.current && !tagPopoverRef.current.contains(e.target as Node)) {
-        setTagPopoverOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setTagPopoverOpen(false); }
-    };
-    document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [tagPopoverOpen]);
-
-  const shownTags = (state.project?.tags ?? []).filter((tag) => tag.toLowerCase().includes(tagFilter.trim().toLowerCase()));
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   /** The query on show, by its key. The first one when none was chosen, or the one chosen is of another file */
   const [sqlTab, setSqlTab] = useState<string | null>(null);
 
@@ -252,29 +195,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const handleRun = (backend: RunBackend) => {
     if (backend === "api") { setSubmittingSince(Date.now()); }
     handleRunModel(backend === "api");
-  };
-
-  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
-  const runTagShortcutHint = isMac ? "⌘↵" : "Ctrl+↵";
-  const runTagLabel = selectedTagsForRun.length === 0
-    ? "Run"
-    : `Run ${selectedTagsForRun.length} tag${selectedTagsForRun.length === 1 ? "" : "s"}`;
-
-  const handleTagPopoverKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "Enter") { return; }
-    // Cmd/Ctrl+Enter runs what is chosen. Plain Enter in the filter chooses the one tag it has left
-    if (e.metaKey || e.ctrlKey) {
-      if (selectedTagsForRun.length > 0) {
-        e.preventDefault();
-        handleRunTag();
-        setTagPopoverOpen(false);
-      }
-    } else if (e.target instanceof HTMLInputElement && shownTags.length === 1) {
-      e.preventDefault();
-      const [only] = shownTags;
-      setSelectedTagsForRun((chosen) => chosen.includes(only) ? chosen : [...chosen, only]);
-      setTagFilter("");
-    }
   };
 
   const handleFormat = () => {
@@ -394,11 +314,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       (model.type === 'test' && expectedOutputError) ? `(Expected output): ${expectedOutputError.message}` : '',
     ].filter(Boolean).join('\n');
   };
-  const typeBadge = (type: string) => {
-    const style = ACTION_TYPE_BADGE_STYLES[type] || DEFAULT_BADGE_STYLE;
-    return <span className={`inline-block align-middle mr-1.5 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>{type}</span>;
-  };
-
   const dryRunning = bq.dryRunning && !compiling;
 
   // Compile: how the SQL was made, and what changes what it says
@@ -531,19 +446,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   // ---- The SQL: one tab for each query the file compiles to
 
-  interface SqlBlock {
-    key: string;
-    label: string;
-    /** What the SQL builds, for the tab's tooltip */
-    target: string;
-    code: string;
-    /** The query the action is for, which is the one shown first: not what runs before or after it */
-    main: boolean;
-    /** What is said where there is no SQL */
-    none: string;
-    annotations?: { line: number; message: string }[];
-    failed: boolean;
-  }
   const annotationOf = (error: { message: string; location?: { line?: number | null } } | undefined) =>
     error?.location?.line !== null && error?.location?.line !== undefined ? [{ line: error.location.line, message: error.message }] : undefined;
   const blocks: SqlBlock[] = models.flatMap((model): SqlBlock[] => {
@@ -579,45 +481,29 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       ...(model.postOps?.length ? [block('postOps', 'Post-ops', model.postOps.join('\n'))] : []),
     ];
   });
-  // Two actions of a kind are told apart by what they build
-  const labelCounts = blocks.reduce<Record<string, number>>((counts, block) => ({ ...counts, [block.label]: (counts[block.label] ?? 0) + 1 }), {});
-  const tabLabel = (block: SqlBlock) => labelCounts[block.label] > 1 ? `${block.target.slice(block.target.lastIndexOf('.') + 1)} · ${block.label}` : block.label;
-  const shownBlock = blocks.find((block) => block.key === sqlTab) ?? blocks.find((block) => block.main) ?? blocks[0];
+  const tabLabel = sqlTabLabels(blocks);
+  const shownBlock = shownSqlBlock(blocks, sqlTab);
 
   return (
     <div className="pb-20">
       {/* The panel's padding is taken back: the rows run from edge to edge */}
       <div className="-mx-4 -mt-4">
-        {/* Target is always open: what the file builds and what its dry run said is what the panel is opened for */}
-        <div className={clsx("flex gap-2 px-3 py-1.5 border-b border-[var(--vscode-widget-border)] text-[12.5px]", models.length === 0 && "opacity-50")}>
-          <span className={clsx(ROW_LABEL, "leading-[22px]")}>Target</span>
-          <div className="flex-1 min-w-0 space-y-2">
-          {models.length === 0 && <span className="leading-[22px]">—</span>}
+        <TargetRow>
           {models.map((model, index) => {
             const target = model.target;
             if (!target && model.type !== 'test') { return null; }
             const lastUpdateMeta = bq.lastUpdates[index];
             const key = nameKey(model);
             const dryRunStat = key ? bq.stats[key] : undefined;
-            const errorDisplay = dryRunErrorOf(model);
-            // What the dry run said, at the end of the action's last line: beside when its table was updated, where that is known
-            const dryRunResult = (
-              <>
-                  {dryRunning && <span className="ml-auto"><RowChip tone="busy"><Loader2 className="w-2.5 h-2.5 animate-spin" /> dry run…</RowChip></span>}
-                  {dryRunStat && !bq.dryRunning && (
-                    <span className="ml-auto text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
-                      {dryRunStat.split("<br>").map((line, i) => (
-                        <React.Fragment key={i}>{i > 0 && <br />}{renderDryRunStatLine(line)}</React.Fragment>
-                      ))}
-                    </span>
-                  )}
-              </>
-            );
             return (
-              // Each action is set apart, so it is plain which one an error is of
-              <div key={index} className={clsx("space-y-1.5 group", index > 0 && "!mt-2.5 pt-2.5 border-t border-[var(--vscode-widget-border)]")}>
-                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
-                  {typeBadge(model.type)}
+              <TargetAction
+                key={index}
+                separated={index > 0}
+                lastUpdated={lastUpdateMeta ? (lastUpdateMeta.error?.message ? { unknown: lastUpdateMeta.error.message } : { time: lastUpdateMeta.lastModifiedTime ?? "", today: !!lastUpdateMeta.modelWasUpdatedToday }) : undefined}
+                dryRun={<DryRunResult running={dryRunning} stat={bq.dryRunning ? undefined : dryRunStat} />}
+                error={dryRunErrorOf(model)}
+                head={<>
+                  <KindBadge kind={model.type} />
                   {model.type === 'assertion' && target && describeBuiltInAssertion(target.name, model.query).map(builtIn => (
                     <span
                       key={builtIn.kind}
@@ -640,53 +526,14 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       {model.type === 'notebook' && model.fileName && (
                         <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-80">{model.fileName}</span>
                       )}
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`\`${target.database}.${target.schema}.${target.name}\``);
-                          setCopiedIndex(index);
-                          setTimeout(() => setCopiedIndex(null), 2000);
-                        }}
-                        className="p-1 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        title="Copy table ID with backticks"
-                      >
-                        {copiedIndex === index ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
+                      <CopyTableIdButton onCopy={() => navigator.clipboard.writeText(`\`${target.database}.${target.schema}.${target.name}\``)} />
                     </>
                   )}
-                  {!lastUpdateMeta && dryRunResult}
-                </div>
-
-                {lastUpdateMeta && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--vscode-descriptionForeground)]">
-                    <Clock className="w-3 h-3" />
-                    <span>Last updated:</span>
-                    {lastUpdateMeta.error?.message ? (
-                      <span
-                        className="font-mono text-[var(--vscode-descriptionForeground)] opacity-70 cursor-help border-b border-dotted border-[var(--vscode-widget-border)]"
-                        title={lastUpdateMeta.error.message}
-                      >
-                        N/A
-                      </span>
-                    ) : (
-                      <span className={clsx("font-mono", !lastUpdateMeta.modelWasUpdatedToday ? "text-[var(--vscode-errorForeground)]" : "text-[var(--vscode-foreground)]")}>
-                        {lastUpdateMeta.lastModifiedTime}
-                      </span>
-                    )}
-                    {dryRunResult}
-                  </div>
-                )}
-
-                {errorDisplay && (
-                  <div className="bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] px-3 py-2 rounded text-xs text-[var(--vscode-inputValidation-errorForeground)] flex items-start gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                    <div className="overflow-auto whitespace-pre-wrap">{errorDisplay}</div>
-                  </div>
-                )}
-              </div>
+                </>}
+              />
             );
           })}
-          </div>
-        </div>
+        </TargetRow>
 
         <SummaryRow
           label="Compile"
@@ -759,20 +606,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           />
         </SummaryRow>
 
-        {/* Run has nothing to open: its modifiers say what Run will do, and its buttons are at the row's end */}
-        <div className={clsx("border-b border-[var(--vscode-widget-border)] text-[12.5px]", runOff && "opacity-50")}>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-h-[30px] px-3 py-[3px]">
-            <span className={ROW_LABEL}>Run</span>
-            {runOff ? (
-              <span className="text-[var(--vscode-foreground)]">{canRun ? "needs a compile that succeeds" : "nothing to run in this file"}</span>
-            ) : (
-              <>
+        <RunRow off={runOff ? (canRun ? "needs a compile that succeeds" : "nothing to run in this file") : undefined}>
                 {hasRunControls && (
-                  <div role="group" aria-label="Run modifiers" className="flex items-center gap-1 flex-shrink-0">
-                    <ModifierSwitch chip label="+Deps" checked={includeDependencies} onChange={setIncludeDependencies} title="Include dependencies (--include-deps)" />
-                    <ModifierSwitch chip label="+Dependents" checked={includeDependents} onChange={setIncludeDependents} title="Include dependents (--include-dependents)" />
-                    <ModifierSwitch chip label="Full refresh" checked={fullRefresh} onChange={setFullRefresh} title="Rebuild incremental tables from scratch (--full-refresh)" warning />
-                  </div>
+                  <RunModifiers
+                    includeDependencies={includeDependencies}
+                    includeDependents={includeDependents}
+                    fullRefresh={fullRefresh}
+                    onIncludeDependencies={setIncludeDependencies}
+                    onIncludeDependents={setIncludeDependents}
+                    onFullRefresh={setFullRefresh}
+                    titles={{ dependencies: "Include dependencies (--include-deps)", dependents: "Include dependents (--include-dependents)", fullRefresh: "Rebuild incremental tables from scratch (--full-refresh)" }}
+                  />
                 )}
                 <div className="relative flex items-center gap-1.5 ml-auto">
                   {(hasRunnableActions || hasTags || hasChangedActions) && (
@@ -780,78 +624,23 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   )}
                   {/* Everything that starts a run is one group, each part with the arrow of a run and the name of what it
                       runs: they are told from the settings beside them, which have neither */}
-                  <div role="group" aria-label="Run" style={runsViaApi ? API_RUN_COLORS : undefined} className="inline-flex items-stretch gap-px [&>*:first-child]:rounded-l [&>*:last-child]:rounded-r">
+                  <div role="group" aria-label="Run" style={runsViaApi ? API_RUN_COLORS : undefined} className={RUN_GROUP}>
                   {showTestRun && (
                     <button onClick={handleRunTest} disabled={compiling} title="Run the unit tests of this file, with the Dataform CLI" style={CLI_RUN_COLORS} className={hasRunnableActions ? RUN_PART : RUN_MAIN_PART}>
                       <Play className="w-3 h-3" /> Tests
                     </button>
                   )}
                   {hasTags && (
-                    // The picker opens from the end of the row, not from under the button: it is as wide as a narrow panel
-                    <div ref={tagPopoverRef} className="flex">
-                      <button
-                        onClick={() => { setTagFilter(""); setTagPopoverOpen((open) => !open); }}
-                        disabled={compiling}
-                        aria-haspopup="dialog"
-                        aria-expanded={tagPopoverOpen}
-                        title={`Pick tag(s) to run via the Dataform ${runBackend === "api" ? "API" : "CLI"}`}
-                        className={hasRunnableActions || showTestRun ? RUN_PART : RUN_MAIN_PART}
-                      >
-                        <Play className="w-3 h-3" /> Tag…
-                      </button>
-                      {tagPopoverOpen && (
-                        <div
-                          role="dialog"
-                          aria-label="Run by tag"
-                          onKeyDown={handleTagPopoverKeyDown}
-                          className="absolute top-full right-0 mt-1 z-20 w-[min(340px,calc(100vw-1.5rem))] rounded-md border border-[var(--vscode-menu-border,var(--vscode-widget-border))] bg-[var(--vscode-menu-background,var(--vscode-editor-background))] shadow-lg text-xs"
-                        >
-                          <div className="flex items-center gap-2 px-2.5 pt-2">
-                            <span className="font-medium text-[var(--vscode-foreground)]">Run by tag</span>
-                            <span className="text-[var(--vscode-descriptionForeground)]">via the {runBackend === "api" ? "API" : "CLI"}</span>
-                            <input
-                              autoFocus
-                              type="text"
-                              value={tagFilter}
-                              onChange={(e) => setTagFilter(e.target.value)}
-                              placeholder="Filter…"
-                              aria-label="Filter the tags"
-                              className="ml-auto w-[112px] h-6 px-2 rounded bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border,var(--vscode-widget-border))] text-xs text-[var(--vscode-input-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)] focus:outline-none focus:border-[var(--vscode-focusBorder)]"
-                            />
-                          </div>
-                          <div role="group" aria-label="Tags" className="flex flex-wrap gap-1 max-h-[168px] overflow-y-auto px-2.5 py-2">
-                            {shownTags.map((tag) => (
-                              <ModifierSwitch
-                                key={tag}
-                                chip
-                                label={tag}
-                                checked={selectedTagsForRun.includes(tag)}
-                                onChange={(checked) => setSelectedTagsForRun((chosen) => checked ? [...chosen, tag] : chosen.filter((other) => other !== tag))}
-                                title={selectedTagsForRun.includes(tag) ? `Leave the tag ${tag} out of the run` : `Run the tag ${tag}`}
-                              />
-                            ))}
-                            {shownTags.length === 0 && <span className="py-1 italic text-[var(--vscode-descriptionForeground)]">No tag has "{tagFilter}" in its name</span>}
-                          </div>
-                          <div className="flex items-center gap-2 px-2.5 py-2 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))]">
-                            {/* The chosen tags by name: the filter can have them out of the list above */}
-                            <span className="min-w-0 truncate text-[var(--vscode-descriptionForeground)]" title={selectedTagsForRun.join(", ")}>
-                              {selectedTagsForRun.length === 0 ? "None chosen" : <span className="font-mono text-[var(--vscode-foreground)]">{selectedTagsForRun.join(", ")}</span>}
-                            </span>
-                            {selectedTagsForRun.length > 0 && (
-                              <button onClick={() => setSelectedTagsForRun([])} className="flex-shrink-0 bg-transparent border-0 p-0 text-[var(--vscode-textLink-foreground)] hover:underline">Clear</button>
-                            )}
-                            <button
-                              onClick={() => { handleRunTag(); setTagPopoverOpen(false); }}
-                              disabled={selectedTagsForRun.length === 0}
-                              className={clsx(ROW_PRIMARY_BUTTON, "ml-auto flex-shrink-0")}
-                            >
-                              <Play className="w-3 h-3" /> {runTagLabel}
-                              <span className="ml-1 text-[10px] font-mono opacity-70">{runTagShortcutHint}</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <TagRunPart
+                      tags={state.project?.tags ?? []}
+                      selected={selectedTagsForRun}
+                      onSelect={setSelectedTagsForRun}
+                      onRun={handleRunTag}
+                      disabled={compiling}
+                      title={`Pick tag(s) to run via the Dataform ${runBackend === "api" ? "API" : "CLI"}`}
+                      via={`via the ${runBackend === "api" ? "API" : "CLI"}`}
+                      className={hasRunnableActions || showTestRun ? RUN_PART : RUN_MAIN_PART}
+                    />
                   )}
                   <RunChangedButton
                     compact
@@ -869,8 +658,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     <button
                       onClick={() => handleRun(runBackend)}
                       disabled={compiling || runningModel}
-                      // Full refresh rings the button in the colour of its chip: the button keeps its own colours, which are readable in every theme
-                      style={fullRefresh ? { boxShadow: `0 0 0 1px var(--vscode-editor-background), 0 0 0 3px ${FULL_REFRESH_COLOR}` } : undefined}
+                      style={fullRefresh ? FULL_REFRESH_RING : undefined}
                       title={`Run this file's actions via the Dataform ${runBackend === "api" ? "API" : "CLI"}${[includeDependencies && ", with dependencies", includeDependents && ", with dependents", fullRefresh && ", full refresh"].filter(Boolean).join("")}`}
                       className={RUN_MAIN_PART}
                     >
@@ -884,10 +672,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                     <ApiRunGitChip state={state.dataform.apiRunGitState} />
                   </div>
                 )}
-              </>
-            )}
-          </div>
-        </div>
+        </RunRow>
 
         <SummaryRow
           label="Last run"
@@ -912,38 +697,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         </SummaryRow>
       </div>
 
-      {shownBlock && (
-        <>
-          <div role="tablist" aria-label="Compiled SQL" className="sticky top-0 z-10 -mx-4 px-2 flex items-center gap-1 h-9 overflow-x-auto scrollbar-thin border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)]">
-            {blocks.map((block) => (
-              <button
-                key={block.key}
-                role="tab"
-                aria-selected={block === shownBlock}
-                onClick={() => setSqlTab(block.key)}
-                title={block.failed ? `${block.target}: its dry run failed` : block.target}
-                className={clsx(
-                  "flex items-center gap-1.5 flex-shrink-0 h-6 px-2 rounded text-[12.5px] whitespace-nowrap border-0 transition-colors",
-                  block === shownBlock
-                    ? "bg-[var(--vscode-list-inactiveSelectionBackground,var(--vscode-toolbar-hoverBackground))] text-[var(--vscode-foreground)]"
-                    : "bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
-                )}
-              >
-                {block.failed && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-errorForeground,#f14c4c)]" />}
-                {tabLabel(block)}
-              </button>
-            ))}
-            <span className="ml-2 min-w-0 truncate text-[11px] font-mono text-[var(--vscode-descriptionForeground)] opacity-60">{shownBlock.target}</span>
-          </div>
-          <div role="tabpanel" className="-mx-4">
-            {shownBlock.code ? (
-              <CodeBlock key={shownBlock.key} code={shownBlock.code} language="sql" showLineNumbers errorAnnotations={shownBlock.annotations} />
-            ) : (
-              <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">{shownBlock.none}</p>
-            )}
-          </div>
-        </>
-      )}
+      {shownBlock && <SqlTabs blocks={blocks} shown={shownBlock} onShow={setSqlTab} labelOf={tabLabel} />}
     </div>
   );
 };
