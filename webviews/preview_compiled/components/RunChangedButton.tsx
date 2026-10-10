@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
 import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
@@ -44,6 +45,12 @@ interface RunChangedButtonProps {
   fullRefresh: boolean;
   /** Dataform only */
   onApiRunDispatched?: () => void;
+  /** As small as a button of a summary row, with a few words: a part of the group of run buttons there */
+  compact?: boolean;
+  /** How the button looks while `compact`, given by the group it is a part of */
+  className?: string;
+  /** Dataform only. Where the run goes, when that is chosen outside: there is then one button to run, not one for each way */
+  via?: "cli" | "api";
 }
 
 /** The project is nearly always the same, so only the dataset (muted) and name are shown. */
@@ -170,6 +177,9 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   includeDependents,
   fullRefresh,
   onApiRunDispatched,
+  compact = false,
+  className,
+  via,
 }) => {
   const dbt = backend === "dbt";
   const [open, setOpen] = useState(false);
@@ -319,23 +329,25 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
 
   return (
     <BackendContext.Provider value={backend}>
-    <div ref={ref} className="relative" data-run-changed={backend}>
+    <div ref={ref} className={compact ? "relative flex" : "relative"} data-run-changed={backend}>
       <button
         onClick={toggle}
         disabled={disabled}
-        className="pl-3 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
+        className={compact
+          ? className
+          : "pl-3 pr-2 py-1.5 text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"}
         title={noChanges ? `No changes ${comparison}. Click to recheck` : `Run only the actions changed ${comparison}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <GitCompare className="w-4 h-4 mr-1.5" /> Run Changed
+        {compact ? <Play className="w-3 h-3" /> : <GitCompare className="w-4 h-4 mr-1.5" />} {compact ? "Changed" : "Run Changed"}
         {status === "ready" && (
-          <span className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--vscode-button-foreground) 25%, transparent)" }}>
+          <span className={clsx(!compact && "ml-1.5", "text-[11px] leading-none px-1.5 py-0.5 rounded-full")} style={{ background: "color-mix(in srgb, currentColor 22%, transparent)" }}>
             {changed.length}
           </span>
         )}
-        {status === "computing" && <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />}
-        <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />
+        {status === "computing" && <Loader2 className={clsx("w-3.5 h-3.5 animate-spin", !compact && "ml-1.5")} />}
+        {!compact && <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />}
       </button>
       {open && (
         <div
@@ -390,7 +402,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               >
                 Cancel
               </button>
-              {(dbt || !isRemoteMode) && (
+              {(dbt || (!isRemoteMode && via !== "api")) && (
                 <button
                   onClick={() => run(false)}
                   disabled={!canRun}
@@ -400,7 +412,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
                   <Play className="w-3.5 h-3.5 mr-1.5" /> {dbt ? runLabel : `${runLabel} (CLI)`}
                 </button>
               )}
-              {!dbt && (
+              {!dbt && (isRemoteMode || via !== "cli") && (
                 <button
                   onClick={() => run(true)}
                   disabled={!canRun}

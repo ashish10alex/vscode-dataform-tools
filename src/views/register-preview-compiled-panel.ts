@@ -179,6 +179,8 @@ let armedPreviewSpan: ((attrs?: PerfSpan['attrs']) => void) | undefined;
 
 // What an API run leaves out only changes with the working tree or the commits: it is computed again after a
 // save or a git change (coalesced, as one save can raise both), and renders post the last computation
+/** Where each Project's runs go, by the Project's root: see `DataformBlock.runBackend` */
+const RUN_BACKEND_KEY = 'dataform_run_backend';
 let apiRunGitStateGeneration = 0;
 let apiRunGitStateCache: { folder: string, generation: number, state: Promise<ApiRunGitState> } | undefined;
 const refreshApiRunGitStateSoon = debounce(() => CompiledQueryPanel.centerPanel?.postApiRunGitState(), 500);
@@ -1364,6 +1366,16 @@ export class CompiledQueryPanel {
               case 'dataform.toggleDeferToProd':
                 await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.on);
                 return;
+              case 'dataform.setRunBackend': {
+                // Kept for the Project, so the choice is there after the panel is closed, and for no other Project
+                const root = currentDataformRoot();
+                const workspaceState = this.centerPanel?.extensionContext.workspaceState;
+                if (root && workspaceState) {
+                    await workspaceState.update(RUN_BACKEND_KEY, { ...workspaceState.get<Record<string, 'cli' | 'api'>>(RUN_BACKEND_KEY), [root]: message.backend });
+                }
+                this.centerPanel?.updateDataformBlock({ runBackend: message.backend });
+                return;
+              }
               case 'dataform.openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
@@ -1800,6 +1812,7 @@ export class CompiledQueryPanel {
             lastRun: getLastRunView(),
             // Of the Project of the file on show: the one shown before may have been compiled another way, by another tool
             compilationInfo: getCompilationInfo(currentDataformRoot()),
+            runBackend: this.extensionContext.workspaceState.get<Record<string, 'cli' | 'api'>>(RUN_BACKEND_KEY)?.[currentDataformRoot() ?? ''] ?? 'cli',
         });
 
         // Notify webview that we are starting compilation
