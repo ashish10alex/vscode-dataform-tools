@@ -1,9 +1,9 @@
 {
     "name": "dataform-lsp-vscode",
-    "displayName": "Dataform tools",
+    "displayName": "Tools for Dataform and dbt",
     "publisher": "ashishalex",
     "icon": "media/images/dtools.png",
-    "description": "Compiled query, dry run stats, dependency graphs, inline diagnostics, run and preview models, cost estimation, go-to-definition, auto-completion, formatting using sqlfluff and more.",
+    "description": "For Dataform and dbt™ projects on BigQuery: compiled query, dry run cost, schema, preview, runs and dependency graphs. For Dataform also column lineage, inline diagnostics, go-to-definition, auto-completion, formatting with sqlfluff and more.",
     "repository": {
         "type": "git",
         "url": "https://github.com/ashish10alex/vscode-dataform-tools.git"
@@ -24,6 +24,7 @@
     ],
     "keywords": [
         "dataform",
+        "dbt",
         "sqlx",
         "bigquery",
         "google-cloud",
@@ -32,14 +33,17 @@
         "dag",
         "sqlfluff",
         "elt",
-        "dbt"
+        "dbt-core",
+        "dbt-bigquery",
+        "jinja"
     ],
     "extensionDependencies": [
         "vscode.git"
     ],
     "activationEvents": [
-        "workspaceContains:workflow_settings.yaml",
-        "workspaceContains:dataform.json",
+        "workspaceContains:**/workflow_settings.yaml",
+        "workspaceContains:**/dataform.json",
+        "workspaceContains:**/dbt_project.yml",
         "onLanguage:sqlx"
     ],
     "main": "./dist/extension.js",
@@ -48,7 +52,7 @@
             "panel": [
                 {
                     "id": "queryResultsContainer",
-                    "title": "Dataform tools",
+                    "title": "BigQuery Results",
                     "icon": ""
                 }
             ]
@@ -59,7 +63,7 @@
                     "icon": "",
                     "type": "webview",
                     "id": "queryResultsView",
-                    "name": "Dataform tools"
+                    "name": "BigQuery Results"
                 }
             ]
         },
@@ -80,17 +84,17 @@
         "commands": [
             {
                 "command": "vscode-dataform-tools.runQuery",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Preview query results"
             },
             {
                 "command": "vscode-dataform-tools.cancelQuery",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Cancel query"
             },
             {
                 "command": "vscode-dataform-tools.runFilesTagsWtOptions",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run file(s) / tag(s) with options"
             },
             {
@@ -100,7 +104,7 @@
             },
             {
                 "command": "vscode-dataform-tools.runChangedActions",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run changed actions (vs default branch)"
             },
             {
@@ -115,17 +119,17 @@
             },
             {
                 "command": "vscode-dataform-tools.runTag",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run a tag"
             },
             {
                 "command": "vscode-dataform-tools.runTagWtDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run a tag with dependencies"
             },
             {
                 "command": "vscode-dataform-tools.runTagWtDownstreamDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run a tag with dependents"
             },
             {
@@ -145,17 +149,17 @@
             },
             {
                 "command": "vscode-dataform-tools.runAssertions",
-                "category": "Dataform",
-                "title": "Run assertions in the current model"
+                "category": "Dataform/dbt",
+                "title": "Run assertions / tests in the current model"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDownstreamDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run current file with dependents"
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFile",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run current file",
                 "icon": "$(play)",
                 "group": "navigation"
@@ -186,34 +190,39 @@
             },
             {
                 "command": "vscode-dataform-tools.runCurrentFileWtDeps",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Run current file with dependencies"
             },
             {
                 "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Show compiled query in vertical split",
                 "icon": "$(layout-centered)",
                 "group": "navigation@3"
             },
             {
                 "command": "vscode-dataform-tools.showCompiledQueryInWebView",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Show compiled Query in web view"
             },
             {
+                "command": "vscode-dataform-tools.showProjectInfo",
+                "category": "Dataform/dbt",
+                "title": "Show Project Info"
+            },
+            {
                 "command": "vscode-dataform-tools.snoozeCompilation",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Snooze compilation (5 minutes)"
             },
             {
                 "command": "vscode-dataform-tools.stopSnoozeCompilation",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Stop snooze compilation"
             },
             {
                 "command": "vscode-dataform-tools.dependencyGraphPanel",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Show dependency graph"
             },
             {
@@ -250,17 +259,17 @@
             },
             {
                 "command": "vscode-dataform-tools.searchTableColumns",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Search columns in a model"
             },
             {
                 "command": "vscode-dataform-tools.selectWorkspaceFolder",
-                "category": "Dataform",
-                "title": "Select workspace folder"
+                "category": "Dataform/dbt",
+                "title": "Select project"
             },
             {
                 "command": "vscode-dataform-tools.clearExtensionCache",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Clear extension cache"
             },
             {
@@ -270,7 +279,7 @@
             },
             {
                 "command": "vscode-dataform-tools.rerunLastExecution",
-                "category": "Dataform",
+                "category": "Dataform/dbt",
                 "title": "Rerun last execution"
             },
             {
@@ -407,43 +416,131 @@
         "menus": {
             "commandPalette": [
                 {
+                    "command": "vscode-dataform-tools.selectWorkspaceFolder",
+                    "when": "vscode-dataform-tools.multipleProjects"
+                },
+                {
                     "command": "vscode-dataform-tools.traceColumnLineageGuessed",
-                    "when": "vscode-dataform-tools.devMode"
+                    "when": "vscode-dataform-tools.devMode && vscode-dataform-tools.backend != dbt"
                 },
                 {
                     "command": "vscode-dataform-tools.runTests",
-                    "when": "!vscode-dataform-tools.remoteMode"
+                    "when": "!vscode-dataform-tools.remoteMode && vscode-dataform-tools.backend != dbt"
                 },
                 {
                     "command": "vscode-dataform-tools.compileRemotely",
-                    "when": "vscode-dataform-tools.remoteMode"
+                    "when": "vscode-dataform-tools.remoteMode && vscode-dataform-tools.backend != dbt"
                 },
                 {
                     "command": "vscode-dataform-tools.remoteModeActions",
-                    "when": "vscode-dataform-tools.remoteMode"
+                    "when": "vscode-dataform-tools.remoteMode && vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runFilesTagsWtOptionsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runChangedActionsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runTagWtApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runTagWtDependenciesApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runTagWtDependentsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtDependenciesApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runCurrentFileWtDependentsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.switchCompilationBackend",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.openLastWorkflowExecution",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.toggleDeferToProd",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.deferToProdActions",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.removeProxyViews",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.refreshDeferToProd",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.columnLineage",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.columnImpactOfChanges",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.dependencyInspector",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.createNewDataformProject",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.formatDocument",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.lintCurrentFile",
+                    "when": "vscode-dataform-tools.backend != dbt"
                 }
             ],
             "editor/context": [
                 {
                     "command": "vscode-dataform-tools.searchTableColumns",
-                    "when": "resourceExtname == .sqlx",
+                    "when": "(resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt) || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)",
                     "group": "navigation@10"
                 }
             ],
             "editor/title": [
                 {
                     "command": "vscode-dataform-tools.runCurrentFile",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt",
                     "group": "navigation"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
+                    "when": "resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt",
                     "group": "navigation@3"
                 },
                 {
                     "command": "vscode-dataform-tools.formatDocument",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js",
+                    "when": "(resourceExtname == .sqlx || resourceExtname == .js) && vscode-dataform-tools.backend != dbt",
                     "group": "navigation@0"
                 }
             ]
@@ -486,7 +583,7 @@
                     "type": "string",
                     "default": "",
                     "scope": "resource",
-                    "markdownDescription": "Compiler options that point at your prod tables, e.g. `--default-database=my-prod-project --vars=env=prod`. Used by `#vscode-dataform-tools.deferToProd#`, and by column impact (**Column Impact of Branch Changes**), which compares each changed table with its table in this compile and lists it as not checked when nothing in the compile matches it. When empty, prod is the project defaults compiled without `#vscode-dataform-tools.compilerOptions#`, so set it when your project's defaults point at dev."
+                    "markdownDescription": "Compiler options that point at your prod tables, e.g. `--default-database=my-prod-project --vars=env=prod`. Used by `#vscode-dataform-tools.deferToProd#`, and by column impact (**Column Impact of Branch Changes**), which compares each changed table with its table in this compile and lists it as not checked when nothing in the compile matches it. When empty, prod is the project defaults compiled without `#vscode-dataform-tools.compilerOptions#`, so set it when your project's defaults point at dev. Until it is set, the column impact report says it compared with the default targets; if those are prod, add it to your settings as `\"\"` and the report stops saying so."
                 },
                 "vscode-dataform-tools.deferPreviewScanWarningGiB": {
                     "type": "number",
@@ -596,6 +693,72 @@
                     "markdownDescription": "**Override path to dataform executable**\n\n⚠️ **Only use this if the extension cannot find dataform automatically**\n\nThe extension automatically searches:\n- System PATH\n- Common tool managers (mise, asdf, nvm, etc.)\n- Standard installation locations\n\nUse this setting for:\n- **Specific versions** for testing: `/path/to/dataform-v3.0.25`\n- **Company-approved versions**: `/opt/company-tools/dataform`\n- **Non-standard locations**: Custom installation paths\n\n**Example**: `/usr/local/bin/dataform` or `${HOME}/.local/share/mise/installs/npm-dataform-cli/3.0.26/bin/dataform`",
                     "pattern": "^$|^.*dataform(?:\\.cmd|\\.exe)?$"
                 },
+                "vscode-dataform-tools.dbtExecutablePath": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**Path to the dbt executable**, for a dbt project.\n\nLeave it empty to let the extension find dbt. It looks, in this order, at: this setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, and common install directories. The first one that has a dbt is used, and the compiled query panel says which.\n\nBoth dbt-core (1.8 or later, with the BigQuery adapter) and dbt v2 work.\n\n**Example**: `/opt/homebrew/bin/dbt`, or `.venv/bin/dbt` relative to the project."
+                },
+                "vscode-dataform-tools.backend": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "dataform",
+                        "dbt",
+                        null
+                    ],
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**Only for a folder that is both a Dataform and a dbt project** (it has `workflow_settings.yaml` or `dataform.json`, and `dbt_project.yml`).\n\nThere, a file's type says which project it belongs to: `.sqlx` is Dataform's; `.sql`, `.csv` and `.py` are dbt's. A YAML, `.js` or `.json` file belongs to the project that compiles an action from it. This setting decides for a file that neither claims. Left empty, the extension asks once and remembers the answer for the workspace.\n\nIn any other folder this setting does nothing: the project is told by its settings file."
+                },
+                "vscode-dataform-tools.dbtTarget": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**The dbt target to compile and run a dbt project with** (dbt's `--target`): one of the `outputs` of the project's profile, such as `dev`.\n\nLeave it empty to let dbt choose: `$DBT_TARGET` if it is set, else the profile's default.\n\nThis is the default for everyone who uses the workspace. The compiled query panel shows the dbt target in use and lets you pick another for yourself; that choice is kept privately for the workspace and does not change this setting."
+                },
+                "vscode-dataform-tools.dbtVars": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**dbt variables** for a dbt project (dbt's `--vars`), as YAML or JSON in one line. They apply to compiles and to runs.\n\n**Example**: `{run_date: 2026-01-31, region: eu}`"
+                },
+                "vscode-dataform-tools.dbtProfilesDir": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**The directory that holds `profiles.yml`** for a dbt project (dbt's `--profiles-dir`), absolute or relative to the project. It applies to compiles and to runs.\n\nLeave it empty to let dbt look where it does by default: `$DBT_PROFILES_DIR`, the project's root, then `~/.dbt`."
+                },
+                "vscode-dataform-tools.dbtCompileWithHooks": {
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "resource",
+                    "markdownDescription": "**Compile a dbt project that has `on-run-start` or `on-run-end` hooks**, with dbt v2.\n\ndbt v2 runs those hooks against the warehouse every time it compiles. So by default the extension only parses such a project: the compiled query panel shows the SQL as written, and nothing is dry-run.\n\nTurn this on to compile it anyway. **The hooks then run on every save.** The panel offers this where it applies. It has no effect with dbt-core, which does not run hooks when it compiles."
+                },
+                "vscode-dataform-tools.dbtEditorFeatures": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "on",
+                        "off"
+                    ],
+                    "enumDescriptions": [
+                        "On, unless another dbt extension that offers the same is installed and enabled: the dbt extension of dbt Labs, or Power User for dbt.",
+                        "On, also beside another dbt extension. You may then see each hover and suggestion twice.",
+                        "Off."
+                    ],
+                    "default": "auto",
+                    "scope": "resource",
+                    "markdownDescription": "**Go to definition, hover and completions in the files of a dbt project**: for `ref()`, `source()`, macro calls and column names.\n\nVS Code shows what every extension offers for a file, so two dbt extensions give two hovers and each suggestion twice. With `auto` these features stand down while the dbt extension of dbt Labs (`dbtLabsInc.dbt`) or Power User for dbt (`innoverio.vscode-dbt-power-user`) is installed and enabled; the output channel says so when they do. `on` keeps them beside those extensions.\n\nThis does not change the language of `.sql` files, and it does not govern the dry-run error markers."
+                },
+                "vscode-dataform-tools.dbtDryRunOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "scope": "resource",
+                    "markdownDescription": "**Compile and dry-run a dbt file when it is saved, also while the compiled query panel is closed.**\n\nA save opens the panel unless `showCompiledQueryInVerticalSplitOnSave` is off, and the open panel always compiles and dry-runs. This setting is for a panel that stays closed.\n\nThe model and the tests of it are dry-run in BigQuery, which costs nothing, and BigQuery's errors are marked in the editor. An error in a line that Jinja built is marked on the first line of the file, and the panel shows where it is in the compiled query.\n\nTurn this off to have a save only parse the project while the panel is closed: dbt's own errors are still marked, and go to definition, hover and completions still work.\n\nA dbt v2 project that has `on-run-start` or `on-run-end` hooks is only parsed either way, unless `dbtCompileWithHooks` is on."
+                },
                 "vscode-dataform-tools.gcloudExecutablePath": {
                     "type": "string",
                     "default": null,
@@ -634,6 +797,11 @@
                     "type": "string",
                     "default": null,
                     "markdownDescription": "GCP location to use for BigQuery queries. E.g. US, EU, us-central1, europe-west1. Usually you will not need to set this explicity as the location is picked up dynamically by BigQuery client."
+                },
+                "vscode-dataform-tools.trackCliRunJobs": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "List the BigQuery jobs of a `dataform run` sent to the terminal, with their cost, next to the API runs. Each run is given `--job-prefix vscode-<id>`, so the IDs of its jobs start with `dataform-vscode-<id>-`, and your jobs are listed for the ones that have it (needs `bigquery.jobs.list`). Turn off to send the command without the prefix."
                 },
                 "vscode-dataform-tools.serviceAccountJsonPath": {
                     "type": "string",
@@ -701,7 +869,8 @@
         "generate:config-schema": "node scripts/generate-config-schema.mjs",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "rimraf .vscode-test/user-data && vscode-test --label unit && vscode-test --label panel",
+        "test:node": "mocha --ui tdd \"out/src/backend/**/*.test.js\"",
+        "test": "npm run test:node && rimraf .vscode-test/user-data && vscode-test --label unit && vscode-test --label panel && vscode-test --label dbt && vscode-test --label nested",
         "prerelease": "npm run test && markdownlint-cli2 README.md && standard-version --dry-run"
     },
     "devDependencies": {
@@ -735,6 +904,7 @@
         "eslint-plugin-react": "^7.37.5",
         "html-to-image": "^1.11.13",
         "lucide-react": "^0.564.0",
+        "mocha": "^10.8.2",
         "postcss": "^8.5.6",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
@@ -759,7 +929,6 @@
         "dompurify": "^3.3.1",
         "js-beautify": "^1.15.1",
         "js-yaml": "^4.1.1",
-        "prism-react-renderer": "^2.4.1",
-        "tablemark": "^3.1.0"
+        "prism-react-renderer": "^2.4.1"
     }
 }

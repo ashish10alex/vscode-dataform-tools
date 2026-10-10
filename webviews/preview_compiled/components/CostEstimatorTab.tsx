@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { WebviewState } from '../types';
+import { panelProblem } from "../utils/panelProblem";
+import { PanelState } from '../types';
 import { vscode } from '../utils/vscode';
 import { Loader2, Info, AlertCircle, Download } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
@@ -10,7 +11,7 @@ import { MultiValue } from 'react-select';
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_TOOLTIP } from '../../utils/dryRunAccuracy';
 
 interface CostEstimatorTabProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 type CostEstimateRow = {
@@ -70,20 +71,20 @@ const renderTotal = (
 };
 
 export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => {
-  const [selectedTags, setSelectedTags] = useState<string[]>(state.selectedTags || []);
+  const [selectedTags, setSelectedTags] = useState<string[]>(state.dataform.tagCostEstimate?.tags || []);
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-     if (state.selectedTags) {
-         setSelectedTags(state.selectedTags);
+     if (state.dataform.tagCostEstimate?.tags) {
+         setSelectedTags(state.dataform.tagCostEstimate?.tags);
      }
-  }, [state.selectedTags]);
+  }, [state.dataform.tagCostEstimate?.tags]);
 
   const tagOptions: OptionType[] = useMemo(() =>
-      (state.dataformTags || []).map(tag => ({ value: tag, label: tag })),
-      [state.dataformTags]
+      (state.project?.tags || []).map(tag => ({ value: tag, label: tag })),
+      [state.project?.tags]
   );
 
   const selectedTagOptions: OptionType[] = useMemo(() =>
@@ -97,8 +98,10 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
     }
     setLoading(true);
     vscode.postMessage({
-        command: 'costEstimator',
-        value: { selectedTags, includeDependencies, includeDependents }
+        command: 'dataform.estimateTagCost',
+        tags: selectedTags,
+        includeDependencies,
+        includeDependents,
     });
   };
 
@@ -128,21 +131,25 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
       const csvString = csvRows.join('\n');
       
       vscode.postMessage({
-          command: 'exportCostEstimateCsv',
-          value: csvString,
-          filename: `cost_estimate_${selectedTags.join('_')}.csv`
+          command: 'dataform.exportTagCostCsv',
+          content: csvString,
+          fileName: `cost_estimate_${selectedTags.join('_')}.csv`
       });
   };
 
+  // What is wrong with the file or its compile is shown here too, ahead of the estimate's own error
+  const panelMessage = panelProblem(state).message;
+
   useEffect(() => {
       // Clear loading if we get a result or error
-       if (state.tagDryRunStatsMeta || state.errorMessage) {
+       if (state.dataform.tagCostEstimate || panelMessage) {
            setLoading(false);
        }
-  }, [state.tagDryRunStatsMeta, state.errorMessage]);
+  }, [state.dataform.tagCostEstimate, panelMessage]);
 
   const data = useMemo(() => {
-      const list = state.tagDryRunStatsMeta?.tagDryRunStatsList || [];
+      // The contract leaves a row's shape to the host
+      const list = (state.dataform.tagCostEstimate?.rows ?? []) as CostEstimateRow[];
       return [...list].sort((a, b) => {
           // Sort errors to the top
           const aHasError = !!a.error;
@@ -155,8 +162,8 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
           }
           return 0;
       });
-  }, [state.tagDryRunStatsMeta]);
-  const currencySymbol = state.currencySymbol || "$";
+  }, [state.dataform.tagCostEstimate]);
+  const currencySymbol = state.bigquery?.currencySymbol || "$";
 
   const columns = useMemo<ColumnDef<CostEstimateRow>[]>(() => [
       {
@@ -245,7 +252,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </div>
             </details>
 
-            {state.dataformTags && state.dataformTags.length > 0 && (
+            {state.project?.tags && state.project?.tags.length > 0 && (
                 <div className="mb-3">
                     <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tags:</p>
                     <StyledMultiSelect
@@ -290,13 +297,13 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 </label>
             </div>
 
-            {(state.errorMessage || state.tagDryRunStatsMeta?.error) && (
+            {(panelMessage || state.dataform.tagCostEstimate?.error) && (
                 <div className="mt-4 p-3 bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)] rounded flex items-start gap-2 text-sm text-[var(--vscode-errorForeground)]">
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <div>
                         <div className="font-semibold mb-0.5">Estimation Failed</div>
                         <div className="opacity-90">
-                            {state.errorMessage || state.tagDryRunStatsMeta?.error?.message}
+                            {panelMessage || state.dataform.tagCostEstimate?.error}
                         </div>
                     </div>
                 </div>
@@ -308,7 +315,7 @@ export const CostEstimatorTab: React.FC<CostEstimatorTabProps> = ({ state }) => 
                 <DataTable columns={columns} data={data} searchPlaceholder="Filter costs..." />
              ) : (
                 <div className="text-center text-[var(--vscode-descriptionForeground)] mt-8">
-                     {!state.errorMessage && !state.tagDryRunStatsMeta?.error && (
+                     {!panelMessage && !state.dataform.tagCostEstimate?.error && (
                          "Select one or more tags and click Estimate Cost to see results."
                      )}
                  </div>

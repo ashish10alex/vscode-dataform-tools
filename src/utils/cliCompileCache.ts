@@ -49,10 +49,6 @@ export function initCliCompileCache(context: vscode.ExtensionContext) {
     storageRoot = path.join(context.globalStorageUri.fsPath, 'cli-compile');
 }
 
-export function isPersistCompilationEnabled(): boolean {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('persistCompilation') ?? true;
-}
-
 function shortHash(value: string): string {
     return crypto.createHash('sha1').update(value).digest('hex').slice(0, 16);
 }

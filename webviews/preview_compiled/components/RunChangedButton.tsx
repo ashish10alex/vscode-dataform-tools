@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
 import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
@@ -6,11 +7,22 @@ import { changedFileKey, describeComparison } from "../../../src/shared/changeCo
 import { countTypeNames, describeTypeCounts } from "../../../src/shared/actionTypes";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
+const REASONS = ["new", "sql", "config", "macro"] as const;
+
 const REASON_LABELS: Record<string, { label: string; title: string }> = {
   new: { label: "new", title: "Not in the default branch" },
   sql: { label: "SQL", title: "Compiled query, incremental query or pre/post operations differ" },
   config: { label: "config", title: "Materialization settings differ (type, partitioning, clustering, unique key, ...)" },
 };
+
+/** Why dbt finds an action changed (`state:modified`). A reason without a title here has Dataform's */
+const DBT_REASON_TITLES: Record<string, string> = {
+  sql: "The file's contents differ: the SQL of a model or test, the rows of a seed",
+  config: "A setting dbt compares differs: its configuration, or e.g. its contract or a persisted description",
+  macro: "A macro it calls differs",
+};
+
+const BackendContext = React.createContext<"dataform" | "dbt">("dataform");
 
 /** Up to this many changed actions, every file starts expanded. */
 const EXPAND_ALL_UP_TO = 5;
@@ -20,12 +32,25 @@ const NONE_DELETED: NonNullable<ChangedActionsView["deleted"]> = [];
 
 interface RunChangedButtonProps {
   changedActions?: ChangedActionsView;
-  isRemoteMode: boolean;
+  /**
+   * Whose panel the button is in. A dbt Project's asks dbt what changed each time the popover opens, and has one
+   * way to run: `dbt build` in the terminal.
+   */
+  backend?: "dataform" | "dbt";
+  /** Dataform only */
+  isRemoteMode?: boolean;
   disabled: boolean;
   includeDependencies: boolean;
   includeDependents: boolean;
   fullRefresh: boolean;
-  onApiRunDispatched: () => void;
+  /** Dataform only */
+  onApiRunDispatched?: () => void;
+  /** As small as a button of a summary row, with a few words: a part of the group of run buttons there */
+  compact?: boolean;
+  /** How the button looks while `compact`, given by the group it is a part of */
+  className?: string;
+  /** Dataform only. Where the run goes, when that is chosen outside: there is then one button to run, not one for each way */
+  via?: "cli" | "api";
 }
 
 /** The project is nearly always the same, so only the dataset (muted) and name are shown. */
@@ -64,14 +89,17 @@ const ActionName: React.FC<{ target: string; className?: string }> = ({ target, 
 
 type ChangedAction = NonNullable<ChangedActionsView["changed"]>[number];
 
-const ReasonBadge: React.FC<{ reason: string }> = ({ reason }) => (
-  <span
-    title={REASON_LABELS[reason]?.title}
-    className="px-1 rounded text-[10px] bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]"
-  >
-    {REASON_LABELS[reason]?.label ?? reason}
-  </span>
-);
+const ReasonBadge: React.FC<{ reason: string }> = ({ reason }) => {
+  const backend = React.useContext(BackendContext);
+  return (
+    <span
+      title={(backend === "dbt" && DBT_REASON_TITLES[reason]) || REASON_LABELS[reason]?.title}
+      className="px-1 rounded text-[10px] bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]"
+    >
+      {REASON_LABELS[reason]?.label ?? reason}
+    </span>
+  );
+};
 
 /**
  * A file's changed actions: one row with its type counts and reasons, expanding to the actions. The
@@ -85,7 +113,7 @@ const ChangedFileGroup: React.FC<{
   selected: boolean;
   onSelect: (selected: boolean) => void;
 }> = ({ fileName, actions, expanded, onToggle, selected, onSelect }) => {
-  const reasons = (["new", "sql", "config"] as const).filter((reason) => actions.some((a) => a.reasons.includes(reason)));
+  const reasons = REASONS.filter((reason) => actions.some((a) => a.reasons.includes(reason)));
   return (
     <div className="py-1.5 border-t first:border-t-0 border-[var(--vscode-widget-border)]">
       <div className="grid grid-cols-[auto_1fr] items-center gap-1.5">
@@ -142,13 +170,18 @@ function groupByFile<T extends { fileName: string }>(items: T[]): [string, T[]][
 /** Runs only the actions that changed vs the default branch; the popover lists what would run. */
 export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   changedActions,
-  isRemoteMode,
+  backend = "dataform",
+  isRemoteMode = false,
   disabled,
   includeDependencies,
   includeDependents,
   fullRefresh,
   onApiRunDispatched,
+  compact = false,
+  className,
+  via,
 }) => {
+  const dbt = backend === "dbt";
   const [open, setOpen] = useState(false);
   // Files whose expansion differs from the default, which depends on the size of the change set
   const [toggledFiles, setToggledFiles] = useState<Set<string>>(new Set());
@@ -239,15 +272,15 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const setAllSelected = (select: boolean) =>
     setUncheckedFiles(select ? new Set() : new Set(changedGroups.map(([fileName]) => fileName)));
 
-  // Dataform pulls actions in by graph, so an unchecked file can still run through these flags
+  // Either tool pulls actions in by graph, so an unchecked file can still run through these flags
   const pulledInAs = [includeDependencies && "dependencies", includeDependents && "dependents"].filter(Boolean).join(" or ");
   const depsHint = !allSelected && pulledInAs ? `unchecked files may still run as ${pulledInAs}` : "";
 
   const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-  const reasonCounts = (["new", "sql", "config"] as const)
+  const reasonCounts = REASONS
     .map((reason) => [reason, selectedActions.filter((a) => a.reasons.includes(reason)).length] as const)
     .filter(([, count]) => count > 0)
-    .map(([reason, count]) => `${count} ${REASON_LABELS[reason].label}`);
+    .map(([reason, count]) => `${count} ${REASON_LABELS[reason]?.label ?? reason}`);
   const typeCounts = describeTypeCounts(countTypeNames(selectedActions.map((a) => a.type)));
   const breakdown = `${typeCounts ? `: ${typeCounts}` : ""} · ${reasonCounts.join(" · ")}`;
   const summary = noneSelected
@@ -272,7 +305,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const runLabel = status === "ready" && selectedActions.length > 0 ? `Run ${selectedActions.length}` : "Run";
   const runTitle = status === "ready" && changed.length > 0 && noneSelected ? "Select at least one file to run" : undefined;
 
-  const compute = () => vscode.postMessage({ command: "computeChangedActions" });
+  const compute = () => vscode.postMessage({ command: dbt ? "dbt.computeChangedActions" : "dataform.computeChangedActions" });
 
   const toggle = () => {
     const next = !open;
@@ -281,38 +314,40 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
       setToggledFiles(new Set());
       setUncheckedFiles(new Set());
     }
-    if (next && status !== "ready" && status !== "computing") {
+    // Dataform's list is kept current by every compile. dbt's is made by a dbt process, so it is made when asked for
+    if (next && status !== "computing" && (dbt || status !== "ready")) {
       compute();
     }
   };
 
   const run = (api: boolean) => {
-    vscode.postMessage({
-      command: "runChangedActions",
-      value: { api, includeDependencies, includeDependents, fullRefresh, files: selectedGroups.map(([fileName]) => fileName) },
-    });
-    if (api) { onApiRunDispatched(); }
+    const scope = { includeDependencies, includeDependents, fullRefresh, files: selectedGroups.map(([fileName]) => fileName) };
+    vscode.postMessage(dbt ? { command: "dbt.runChangedActions", ...scope } : { command: "dataform.runChangedActions", api, ...scope });
+    if (api) { onApiRunDispatched?.(); }
     setOpen(false);
   };
 
   return (
-    <div ref={ref} className="relative">
+    <BackendContext.Provider value={backend}>
+    <div ref={ref} className={compact ? "relative flex" : "relative"} data-run-changed={backend}>
       <button
         onClick={toggle}
         disabled={disabled}
-        className="pl-3 pr-2 py-1.5 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
+        className={compact
+          ? className
+          : "pl-3 pr-2 py-1.5 text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"}
         title={noChanges ? `No changes ${comparison}. Click to recheck` : `Run only the actions changed ${comparison}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <GitCompare className="w-4 h-4 mr-1.5" /> Run Changed
+        {compact ? <Play className="w-3 h-3" /> : <GitCompare className="w-4 h-4 mr-1.5" />} {compact ? "Changed" : "Run Changed"}
         {status === "ready" && (
-          <span className="ml-1.5 text-[11px] leading-none px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--vscode-button-foreground) 25%, transparent)" }}>
+          <span className={clsx(!compact && "ml-1.5", "text-[11px] leading-none px-1.5 py-0.5 rounded-full")} style={{ background: "color-mix(in srgb, currentColor 22%, transparent)" }}>
             {changed.length}
           </span>
         )}
-        {status === "computing" && <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />}
-        <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />
+        {status === "computing" && <Loader2 className={clsx("w-3.5 h-3.5 animate-spin", !compact && "ml-1.5")} />}
+        {!compact && <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-80" />}
       </button>
       {open && (
         <div
@@ -367,24 +402,26 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               >
                 Cancel
               </button>
-              {!isRemoteMode && (
+              {(dbt || (!isRemoteMode && via !== "api")) && (
                 <button
                   onClick={() => run(false)}
+                  disabled={!canRun}
+                  title={runTitle ?? (dbt ? "dbt build --select state:modified, in the terminal" : undefined)}
+                  className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5 mr-1.5" /> {dbt ? runLabel : `${runLabel} (CLI)`}
+                </button>
+              )}
+              {!dbt && (isRemoteMode || via !== "cli") && (
+                <button
+                  onClick={() => run(true)}
                   disabled={!canRun}
                   title={runTitle}
                   className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
                 >
-                  <Play className="w-3.5 h-3.5 mr-1.5" /> {runLabel} (CLI)
+                  <Play className="w-3.5 h-3.5 mr-1.5" /> {runLabel} (API)
                 </button>
               )}
-              <button
-                onClick={() => run(true)}
-                disabled={!canRun}
-                title={runTitle}
-                className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
-              >
-                <Play className="w-3.5 h-3.5 mr-1.5" /> {runLabel} (API)
-              </button>
             </div>
           </div>
           {status === "ready" && changed.length > 0 && (
@@ -412,7 +449,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
           <div className="max-h-[50vh] overflow-y-auto text-xs pr-1">
             {status === "computing" && (
               <div className="flex items-center gap-2 py-3 text-[var(--vscode-descriptionForeground)]">
-                <Loader2 className="w-4 h-4 animate-spin" /> Compiling the default branch at the merge-base…
+                <Loader2 className="w-4 h-4 animate-spin" /> {dbt ? "Asking dbt what changed since the merge-base…" : "Compiling the default branch at the merge-base…"}
               </div>
             )}
             {status === "error" && (
@@ -458,5 +495,6 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
         </div>
       )}
     </div>
+    </BackendContext.Provider>
   );
 };

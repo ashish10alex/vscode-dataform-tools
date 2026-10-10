@@ -6,7 +6,7 @@ export { formatRelativeTime };
 /** Text parts shown in the compilation info badge, e.g. ["API @ 87be5b3", "cached", "12 min ago"] */
 export function compilationInfoParts(info: CompilationInfo, now: number): string[] {
   const parts: string[] = [];
-  if (info.backend === "api") {
+  if (info.mode === "api") {
     const sha = info.sha ? ` @ ${info.sha.slice(0, 7)}` : "";
     parts.push(`API${sha}`);
     if (info.releaseConfig) {
@@ -32,7 +32,7 @@ const CLI_SOURCE_LABELS = {
 
 /** The CLI that ran, shown inline only when it is not simply the `dataform` found on PATH. */
 export function customCliLabel(info: CompilationInfo): string | undefined {
-  if (info.backend !== "cli" || !info.cliPath || !info.cliSource || info.cliSource === "path") {
+  if (info.mode !== "cli" || !info.cliPath || !info.cliSource || info.cliSource === "path") {
     return undefined;
   }
   return `${info.cliPath} (${info.cliSource === "setting" ? "dataformExecutablePath" : "local"})`;
@@ -40,19 +40,19 @@ export function customCliLabel(info: CompilationInfo): string | undefined {
 
 export function compilationInfoTooltip(info: CompilationInfo): string {
   const lines = [
-    info.backend === "api"
+    info.mode === "api"
       ? `Compiled with the Dataform API${info.sha ? ` from pushed commit ${info.sha}` : ""}`
       : "Compiled locally with the Dataform CLI",
     `Compiled at ${new Date(info.compiledAt).toLocaleString()}`,
   ];
-  if (info.backend === "cli" && info.cliPath) {
+  if (info.mode === "cli" && info.cliPath) {
     lines.push(`Dataform CLI: ${info.cliPath}${info.cliSource ? ` (${CLI_SOURCE_LABELS[info.cliSource]})` : ""}`);
   }
   if (info.releaseConfig) {
     lines.push(`Using compilation settings of release config ${info.releaseConfig}`);
   }
   if (info.fromCache) {
-    lines.push(info.backend === "api"
+    lines.push(info.mode === "api"
       ? "Served from the cache; click Recompile to compile the latest pushed commit"
       : "Saved from an earlier session; save any Dataform file to recompile");
   }

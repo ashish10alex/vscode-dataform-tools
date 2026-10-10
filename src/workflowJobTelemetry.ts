@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson, currentDataformRoot } from './project';
 import { loadDataformTools } from "./lazySdk";
 import { checkAuthentication, getBigQueryClient } from './bigqueryClient';
 import { bigQueryDryRunCostOneGiBByCurrency, currencySymbolMapping } from './constants';
@@ -7,6 +8,7 @@ import { needsJobStats } from './shared/jobTiming';
 import { SupportedCurrency, WorkflowAction, WorkflowActionJobStats, WorkflowUrlEntry } from './types';
 import { formatBytes } from './utils';
 import { arrayToCsv } from './utils/vscodeUi';
+import { extensionConfiguration } from './project/settings';
 
 /*
  * Telemetry for the BigQuery jobs behind a workflow invocation: bytes billed, timing and the SQL Dataform
@@ -74,12 +76,12 @@ export function summariseJobStats(actions: WorkflowAction[], currency: Supported
 }
 
 function getCurrency(): SupportedCurrency {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<SupportedCurrency>('currencyFoDryRunCost') || "USD";
+    return extensionConfiguration().get<SupportedCurrency>('currencyFoDryRunCost') || "USD";
 }
 
 /** BigQuery requires the job location for jobs outside the US / EU multi-regions; the project's default location is the best guess. */
 function defaultJobLocation(): string | undefined {
-    return CACHED_COMPILED_DATAFORM_JSON?.projectConfig?.defaultLocation || undefined;
+    return compiledJson()?.projectConfig?.defaultLocation || undefined;
 }
 
 async function fetchJobStats(ref: BigQueryJobRef, currency: SupportedCurrency): Promise<WorkflowActionJobStats | undefined> {
@@ -152,7 +154,8 @@ export async function exportWorkflowActionsCsv(entry: WorkflowUrlEntry) {
         return;
     }
     const filename = `workflow_actions_${entry.workflowInvocationId ?? 'run'}.csv`;
-    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+    const root = currentDataformRoot();
+    const folder = root ? vscode.Uri.file(root) : vscode.workspace.workspaceFolders?.[0]?.uri;
     const uri = await vscode.window.showSaveDialog({
         defaultUri: folder ? vscode.Uri.joinPath(folder, filename) : vscode.Uri.file(filename),
         filters: { 'CSV': ['csv'] },

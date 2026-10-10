@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { compiledIndices } from './project';
 import { loadBigQuery } from './lazySdk';
 import {
   getWorkspaceFolder,
@@ -17,66 +18,22 @@ import * as path from "path";
 import { getMetadataForSqlxFileBlocks} from "./sqlxFileParser";
 import { parse as parseLoose } from "acorn-loose";
 import type { Comment, Node as AcornNode } from "acorn";
-import { maxHoverSchemaRows, sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
-import { applyColumnDescriptions, flattenSchemaRows } from "./utils/schemaTree";
+import { sqlKeywordsToExcludeFromHoverDefinition } from "./constants";
 import { isOnConfigKey } from "./configBlock/providers";
 import { perfCount } from "./perf";
+import { resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
+import { tableOfError, tableOfMetadata } from './project/heldTable';
+import { SEARCH_COLUMNS_COMMAND, tableHoverText } from './project/tableHoverText';
 
-async function createHoverContentForTable(tableMetadata:any, target: Target, partitionBy: string, type:string, compiledDescription?: string, columns?: Column[]): Promise<vscode.MarkdownString> {
-          const hoverMarkdownString = new vscode.MarkdownString();
-
-          const markdownTableIdWtLink = getMarkdownTableIdWtLink(target);
-          hoverMarkdownString.appendMarkdown(`#### ${markdownTableIdWtLink}\n\n`);
-
-          // The hover itself cannot be searched, so offer the quick pick over the same schema.
-          // Kept directly under the title: at the bottom of a long schema table it is easy to miss.
-          if (tableMetadata?.schema?.fields?.length) {
-            const searchArgs = encodeURIComponent(JSON.stringify([target]));
-            hoverMarkdownString.appendMarkdown(
-              `[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?${searchArgs})\n\n`
-            );
-          }
-
-          hoverMarkdownString.appendMarkdown("---- \n");
-
-          // Prefer the description from BigQuery, fall back to the one in the compiled Dataform config
-          const description = (tableMetadata?.description || compiledDescription || "").trim();
-          if(description){
-            hoverMarkdownString.appendMarkdown(`**Description:** `);
-            hoverMarkdownString.appendText(description);
-            hoverMarkdownString.appendMarkdown(`\n\n`);
-          }
-
-          if(type){
-            const tableType = `**Type:** ${type}`;
-            hoverMarkdownString.appendMarkdown(`${tableType}\n\n`);
-          }
-
-          const tableLocation = tableMetadata?.location;
-          if(tableLocation){
-            hoverMarkdownString.appendMarkdown(`**Location:** ${tableLocation}\n\n`);
-          }
-
-
-          if(partitionBy){
-            hoverMarkdownString.appendMarkdown(`**Partition:** \`${partitionBy}\`\n\n`);
-          }
-
-          let lastModifiedTime = tableMetadata?.lastModifiedTime;
-          if(lastModifiedTime){
-            lastModifiedTime = new Date(parseInt(lastModifiedTime));
-            lastModifiedTime = formatTimestamp(lastModifiedTime);
-            hoverMarkdownString.appendMarkdown(`**Last Modified Time:** ${lastModifiedTime}\n\n`);
-          }
-          hoverMarkdownString.appendMarkdown("---- \n");
-
-          const tableSchema = await getTableSchemaAsMarkdown(tableMetadata, columns);
-          hoverMarkdownString.appendMarkdown(tableSchema);
-          hoverMarkdownString.isTrusted = true;
-          hoverMarkdownString.supportThemeIcons = true;
-          return hoverMarkdownString;
+/** The text of a table's hover as the Markdown a hover shows: its icons drawn, and its one command allowed to run */
+export function tableHoverMarkdown(text: string): vscode.MarkdownString {
+  const markdown = new vscode.MarkdownString(text);
+  // The descriptions are text from the Project and from BigQuery: nothing but the link to search the columns may run
+  markdown.isTrusted = { enabledCommands: [SEARCH_COLUMNS_COMMAND] };
+  markdown.supportThemeIcons = true;
+  return markdown;
 }
-
 
 const getUrlToNavigateToTableInBigQuery = (gcpProjectId:string, datasetId:string, tableName:string) => {
   return `https://console.cloud.google.com/bigquery?project=${gcpProjectId}&ws=!1m5!1m4!4m3!1s${gcpProjectId}!2s${datasetId}!3s${tableName}`;
@@ -226,13 +183,11 @@ function getHoverOfVariableInJsFileOrBlock(code: string, searchTerm:string): vsc
 }
 
 /**
- * Fetches BigQuery table metadata, propagating any underlying error.
- * Use this when the caller wants to surface real auth/permission/network
- * failures to the user. Prefer {@link getTableMetadata} for callers that
- * just want best-effort metadata (e.g. hover providers).
+ * Fetches BigQuery table metadata, propagating any underlying error, so
+ * the caller can surface real auth/permission/network failures to the user.
  */
 export async function fetchTableMetadata(projectId: string, datasetId: string, tableId: string) {
-  const serviceAccountJsonPath = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+  const serviceAccountJsonPath = extensionConfiguration().get('serviceAccountJsonPath');
   let options: { projectId: string; keyFilename?: string } = { projectId };
   if (serviceAccountJsonPath) {
     options = { ...options, keyFilename: serviceAccountJsonPath as string };
@@ -242,56 +197,6 @@ export async function fetchTableMetadata(projectId: string, datasetId: string, t
   perfCount('bq.getMetadata');
   const [metadata] = await table.getMetadata();
   return metadata;
-}
-
-export async function getTableMetadata(projectId: string, datasetId:string, tableId:string) {
-  try {
-    return await fetchTableMetadata(projectId, datasetId, tableId);
-  } catch (err) {
-    console.error('Error:', err);
-  }
-}
-
-/** Indent one level of nesting. Non breaking spaces survive the markdown table renderer. */
-const nestedFieldIndent = "\u00A0\u00A0\u00A0";
-
-/**
- * Newlines in a BigQuery description would split the markdown table across lines, so collapse
- * them. Overriding `toCellText` also disables tablemark's own escaping, hence the `|` handling.
- */
-const toHoverCellText = (value: unknown): string =>
-  String(value ?? "").replace(/\s*\r?\n\s*/g, " ").replace(/\|/g, "\\|");
-
-async function getTableSchemaAsMarkdown(metadata:any, columns?: Column[]) {
-  try {
-    const fields: ColumnMetadata[] | undefined = metadata?.schema?.fields;
-    if (!fields || fields.length === 0) {
-      return "";
-    }
-
-    // Descriptions declared in the SQLX config block are not in BigQuery until the table is
-    // rebuilt, so prefer them when the caller has a compiled action to hand.
-    const describedFields = columns?.length ? applyColumnDescriptions(fields, columns) : fields;
-    const { rows, omitted } = flattenSchemaRows(describedFields, { maxRows: maxHoverSchemaRows });
-
-    const { default: tablemark } = await import('tablemark');
-    const table = tablemark(
-      rows.map((row) => ({
-        name: row.depth === 0 ? row.name : `${nestedFieldIndent.repeat(row.depth - 1)}\u2514\u2500 ${row.name}`,
-        type: row.type,
-        description: row.description,
-      })),
-      { toCellText: toHoverCellText }
-    );
-
-    if (omitted > 0) {
-      return `${table}\n\n_\u2026 ${omitted} more field${omitted === 1 ? "" : "s"} not shown, see the Schema tab_\n`;
-    }
-    return table;
-  } catch (err) {
-    console.error('Error:', err);
-  }
-  return "";
 }
 
 interface ImportedModule {
@@ -399,6 +304,16 @@ function isPositionInsideTemplate(line: string, position: vscode.Position): bool
   return false;
 }
 
+/** The table a plain `project.dataset.table` id at the position names */
+export function rawTableIdAt(document: vscode.TextDocument, position: vscode.Position): Target | undefined {
+  const range = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
+  if (!range) {
+    return undefined;
+  }
+  const [database, schema, name] = document.getText(range).split('.');
+  return { database, schema, name };
+}
+
 /**
  * Works out which table the cursor is on: a raw project.dataset.table id outside a template,
  * otherwise ${self()} or ${ref('...')} inside one. Shared by the hover and by the
@@ -411,14 +326,9 @@ export async function resolveTableReferenceAtPosition(
   const line = document.lineAt(position.line).text;
 
   if (!isPositionInsideTemplate(line, position)) {
-    const bqTableRegex = /[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/;
-    const bqRange = document.getWordRangeAtPosition(position, bqTableRegex);
-    if (bqRange) {
-      const parts = document.getText(bqRange).split('.');
-      if (parts.length === 3) {
-        const [database, schema, name] = parts;
-        return { target: { database, schema, name }, source: "rawBigQueryId", type: "table" };
-      }
+    const target = rawTableIdAt(document, position);
+    if (target) {
+      return { target, source: "rawBigQueryId", type: "table" };
     }
     return undefined;
   }
@@ -436,7 +346,7 @@ export async function resolveTableReferenceAtPosition(
   let searchTerm = document.getText(wordRange);
 
   if (line.indexOf("${self()}") !== -1 && searchTerm === "self") {
-    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
     if (!dataformCompiledJson) {
       return undefined;
     }
@@ -463,7 +373,7 @@ export async function resolveTableReferenceAtPosition(
     return undefined;
   }
 
-  const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+  const dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
   if (!dataformCompiledJson) {
     return undefined;
   }
@@ -488,8 +398,8 @@ export async function resolveTableReferenceAtPosition(
     searchTerm = tablePrefix + "_" + searchTerm;
   }
 
-  // Declarations are not in TARGET_NAME_MAP yet, which is why they are matched above.
-  const node: any = (global.TARGET_NAME_MAP?.get(searchTerm) || [])[0];
+  // Declarations are not in the target name lookup yet, which is why they are matched above.
+  const node: any = (compiledIndices().targetNameMap.get(searchTerm) || [])[0];
   if (node?.target) {
     return {
       target: node.target,
@@ -520,27 +430,15 @@ export class DataformHoverProvider implements vscode.HoverProvider {
 
     if (reference) {
       const { database, schema, name } = reference.target;
-      const tableMetadata = await getTableMetadata(database, schema, name);
-
-      // A raw id can point at anything, so say so rather than showing an empty card.
-      if (!tableMetadata && reference.source === "rawBigQueryId") {
-        const hoverMarkdownString = new vscode.MarkdownString(
-          `#### ${getMarkdownTableIdWtLink(reference.target)}\n\n ---- \n\n $(warning) **Metadata unavailable**`
-        );
-        hoverMarkdownString.isTrusted = true;
-        hoverMarkdownString.supportThemeIcons = true;
-        return new vscode.Hover(hoverMarkdownString);
-      }
-
-      const hoverMarkdownString = await createHoverContentForTable(
-        tableMetadata,
-        reference.target,
-        reference.partitionBy || "",
-        reference.type,
-        reference.description,
-        reference.columns,
-      );
-      return new vscode.Hover(hoverMarkdownString);
+      const table = await fetchTableMetadata(database, schema, name).then(tableOfMetadata, tableOfError);
+      return new vscode.Hover(tableHoverMarkdown(tableHoverText({
+        target: reference.target,
+        // A raw id can point at anything: it is no Action of the Project
+        ...(reference.source === "rawBigQueryId" ? {} : { kind: reference.type }),
+        description: reference.description,
+        columns: reference.columns,
+        partition: reference.partitionBy,
+      }, table, formatTimestamp)));
     }
 
     // Not a table. Inside a ${...} that is not a ref it may still be a JS variable or function.

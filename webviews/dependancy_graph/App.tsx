@@ -94,7 +94,10 @@ const Legend: React.FC<{ datasetColorMap: Map<string, string> }> = ({ datasetCol
   );
 };
 
-const Flow: React.FC = () => {
+// The Backend of the Project the graph is of. A host that does not say (the CLI) sends a Dataform one
+type GraphBackend = 'dataform' | 'dbt';
+
+const Flow: React.FC<{ backend: GraphBackend; onBackend: (backend: GraphBackend) => void }> = ({ backend, onBackend }) => {
   // The graph as the host sent it; fullNodes/fullEdges below apply the assertions toggle.
   const [rawNodes, setRawNodes] = useState<Node[]>([]);
   const [rawEdges, setRawEdges] = useState<Edge[]>([]);
@@ -218,6 +221,7 @@ const Flow: React.FC = () => {
           const initialEdges: Edge[] = initialEdgesStatic;
           setRawNodes(initialNodes);
           setRawEdges(initialEdges);
+          onBackend(message.value.backend === 'dbt' ? 'dbt' : 'dataform');
           setDatasetColorMap(new Map(Object.entries(datasetColorMap)));
 
           // The host sets the starting state (extension setting / CLI --show-assertions),
@@ -605,7 +609,7 @@ const Flow: React.FC = () => {
               onChange={(e) => handleShowAssertionsChange(e.target.checked)}
               className="accent-[var(--vscode-button-background)]"
             />
-            Show assertions
+            {backend === 'dbt' ? 'Show tests' : 'Show assertions'}
             {!showAssertions && assertionCount > 0 && (
               <span className="text-[var(--vscode-descriptionForeground)]">({assertionCount} hidden)</span>
             )}
@@ -697,15 +701,16 @@ const Flow: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [backend, setBackend] = useState<GraphBackend>('dataform');
   return (
     <div className="h-screen flex flex-col">
       <div className="px-6 py-4 bg-[var(--vscode-sideBarSectionHeader-background)] border-b border-[var(--vscode-widget-border)]">
-        <h2 className="text-xl font-bold text-[var(--vscode-foreground)]">Dataform Dependency Graph</h2>
+        <h2 className="text-xl font-bold text-[var(--vscode-foreground)]">{backend === 'dbt' ? 'dbt' : 'Dataform'} Dependency Graph</h2>
       </div>
 
       <div className="flex-1 overflow-hidden">
         <ReactFlowProvider>
-          <Flow />
+          <Flow backend={backend} onBackend={setBackend} />
         </ReactFlowProvider>
       </div>
     </div>

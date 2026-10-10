@@ -1,9 +1,16 @@
 import * as vscode from 'vscode';
-import { getCurrentFileMetadata, handleSemicolonPrePostOps } from "./utils";
+import { ensureFreshCompilation, getCurrentFileMetadata, getWorkspaceFolder, handleSemicolonPrePostOps } from "./utils";
 import { CustomViewProvider } from './views/register-query-results-panel';
-import { CurrentFileMetadata, QueryWtType, TablesWtFullQuery } from './types';
+import { QueryWtType, TablesWtFullQuery } from './types';
 import { queryDryRun } from './bigqueryDryRun';
-import { countDeferred, handleAccessDenied } from './defer';
+import { countDeferred, Deferral, handleAccessDenied, resolveDeferralForActions } from './defer';
+import { applyDeferralToAction } from './defer/deferRules';
+import { previewQuery } from './bigquery/preview';
+import { compiledGraph, compiledJson } from './project';
+import { resolveDataformOptions } from './project/dataformOptions';
+import { Kind, Target, actionsInFile, isMadeUpTarget, previewSection, targetId } from './shared/compiledGraph';
+import { withoutPreOperations } from './utils/dryRunOrchestrator';
+import { extensionConfiguration } from './project/settings';
 
 export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsViewProvider: CustomViewProvider) {
     if (!queryResultsViewProvider._view) {
@@ -15,7 +22,7 @@ export async function runQueryInPanel(queryWtType: QueryWtType, queryResultsView
 
 export function getQueryStringForPreview(fileMetadata: TablesWtFullQuery, isIncremental: boolean, skipPreOps?: boolean): string {
     if (skipPreOps === undefined) {
-        skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInPreviewQuery') ?? false;
+        skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
     }
     const preOpsQuery = skipPreOps ? "" : fileMetadata.queryMeta.preOpsQuery;
     const incrementalPreOpsQuery = skipPreOps ? "" : fileMetadata.queryMeta.incrementalPreOpsQuery;
@@ -43,27 +50,31 @@ function formatGiB(bytes: number): string {
     return `${(bytes / (1024 ** 3)).toFixed(2)} GiB`;
 }
 
+/** A preview's query and the deferral its SQL was rewritten with */
+interface DeferredPreview {
+    query: string;
+    deferral?: Deferral;
+}
+
 /**
  * Checks a preview that reads upstream tables from prod before running it. A prod table we cannot read makes
- * the preview fall back to its dev table, and a scan above `deferPreviewScanWarningGiB` asks first, as prod
- * tables are often much larger than their dev copies. Returns the query to run, or undefined to cancel.
+ * the preview fall back to its dev table, for which the preview is `read` again, and a scan above
+ * `deferPreviewScanWarningGiB` asks first, as prod tables are often much larger than their dev copies. Returns the
+ * preview to run, or undefined to cancel.
  */
-async function checkDeferredPreview(curFileMeta: CurrentFileMetadata, query: string): Promise<{ query: string, fileMetadata: TablesWtFullQuery } | undefined> {
-    let fileMetadata = curFileMeta.fileMetadata!;
-    let dryRun = await queryDryRun(query);
-    if (handleAccessDenied(curFileMeta.deferral, [dryRun.error?.message]).length > 0) {
-        const reread = await getCurrentFileMetadata(false);
-        if (!reread?.fileMetadata) {
+async function checkDeferredPreview<Preview extends DeferredPreview>(preview: Preview, read: () => Promise<Preview | undefined>): Promise<Preview | undefined> {
+    let dryRun = await queryDryRun(preview.query);
+    if (handleAccessDenied(preview.deferral, [dryRun.error?.message]).length > 0) {
+        const reread = await read();
+        if (!reread) {
             return undefined;
         }
-        curFileMeta = reread;
-        fileMetadata = handleSemicolonPrePostOps(reread.fileMetadata);
-        query = getQueryStringForPreview(fileMetadata, incrementalCheckBox);
-        dryRun = await queryDryRun(query);
+        preview = reread;
+        dryRun = await queryDryRun(preview.query);
     }
 
-    const deferred = countDeferred(curFileMeta.deferral);
-    const thresholdGiB = vscode.workspace.getConfiguration('vscode-dataform-tools').get<number>('deferPreviewScanWarningGiB') ?? 10;
+    const deferred = countDeferred(preview.deferral);
+    const thresholdGiB = extensionConfiguration().get<number>('deferPreviewScanWarningGiB') ?? 10;
     const bytes = dryRun.statistics?.totalBytesProcessed ?? 0;
     if (deferred > 0 && thresholdGiB > 0 && !dryRun.error?.hasError && bytes > thresholdGiB * (1024 ** 3)) {
         const cost = dryRun.statistics?.cost;
@@ -77,28 +88,88 @@ async function checkDeferredPreview(curFileMeta: CurrentFileMetadata, query: str
             return undefined;
         }
     }
-    return { query, fileMetadata };
+    return preview;
 }
 
 export async function previewQueryResults(queryResultsViewProvider: CustomViewProvider) {
-    let curFileMeta = await getCurrentFileMetadata(false);
-    if (!curFileMeta?.fileMetadata) {
+    const read = async () => {
+        const curFileMeta = await getCurrentFileMetadata(false);
+        if (!curFileMeta?.fileMetadata) {
+            return undefined;
+        }
+        const fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
+        return { query: getQueryStringForPreview(fileMetadata, incrementalCheckBox), deferral: curFileMeta.deferral, fileMetadata };
+    };
+    let preview = await read();
+    if (!preview) {
         return;
     }
 
-    let fileMetadata = handleSemicolonPrePostOps(curFileMeta.fileMetadata);
-    let query = getQueryStringForPreview(fileMetadata, incrementalCheckBox);
-
-    if (query === "") {
+    if (preview.query === "") {
         vscode.window.showWarningMessage("No query to run");
         return;
     }
-    if (countDeferred(curFileMeta.deferral) > 0) {
-        const checked = await checkDeferredPreview(curFileMeta, query);
-        if (!checked) {
+    if (countDeferred(preview.deferral) > 0) {
+        preview = await checkDeferredPreview(preview, read);
+        if (!preview) {
             return;
         }
-        ({ query, fileMetadata } = checked);
     }
-    runQueryInPanel({query: query, type: fileMetadata.queryMeta.type}, queryResultsViewProvider);
+    runQueryInPanel({query: preview.query, type: preview.fileMetadata.queryMeta.type}, queryResultsViewProvider);
+}
+
+/** What the results view calls an action of the Kind */
+function resultsType(kind: Kind): string {
+    return kind === 'operation' ? 'operations' : kind === 'unit test' ? 'test' : kind;
+}
+
+/**
+ * Previews the section titled `section` of the action at `target`, whichever file is open: what the panel asks for.
+ * The query is that of `previewQuery`, on the action as the panel shows and dry-runs it: reading Deferred Actions
+ * from prod, and without pre-operations when the `skipPreOpsInPreviewQuery` setting says so. The results view's
+ * "incremental" switch still chooses the variant of an incremental table, as it does for a preview of the open file.
+ */
+export async function previewAction(target: Target, section: string, alone?: boolean) {
+    const workspaceFolder = await getWorkspaceFolder({ explain: true });
+    if (!workspaceFolder) {
+        return;
+    }
+    await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
+    const graph = compiledGraph(workspaceFolder);
+    const compiled = compiledJson(workspaceFolder);
+    const action = graph?.actions[targetId(target)];
+    if (!graph || !compiled || !action) {
+        vscode.window.showWarningMessage("No query to run");
+        return;
+    }
+    if (incrementalCheckBox && section === previewSection(action)) {
+        section = previewSection(action, true) ?? section;
+    }
+
+    const skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
+    // Deferral is decided for the file's actions together, as it is for what the panel shows of the file
+    const selected = actionsInFile(graph, action.fileName).map((inFile) => ({
+        target: isMadeUpTarget(inFile.target) ? undefined : inFile.target,
+        dependencyTargets: inFile.dependencyTargets,
+        type: resultsType(inFile.kind),
+    }));
+    const read = async () => {
+        const deferral = await resolveDeferralForActions(selected, compiled, workspaceFolder);
+        const deferred = applyDeferralToAction(action, deferral?.entries ?? []);
+        const query = previewQuery(skipPreOps ? withoutPreOperations(deferred) : deferred, section, { alone })?.sql;
+        return query ? { query, deferral } : undefined;
+    };
+
+    let preview = await read();
+    if (!preview) {
+        vscode.window.showWarningMessage("No query to run");
+        return;
+    }
+    if (countDeferred(preview.deferral) > 0) {
+        preview = await checkDeferredPreview(preview, read);
+        if (!preview) {
+            return;
+        }
+    }
+    await vscode.commands.executeCommand('vscode-dataform-tools.runGeneratedQuery', preview.query, resultsType(action.kind));
 }

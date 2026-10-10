@@ -1,6 +1,10 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, buildProdTargetMap, builtInDevHint, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, deferralEntryHint, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, applyDeferralToAction, buildProdTargetMap, builtInDevHint, collectCandidates, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, deferralEntryHint, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql } from '../../defer/deferRules';
+import { buildDataformGraph } from '../../backend/dataform/graph';
+import { dryRunAction } from '../../bigquery/dryRunService';
+import { previewQuery } from '../../bigquery/preview';
+import { titledSections } from '../../shared/compiledGraph';
 import { findRefs } from '../../documentSymbols';
 import { createCompilerOptionsObjectForApi } from '../../utils/dataformCompiler';
 import { DataformCompiledJson, QueryMeta, Target } from '../../types';
@@ -252,6 +256,7 @@ suite('deferRules.computeRunSet', () => {
         assert.deepStrictEqual(names({ ...base, kind: 'currentFile', items: ['definitions/mart.sqlx'] }), ['mart', 'mart_assert']);
         assert.deepStrictEqual(names({ ...base, kind: 'tags', items: ['daily'] }), ['mart']);
         assert.deepStrictEqual(names({ ...base, kind: 'changed', items: ['proj-dev.sales_dev.report'] }), ['report']);
+        assert.deepStrictEqual(names({ ...base, kind: 'actions', items: ['proj-dev.sales_dev.mart'] }), ['mart']);
     });
 
     test('adds transitive dependencies or dependents when the run includes them, but never declarations', () => {
@@ -377,5 +382,69 @@ suite('deferRules.deferralEntryHint', () => {
         const unknownAge = builtInDevHint({ dev: dev('orders') }, built);
         assert.strictEqual(unknownAge.label, '✓ dev · built in dev');
         assert.doesNotMatch(unknownAge.hover, /Last updated/);
+    });
+});
+
+suite('deferRules.applyDeferralToAction', () => {
+    const devRef = '`proj-dev.sales_dev.orders`';
+    const prodRef = '`proj-prod.sales.orders`';
+    const entries: DeferralEntry[] = [
+        { dev: { database: 'proj-dev', schema: 'sales_dev', name: 'orders' }, prod: { database: 'proj-prod', schema: 'sales', name: 'orders' }, status: 'deferred' },
+        { dev: { database: 'proj-dev', schema: 'sales_dev', name: 'customers' }, status: 'missingEverywhere' },
+    ];
+    const compiled = {
+        tables: [{
+            type: 'incremental',
+            target: { database: 'proj-dev', schema: 'sales_dev', name: 'report' },
+            fileName: 'definitions/report.sqlx',
+            preOps: [`declare latest date default (select max(day) from ${devRef})`],
+            query: `select *\nfrom ${devRef}\njoin \`proj-dev.sales_dev.customers\` using (id)`,
+            postOps: [`select count(*) from ${devRef}`],
+            incrementalQuery: `select * from ${devRef} where day > latest`,
+            dependencyTargets: [],
+        }],
+        tests: [{ name: 'report_total', fileName: 'definitions/report_total.sqlx', testQuery: `select * from ${devRef}`, expectedOutputQuery: 'select 1' }],
+    } as unknown as DataformCompiledJson;
+    const graph = buildDataformGraph(compiled);
+    const report = graph.actions['proj-dev.sales_dev.report'];
+
+    test('every compiled section reads the Deferred Action from prod, and nothing else changes', () => {
+        const deferred = applyDeferralToAction(report, entries);
+        assert.notStrictEqual(deferred, report);
+        assert.deepStrictEqual(deferred.sections.map((section) => section.title), report.sections.map((section) => section.title));
+        for (const section of deferred.sections) {
+            assert.ok(!section.sql.includes(devRef), section.title);
+        }
+        assert.strictEqual(deferred.sections.filter((section) => section.sql.includes(prodRef)).length, 5);
+        // An upstream action that is missing everywhere keeps its dev name
+        assert.ok(deferred.sections.find((section) => section.title === 'query')!.sql.includes('`proj-dev.sales_dev.customers`'));
+        // The action handed in is left as it was
+        assert.ok(report.sections.every((section) => !section.sql.includes(prodRef)));
+        assert.deepStrictEqual({ ...deferred, sections: [] }, { ...report, sections: [] });
+    });
+
+    test('the dry-run service and the preview work from the rewritten sections without knowing of defer', async () => {
+        const deferred = applyDeferralToAction(report, entries);
+        const sent: string[] = [];
+        const results = await dryRunAction(deferred, 1, async (sql) => {
+            sent.push(sql);
+            return { error: { hasError: true, message: 'Unrecognized name: nope at [3:1]', location: { line: 3, column: 1 } } };
+        });
+        assert.strictEqual(sent.length, 4);
+        assert.ok(sent.every((sql) => sql.includes(prodRef) && !sql.includes(devRef)));
+        // The rewrite keeps every newline, so an error is still placed on the right line of its section
+        assert.deepStrictEqual([results[0].error?.section, results[0].error?.line], ['query', 2]);
+        assert.ok(previewQuery(deferred, 'query')?.sql.includes(prodRef));
+    });
+
+    test('a unit test, SQL shown as written, and an action with nothing deferred are returned untouched', () => {
+        const unitTest = graph.actions['unit test.report_total'];
+        assert.strictEqual(applyDeferralToAction(unitTest, entries), unitTest);
+        assert.strictEqual(applyDeferralToAction(report, [entries[1]]), report);
+        assert.strictEqual(applyDeferralToAction(report, []), report);
+
+        const hook = titledSections('pre-hook', [`grant select on ${devRef} to x`], { compiled: false, dryRun: [] });
+        const model = { ...report, sections: [...hook, ...report.sections] };
+        assert.strictEqual(applyDeferralToAction(model, entries).sections[0], hook[0]);
     });
 });

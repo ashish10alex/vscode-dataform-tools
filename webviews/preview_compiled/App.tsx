@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
-import { Loader2, MessageSquareWarning, Info, Settings, Clock, Terminal, Cloud } from 'lucide-react';
-import clsx from 'clsx';
+import { Loader2, Info, Settings, Terminal, Cloud } from 'lucide-react';
 import { vscode } from './utils/vscode';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
@@ -21,80 +20,58 @@ import { ProjectConfigTab } from './components/ProjectConfigTab';
 import { CompilationError } from './components/CompilationError';
 import { CompilationErrorType } from './types';
 import { SkeletonLoader } from './components/SkeletonLoader';
+import { panelProblem } from './utils/panelProblem';
+import { fileView } from './utils/fileView';
+import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
+import { DbtPanel } from './components/DbtPanel';
+import { ProjectInfoTab, useProjectInfoRequest } from './components/ProjectInfoTab';
+import { PanelHeader, HeaderTab, HeaderMenu } from './components/PanelHeader';
+import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from './components/RunStatusPill';
 
-function HeaderRightActions({
-  snoozeEndTime,
-  onStartSnooze,
-}: {
-  snoozeEndTime?: number | null;
-  onStartSnooze?: () => void;
-}) {
-  const isSnoozed = !!(snoozeEndTime && snoozeEndTime > Date.now());
-
-  return (
-    <div className="flex items-center space-x-3">
-      {!isSnoozed && onStartSnooze && (
-        <button
-          onClick={onStartSnooze}
-          title="Snooze compilation for 5 minutes"
-          className="flex items-center text-xs text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] border border-[var(--vscode-widget-border)] px-2 py-1 rounded transition-colors"
-        >
-          <Clock className="w-3.5 h-3.5 mr-1" />
-          Snooze (5m)
-        </button>
-      )}
-      <a
-        href="https://github.com/ashish10alex/vscode-dataform-tools/issues"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center text-xs text-[var(--vscode-textPreformat-foreground)] hover:brightness-110"
-      >
-        Report an issue
-        <MessageSquareWarning className="w-3 h-3 ml-1" />
-      </a>
-    </div>
-  );
-}
-
-function App() {
-  const state = useVSCodeMessage();
-  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config'>('compilation');
+/** The panel of a Dataform Project, and of a file in no Project */
+function DataformPanel({ state }: { state: PanelSlices }) {
+  const problem = panelProblem(state);
+  const view = fileView(state.file);
+  const fileName = fileOnShow(state);
+  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config' | 'project'>('compilation');
+  useProjectInfoRequest(useCallback(() => setActiveTab('project'), []));
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    if (!state.snoozeEndTime || state.snoozeEndTime <= Date.now()) {
+    if (!state.dataform.snoozeEndTime || state.dataform.snoozeEndTime <= Date.now()) {
       return;
     }
     setNow(Date.now());
     const timer = setInterval(() => {
       const current = Date.now();
       setNow(current);
-      if (state.snoozeEndTime && current >= state.snoozeEndTime) {
+      if (state.dataform.snoozeEndTime && current >= state.dataform.snoozeEndTime) {
         clearInterval(timer);
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [state.snoozeEndTime]);
+  }, [state.dataform.snoozeEndTime]);
 
-  const isSnoozed = !!(state.snoozeEndTime && state.snoozeEndTime > now);
-  const remainingSec = isSnoozed ? Math.max(0, Math.ceil((state.snoozeEndTime! - now) / 1000)) : 0;
+  const isSnoozed = !!(state.dataform.snoozeEndTime && state.dataform.snoozeEndTime > now);
+  const remainingSec = isSnoozed ? Math.max(0, Math.ceil((state.dataform.snoozeEndTime! - now) / 1000)) : 0;
   const minutesLeft = Math.floor(remainingSec / 60);
   const secondsLeft = remainingSec % 60;
-  const timeLeftFormatted = `${minutesLeft}m ${secondsLeft.toString().padStart(2, "0")}s`;
+  const timeLeftFormatted = `${minutesLeft}:${secondsLeft.toString().padStart(2, "0")}`;
 
   const handleStartSnooze = () => {
-    vscode.postMessage({ command: "startSnooze" });
+    vscode.postMessage({ command: "dataform.startSnooze" });
   };
 
   const handleStopSnooze = () => {
-    vscode.postMessage({ command: "stopSnooze" });
+    vscode.postMessage({ command: "dataform.stopSnooze" });
   };
   const [isPolling, setIsPolling] = useState(false);
   const pollStartedAtRef = useRef<number | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const items = state.workflowUrls || [];
+    // A CLI run is followed by the host, by its BigQuery jobs: the Dataform API knows nothing of it
+    const items = (state.dataform.workflowUrls || []).filter(i => i.executionMode !== 'cli');
     const hasNonTerminal = items.some(i => !i.state || !TERMINAL_WORKFLOW_STATES.has(i.state));
     const hasFailedMissingActions = items.some(i =>
       i.state === 'FAILED' && (!i.failedActions || i.failedActions.length === 0)
@@ -120,28 +97,220 @@ function App() {
     }
 
     if (justStarted) {
-      vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+      vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
       return;
     }
 
     const isCanceling = items.some(i => i.state === 'CANCELING');
     const delay = isCanceling ? POLL_CANCELING_MS : elapsed < POLL_FAST_DURATION_MS ? POLL_FAST_MS : POLL_SLOW_MS;
     pollTimerRef.current = setTimeout(() => {
-      vscode.postMessage({ command: 'refreshWorkflowStatuses' });
+      vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
     }, delay);
 
     return () => {
       if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
     };
-  }, [state.workflowUrls]);
+  }, [state.dataform.workflowUrls]);
 
-  const isConfigFile = state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json';
-
-  const showSkeleton = !!state.recompiling && !state.tableOrViewQuery && !state.testQuery && !state.expectedOutputQuery && !state.projectConfig && !state.packageJsonContent && !state.declarations && !state.errorMessage && !state.compilationErrors;
+  const isConfigFile = fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json';
 
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
-  const isPropertyGraphFile = (state.propertyGraphs?.length ?? 0) > 0;
+  const isPropertyGraphFile = (state.dataform.propertyGraphs?.length ?? 0) > 0;
+
+  // A compile that failed is told by the Compile row of the compiled query, whose other rows keep their place
+  const compileFailedInRows = problem.type === CompilationErrorType.COMPILATION_ERROR && !isPropertyGraphFile;
+  const hasCompiledQuery = !!(
+    isPropertyGraphFile ||
+    view.tableOrViewQuery ||
+    view.operationsQuery ||
+    view.assertionQuery ||
+    view.incrementalQuery ||
+    view.testQuery ||
+    view.expectedOutputQuery ||
+    view.declarations ||
+    view.models?.some((m: any) => m.type === 'notebook')
+  );
+  const showCompiledQuery = !isConfigFile && !view.isHelperFile && activeTab === 'compilation' && (hasCompiledQuery || compileFailedInRows);
+
+  // While a compile runs no error is on show, so only what the file has to show keeps the skeleton away
+  const showSkeleton = problem.compiling && !(showCompiledQuery && compileFailedInRows) && !view.tableOrViewQuery && !view.testQuery && !view.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !view.declarations;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      // Ignore if modifier keys are pressed
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
+        return;
+      }
+
+      if (e.key === 's') {
+        e.preventDefault();
+        setActiveTab('schema');
+      } else if (e.key === 'c') {
+        e.preventDefault();
+        setActiveTab('compilation');
+      } else if (e.key === 'w') {
+        e.preventDefault();
+        setActiveTab('workflow_urls');
+      } else if (e.key === 'p') {
+        e.preventDefault();
+        setActiveTab('project');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    // The Project tab is of the Project, not of the file: it stays whichever file is shown
+    if (activeTab === 'project') {
+      return;
+    }
+    if (fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json') {
+      setActiveTab('project_config');
+    } else if (activeTab === 'project_config' || (isPropertyGraphFile && activeTab !== 'compilation')) {
+      setActiveTab('compilation');
+    }
+  }, [fileName, activeTab, isPropertyGraphFile]);
+
+  // Handle declarations view (full page override)
+  if (view.declarations && activeTab !== 'project') {
+    return <DeclarationsView declarations={view.declarations} />;
+  }
+
+
+  // The run's details are under the compiled query, which is drawn only once its tab is the one on show
+  const showRunDetails = () => {
+    setActiveTab('compilation');
+    setTimeout(() => window.dispatchEvent(new Event(SHOW_RUN_DETAILS_EVENT)), 50);
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
+      <PanelHeader
+        className="bg-[var(--vscode-sideBar-background)]"
+        tabs={isConfigFile ? (
+          <>
+            <HeaderTab active={activeTab !== 'project'} onClick={() => setActiveTab('project_config')}>
+              <Settings className="w-4 h-4 mr-1.5" />
+              Project Configuration
+            </HeaderTab>
+            <HeaderTab active={activeTab === 'project'} onClick={() => setActiveTab('project')} title="Project (P)">Project</HeaderTab>
+          </>
+        ) : (
+          <>
+            <HeaderTab active={activeTab === 'compilation'} onClick={() => setActiveTab('compilation')} title="Compiled Query (C)">Query</HeaderTab>
+            {!isPropertyGraphFile && (
+              <>
+                <HeaderTab active={activeTab === 'schema'} onClick={() => setActiveTab('schema')} title="Schema (S)">Schema</HeaderTab>
+                <HeaderTab active={activeTab === 'cost'} onClick={() => setActiveTab('cost')} title="Cost Estimator">Cost</HeaderTab>
+                <HeaderTab active={activeTab === 'workflow_urls'} onClick={() => setActiveTab('workflow_urls')} title="Workflow Executions (W)">Executions</HeaderTab>
+              </>
+            )}
+            <HeaderTab active={activeTab === 'project'} onClick={() => setActiveTab('project')} title="Project (P)">Project</HeaderTab>
+          </>
+        )}
+        actions={<>
+          {!isConfigFile && <RunStatusPill state={state} onDetails={showRunDetails} />}
+          <HeaderMenu
+            snoozeTimeLeft={isSnoozed ? timeLeftFormatted : undefined}
+            onStartSnooze={handleStartSnooze}
+            onStopSnooze={handleStopSnooze}
+            shortcuts={[
+              ...(isConfigFile ? [] : [{ label: 'Compiled Query', hint: 'C', onSelect: () => setActiveTab('compilation') }]),
+              ...(isConfigFile || isPropertyGraphFile ? [] : [
+                { label: 'Schema', hint: 'S', onSelect: () => setActiveTab('schema') },
+                { label: 'Workflow Executions', hint: 'W', onSelect: () => setActiveTab('workflow_urls') },
+              ]),
+              { label: 'Project', hint: 'P', onSelect: () => setActiveTab('project') },
+            ]}
+          />
+        </>}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-auto p-4">
+        {activeTab === 'project' && <ProjectInfoTab state={state} />}
+        {activeTab !== 'project' && (<>
+        {problem.compiling && (() => {
+          const mode = state.dataform.compilationMode || state.dataform.compilationInfo?.mode || 'cli';
+          const isApi = mode === 'api';
+          const modeLabel = isApi ? 'API' : 'CLI';
+          return (
+            <div className="mb-4">
+              {/* The compiled query says it is compiling in its Compile row, where nothing moves for it */}
+              {showCompiledQuery && !isPropertyGraphFile && !showSkeleton ? null : <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
+                <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
+                <span>
+                  {state.dataform.dataformCoreVersion
+                    ? `Installing @dataform/core@${state.dataform.dataformCoreVersion} and compiling${state.project?.label ? ` ${state.project.label}` : ''}...`
+                    : `Compiling Dataform${state.project?.label ? ` project ${state.project.label}` : ''}...`}
+                </span>
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono rounded bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border border-[var(--vscode-widget-border)]"
+                  title={isApi ? "Compiling remotely with the Dataform API" : "Compiling locally with the Dataform CLI"}
+                >
+                  {isApi ? <Cloud className="w-3.5 h-3.5" /> : <Terminal className="w-3.5 h-3.5" />}
+                  {modeLabel}
+                </span>
+              </div>}
+              {state.dataform.dataformCoreVersion && (
+                <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
+                  <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
+                    <Info className="w-4 h-4" />
+                    Note
+                  </h4>
+                  <div className="text-[13px] text-[var(--vscode-foreground)] opacity-90 leading-relaxed pr-2">
+                    <p className="m-0">
+                      When specifying <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">dataformCoreVersion</code> in <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>, and installs dataform core by running <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">npm install</code>. This requires a network call and might take time. To avoid this, create a local <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {showSkeleton && (
+            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} mode={state.dataform.compilationMode || state.dataform.compilationInfo?.mode} />
+        )}
+
+{!(showCompiledQuery && compileFailedInRows) && (problem.type === CompilationErrorType.COMPILATION_ERROR ||
+          (!isPropertyGraphFile && (
+            !view.models?.length ||
+            problem.missingTools.length > 0
+          ))) && (
+          <CompilationError state={state} />
+        )}
+
+        {isConfigFile && !showSkeleton && <ProjectConfigTab state={state} />}
+        {!isConfigFile && (view.isHelperFile || (!view.tableOrViewQuery && !view.operationsQuery && !view.assertionQuery && !view.incrementalQuery && !view.testQuery && !view.expectedOutputQuery && !view.declarations && !view.models?.some((m: any) => m.type === 'notebook') && fileName?.endsWith('.js'))) && (
+            <div>
+                <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
+                    {fileName}
+                </code>
+            </div>
+        )}
+
+        {showCompiledQuery && <CompiledQueryTab state={state} />}
+        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
+        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
+        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
+        </>)}
+
+      </div>
+    </div>
+  );
+}
+
+/** One panel for both Backends: the Project's Backend says which is drawn */
+function App() {
+  const state = useVSCodeMessage();
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
@@ -167,220 +336,7 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      // Ignore if modifier keys are pressed
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
-        return;
-      }
-
-      if (e.key === 's') {
-        e.preventDefault();
-        setActiveTab('schema');
-      } else if (e.key === 'c') {
-        e.preventDefault();
-        setActiveTab('compilation');
-      } else if (e.key === 'w') {
-        e.preventDefault();
-        setActiveTab('workflow_urls');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    if (state.relativeFilePath === 'workflow_settings.yaml' || state.relativeFilePath === 'dataform.json' || state.relativeFilePath === 'package.json') {
-      setActiveTab('project_config');
-    } else if (activeTab === 'project_config' || (isPropertyGraphFile && activeTab !== 'compilation')) {
-      setActiveTab('compilation');
-    }
-  }, [state.relativeFilePath, activeTab, isPropertyGraphFile]);
-
-  // Handle declarations view (full page override)
-  if (state.declarations) {
-    return <DeclarationsView declarations={state.declarations} />;
-  }
-
-
-  return (
-    <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
-      {/* Header / Tabs */}
-      <div className="flex items-center w-full p-4 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] z-10">
-        {/* Tab Navigation */}
-        {!isConfigFile && (
-          <>
-            <div className="flex items-center space-x-2 flex-1 min-w-0 overflow-x-auto scrollbar-thin">
-              <button
-                onClick={() => setActiveTab('compilation')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'compilation'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Compiled Query
-              </button>
-              {!isPropertyGraphFile && (
-              <>
-              <button
-                onClick={() => setActiveTab('schema')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'schema'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Schema
-              </button>
-              <button
-                onClick={() => setActiveTab('cost')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'cost'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Cost Estimator
-              </button>
-              <button
-                onClick={() => setActiveTab('workflow_urls')}
-                className={clsx(
-                  "px-3 py-1.5 rounded-md text-sm font-medium transition-colors border",
-                  activeTab === 'workflow_urls'
-                    ? "bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-[var(--vscode-button-background)]"
-                    : "text-[var(--vscode-foreground)] opacity-70 hover:opacity-100 hover:bg-[var(--vscode-toolbar-hoverBackground)] border-transparent"
-                )}
-              >
-                Workflow Executions
-              </button>
-              </>
-              )}
-            </div>
-            <HeaderRightActions snoozeEndTime={state.snoozeEndTime} onStartSnooze={handleStartSnooze} />
-          </>
-        )}
-
-        {isConfigFile && (
-          <div className="flex items-center w-full">
-            <h2 className="text-sm font-semibold text-[var(--vscode-foreground)] flex items-center">
-              <Settings className="w-4 h-4 mr-2" />
-              Project Configuration
-            </h2>
-            <div className="flex-grow"></div>
-
-            <HeaderRightActions snoozeEndTime={state.snoozeEndTime} onStartSnooze={handleStartSnooze} />
-          </div>
-        )}
-      </div>
-
-      {isSnoozed && (
-        <div className="flex items-center justify-between px-4 py-2 bg-[var(--vscode-inputValidation-warningBackground,rgba(255,200,0,0.1))] border-b border-[var(--vscode-inputValidation-warningBorder,var(--vscode-widget-border))] text-sm z-10">
-          <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4 text-[var(--vscode-inputValidation-warningForeground,var(--vscode-notificationsWarningIcon-foreground))]" />
-            <span className="font-medium text-[var(--vscode-foreground)]">
-              Compilation snoozed
-            </span>
-            <span className="text-xs text-[var(--vscode-descriptionForeground)]">
-              ({timeLeftFormatted} remaining)
-            </span>
-          </div>
-          <button
-            onClick={handleStopSnooze}
-            className="px-2.5 py-1 text-xs rounded bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] font-medium transition-colors border border-[var(--vscode-widget-border)]"
-          >
-            Stop Snooze
-          </button>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-4">
-        {state.recompiling && (() => {
-          const backend = state.compilationBackend || state.compilationInfo?.backend || 'cli';
-          const isApi = backend === 'api';
-          const backendLabel = isApi ? 'API' : 'CLI';
-          return (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
-                <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
-                <span>
-                  {state.dataformCoreVersion
-                    ? `Installing @dataform/core@${state.dataformCoreVersion} and compiling...`
-                    : `Compiling Dataform...`}
-                </span>
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono rounded bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] border border-[var(--vscode-widget-border)]"
-                  title={isApi ? "Compiling remotely with the Dataform API" : "Compiling locally with the Dataform CLI"}
-                >
-                  {isApi ? <Cloud className="w-3.5 h-3.5" /> : <Terminal className="w-3.5 h-3.5" />}
-                  {backendLabel}
-                </span>
-              </div>
-              {state.dataformCoreVersion && (
-                <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
-                  <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
-                    <Info className="w-4 h-4" />
-                    Note
-                  </h4>
-                  <div className="text-[13px] text-[var(--vscode-foreground)] opacity-90 leading-relaxed pr-2">
-                    <p className="m-0">
-                      When specifying <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">dataformCoreVersion</code> in <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">workflow_settings.yaml</code>, Dataform CLI copies over the project to a temporary directory, adds <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>, and installs dataform core by running <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">npm install</code>. This requires a network call and might take time. To avoid this, create a local <code className="bg-[var(--vscode-editor-background)] px-1.5 py-0.5 rounded font-mono text-[12px] border border-[var(--vscode-widget-border)]">package.json</code>.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {showSkeleton && (
-            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} backend={state.compilationBackend || state.compilationInfo?.backend} />
-        )}
-
-{(state.errorType === CompilationErrorType.COMPILATION_ERROR ||
-          (!isPropertyGraphFile && (
-            !state.models?.length ||
-            (state.missingExecutables && state.missingExecutables.length > 0)
-          ))) && (
-          <CompilationError state={state} />
-        )}
-
-        {isConfigFile && !showSkeleton && <ProjectConfigTab state={state} />}
-        {!isConfigFile && (state.isHelperFile || (!state.tableOrViewQuery && !state.operationsQuery && !state.assertionQuery && !state.incrementalQuery && !state.testQuery && !state.expectedOutputQuery && !state.declarations && !state.models?.some((m: any) => m.type === 'notebook') && state.relativeFilePath?.endsWith('.js'))) && (
-            <div>
-                <code className="text-sm font-mono bg-[var(--vscode-editor-background)] px-2 py-1 rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-textPreformat-foreground)]">
-                    {state.relativeFilePath}
-                </code>
-            </div>
-        )}
-
-        {!isConfigFile && !state.isHelperFile && activeTab === 'compilation' && (
-          isPropertyGraphFile ||
-          state.tableOrViewQuery ||
-          state.operationsQuery ||
-          state.assertionQuery ||
-          state.incrementalQuery ||
-          state.testQuery ||
-          state.expectedOutputQuery ||
-          state.declarations ||
-          state.models?.some((m: any) => m.type === 'notebook')
-        ) && <CompiledQueryTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {!isConfigFile && !state.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
-
-      </div>
-    </div>
-  );
+  return state.project?.backend === 'dbt' ? <DbtPanel state={state} /> : <DataformPanel state={state} />;
 }
 
 export default App;

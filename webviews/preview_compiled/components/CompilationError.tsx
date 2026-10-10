@@ -2,22 +2,24 @@ import React, { useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronUp, Cloud, Terminal } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
-import { WebviewState, CompilationErrorType } from '../types';
+import { PanelState, CompilationErrorType } from '../types';
 import { CompilerOverrides } from './CompilerOverrides';
 import { CompilationInfoBadge } from './CompilationInfoBadge';
+import { panelProblem } from '../utils/panelProblem';
+import { fileOnShow } from '../../../src/shared/panelState';
 
 interface CompilationErrorProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 /**
- * Offered on failed compiles so either backend is always one click away: remote mode compiles without
+ * Offered on failed compiles so either Compilation Mode is always one click away: remote mode compiles without
  * the Dataform CLI, and the CLI compiles local changes that are not pushed yet.
  */
 const SwitchBackendButton: React.FC<{ to: 'cli' | 'api' }> = ({ to }) => (
   <button
     type="button"
-    onClick={() => vscode.postMessage({ command: 'switchCompilationBackend', value: to })}
+    onClick={() => vscode.postMessage({ command: 'dataform.switchCompilationMode', compilationMode: to })}
     className="mt-3 flex items-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] rounded text-[var(--vscode-button-foreground)]"
   >
     {to === 'api'
@@ -89,21 +91,16 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
 );
 
 export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => {
-  const {
-    errorMessage,
-    errorType,
-    recompiling,
-    missingExecutables,
-    relativeFilePath,
-    workspaceFolder,
-    compilationErrors,
-    possibleResolutions,
-    compilationInfo,
-  } = state;
-  // The selected backend, not compilationInfo: an API compile that fails early records no info,
+  const { type: errorType, message: errorMessage, compiling: recompiling, missingTools: missingExecutables, compileErrors } = panelProblem(state);
+  // As the sections below name an error's parts
+  const compilationErrors = compileErrors.map((error) => ({ error: error.message, fileName: error.fileName ?? '', lineNumber: error.line, sourceContext: error.sourceContext }));
+  const { possibleResolutions, compilationInfo } = state.dataform;
+  const relativeFilePath = fileOnShow(state);
+  const workspaceFolder = state.project?.root;
+  // The selected Compilation Mode, not compilationInfo: an API compile that fails early records no info,
   // which would leave the last CLI compile describing the error.
-  const backend = state.compilationBackend ?? compilationInfo?.backend ?? 'cli';
-  const cliCompileFailed = backend !== 'api';
+  const mode = state.dataform.compilationMode ?? compilationInfo?.mode ?? 'cli';
+  const cliCompileFailed = mode !== 'api';
   const otherBackend = cliCompileFailed ? 'api' : 'cli';
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -211,7 +208,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             <p className="mt-0 mb-3 opacity-90">Ignore the error if the file you are in is not expected to produce a sql output</p>
 
             {!cliCompileFailed && (
-              <CompilationInfoBadge info={compilationInfo} backend={backend} className="mb-3 opacity-80" />
+              <CompilationInfoBadge info={compilationInfo} mode={mode} className="mb-3 opacity-80" />
             )}
 
             <h4 className="mt-0 mb-2 text-md font-semibold">Possible resolution/fix(s):</h4>
@@ -229,7 +226,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    vscode.postMessage({ command: 'selectWorkspaceFolder' });
+                    vscode.postMessage({ command: 'selectProject' });
                   }}
                   className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium cursor-pointer"
                 >
@@ -292,7 +289,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
               {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <CompilationInfoBadge info={compilationInfo} backend={backend} className="mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+          <CompilationInfoBadge info={compilationInfo} mode={mode} className="mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
 
           <div className="space-y-1">
             {groups.map((group) => (
@@ -341,13 +338,13 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
             </div>
           )}
         </div>
-        <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+        <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} />
       </>
     );
   }
 
   if (errorMessage) {
-    // Neither compilation status nor a backend switch applies to a file or folder outside a Dataform project
+    // Neither compilation status nor a switch of Compilation Mode applies to a file or folder outside a Dataform project
     const offerSwitch = errorType !== CompilationErrorType.UNSUPPORTED_FILE_TYPE && errorType !== CompilationErrorType.NOT_A_DATAFORM_WORKSPACE;
     return (
       <>
@@ -359,12 +356,12 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
           </div>
           {offerSwitch && (
             <>
-              <CompilationInfoBadge info={compilationInfo} backend={backend} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+              <CompilationInfoBadge info={compilationInfo} mode={mode} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
               <SwitchBackendButton to={otherBackend} />
             </>
           )}
         </div>
-        <CompilerOverrides initialCompilerOptions={state.compilerOptions} />
+        <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} />
       </>
     );
   }

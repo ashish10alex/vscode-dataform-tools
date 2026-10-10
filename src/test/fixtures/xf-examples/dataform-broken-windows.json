@@ -1,0 +1,90 @@
+{
+    "tables": [
+        {
+            "type": "table",
+            "target": {
+                "schema": "xf_example",
+                "name": "order_totals",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\n-- Deliberately broken: no action is called order_lines.\nSELECT o.order_id, COUNT(*) AS lines\nFROM `alex-personal-dev-01.xf_example.orders` AS o\nJOIN  AS l USING (order_id)\nGROUP BY 1\n",
+            "disabled": false,
+            "fileName": "definitions\\order_totals.sqlx",
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "orders",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "order_totals",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "table",
+            "target": {
+                "schema": "xf_example",
+                "name": "orders",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT 1 AS order_id\n",
+            "disabled": false,
+            "fileName": "definitions\\orders.sqlx",
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "orders",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        }
+    ],
+    "projectConfig": {
+        "warehouse": "bigquery",
+        "defaultSchema": "xf_example",
+        "assertionSchema": "xf_example_assertions",
+        "defaultDatabase": "alex-personal-dev-01",
+        "defaultLocation": "EU"
+    },
+    "graphErrors": {
+        "compilationErrors": [
+            {
+                "fileName": "definitions\\order_totals.sqlx",
+                "message": "Could not resolve \"order_lines\"",
+                "stack": "Error: Could not resolve \"order_lines\"\n    at t.Session.resolve (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:756702)\n    at f.resolve (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:852766)\n    at f.ref (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:852632)\n    at Object.sqlContextable (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\definitions\\order_totals.sqlx:24:8)\n    at C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:755354\n    at f.apply (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:853485)\n    at p.compileAot (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:849935)\n    at p.compile (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:849198)\n    at C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:761915\n    at Array.forEach (<anonymous>)"
+            },
+            {
+                "fileName": "definitions\\order_totals.sqlx",
+                "message": "Missing dependency detected: Action \"alex-personal-dev-01.xf_example.order_totals\" depends on \"{\"name\":\"order_lines\",\"includeDependentAssertions\":false}\" which does not exist",
+                "stack": "Error: Missing dependency detected: Action \"alex-personal-dev-01.xf_example.order_totals\" depends on \"{\"name\":\"order_lines\",\"includeDependentAssertions\":false}\" which does not exist\n    at C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:762342\n    at Array.forEach (<anonymous>)\n    at t.Session.fullyQualifyDependencies (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:762148)\n    at t.Session.compile (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:760515)\n    at t.main (C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\node_modules\\@dataform\\core\\bundle.js:16:679804)\n    at C:\\Users\\me\\AppData\\Local\\Temp\\tmp-3208-PmV1YPQ29nv0\\index.js:1:96\n    at VM2 Wrapper.apply (C:\\Users\\me\\AppData\\Local\\nvm\\v24.14.0\\node_modules\\@dataform\\cli\\node_modules\\vm2\\lib\\bridge.js:493:11)\n    at NodeVM.run (C:\\Users\\me\\AppData\\Local\\nvm\\v24.14.0\\node_modules\\@dataform\\cli\\node_modules\\vm2\\lib\\nodevm.js:497:23)\n    at compile (C:\\Users\\me\\AppData\\Local\\nvm\\v24.14.0\\node_modules\\@dataform\\cli\\worker_bundle.js:30216:23)\n    at process.<anonymous> (C:\\Users\\me\\AppData\\Local\\nvm\\v24.14.0\\node_modules\\@dataform\\cli\\worker_bundle.js:30221:36)",
+                "actionName": "alex-personal-dev-01.xf_example.order_totals",
+                "actionTarget": {
+                    "schema": "xf_example",
+                    "name": "order_totals",
+                    "database": "alex-personal-dev-01"
+                }
+            }
+        ]
+    },
+    "dataformCoreVersion": "3.0.71",
+    "targets": [
+        {
+            "schema": "xf_example",
+            "name": "order_totals",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "orders",
+            "database": "alex-personal-dev-01"
+        }
+    ],
+    "jitData": {}
+}
+
+

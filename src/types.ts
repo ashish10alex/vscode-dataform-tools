@@ -1,3 +1,4 @@
+import type { RunStages } from './shared/runStages';
 import { TextDocument } from "vscode";
 import { protos } from '@google-cloud/dataform';
 import type { ActionTypeCounts } from './shared/actionTypes';
@@ -349,6 +350,8 @@ export interface GitHubContentResponse {
 export interface QueryWtType {
     query: string;
     type: string;
+    /** Where the query's job runs, when that is not the BigQuery client's own project and location */
+    place?: { projectId?: string; location?: string };
 }
 
 export interface TableBigQueryConfig {
@@ -534,22 +537,16 @@ export type LastModifiedTimeMeta = {
 export type DependancyModelMetadata = {
     id: string;
     type: string;
-    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean, isAssertion: boolean, fullTableName: string };
+    data: { modelName: string, datasetId: string, projectId: string, tags: string[], fileName: string, datasetColor: string, type: string, isExternalSource: boolean, isAssertion: boolean, fullTableName: string, actionId?: string, noTable?: boolean };
 };
 
-export type ErrorMeta = {
-    mainQueryError: DryRunError;
-    preOpsError?: DryRunError;
-    postOpsError?: DryRunError;
-    nonIncrementalError?: DryRunError;
-    incrementalError?: DryRunError;
-    assertionError?: DryRunError;
-    testError?: DryRunError;
-    expectedOutputError?: DryRunError;
-};
+/** Which step of the lookup found an executable */
+export type ExecutableSource = 'setting' | 'projectLocal' | 'path' | 'commonLocation';
 
 export type ExecutablePathInfo = {
     path: string | null;
+    /** Undefined when it was not found */
+    foundBy?: ExecutableSource;
     timestamp: number;
 };
 
@@ -562,8 +559,18 @@ export interface WorkflowUrlEntry {
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
-    executionMode?: 'api' | 'api_workspace';
+    /** `cli` is a `dataform run` sent to the terminal: it has no `url`, `workspace` or `repositoryName` */
+    executionMode?: 'api' | 'api_workspace' | 'cli';
+    /** The invocation's ID. For a CLI run, an ID of the extension's own: the run is no workflow invocation */
     workflowInvocationId?: string;
+    /** CLI run: what the IDs of its BigQuery jobs start with. `actions` then has a row for each job, not each action */
+    jobPrefix?: string;
+    /** CLI run: why its jobs are not listed, or not all of them */
+    jobsNote?: string;
+    /** When each stage between the run's invocation and its first job was reached; absent on older entries */
+    stages?: RunStages;
+    /** CLI run: the window was closed or reloaded while it ran, so how it ended is told by its jobs alone */
+    interrupted?: boolean;
     projectId?: string;
     location?: string;
     repositoryName?: string;
@@ -625,63 +632,6 @@ export interface ActionCounts {
     skipped: number;
 }
 
-export interface WebviewMessage {
-  snoozeEndTime?: number | null;
-  tableOrViewQuery?: string;
-  assertionQuery?: string;
-  preOperations?: string;
-  postOperations?: string;
-  incrementalPreOpsQuery?: string;
-  incrementalQuery?: string;
-  nonIncrementalQuery?: string;
-  operationsQuery?: string;
-  testQuery?: string;
-  expectedOutputQuery?: string;
-  actionTypes?: string[];
-  relativeFilePath?: string;
-  errorMessage?: string | null;
-  errorType?: CompilationErrorType;
-  compilationErrors?: Array<{
-    error: string;
-    fileName: string;
-    lineNumber?: number;
-    sourceContext?: string;
-  }> | null;
-  possibleResolutions?: string[] | null;
-  dryRunErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunIncrementalErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunIncrementalErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunExpectedOutputErrorsByNodeType?: Record<string, { message: string; location?: { line: number; column: number } }>;
-  dryRunQueryByNodeName?: Record<string, string>;
-  dryRunIncrementalQueryByNodeName?: Record<string, string>;
-  dryRunNonIncrementalQueryByNodeName?: Record<string, string>;
-  compiledQuerySchema?: any;
-  targetTablesOrViews?: any;
-  models?: any; 
-  dependents?: any; 
-  dataformTags?: string[]; 
-  apiUrlLoading?: boolean;
-  workflowInvocationUrlGCP?: string;
-  errorWorkflowInvocation?: string;
-  recompiling?: boolean;
-  compilationBackend?: "cli" | "api";
-  dryRunning?: boolean;
-  modelsLastUpdateTimesMeta?: LastModifiedTimeMeta;
-  declarations?: Declarations[] | null;
-  compilerOptions?: string;
-  workflowUrls?: WorkflowUrlEntry[];
-  missingExecutables?: string[];
-  projectConfig?: ProjectConfig;
-  dataformCoreVersion?: string;
-  packageJsonContent?: {
-    name?: string;
-    dependencies?: { [key: string]: string };
-    devDependencies?: { [key: string]: string };
-  };
-}
-
 export type CreateCompilationResultResponse = Promise<
 [
     protos.google.cloud.dataform.v1beta1.ICompilationResult,
@@ -741,14 +691,15 @@ export type DataformApiOptions = {gitMeta?:{gitRepoName: string, gitBranch:strin
 
 export type ExecutionMode = "cli" | "api" | "api_workspace";
 
-export type LastRunKind = 'currentFile' | 'files' | 'tags' | 'changed';
+export type LastRunKind = 'currentFile' | 'files' | 'tags' | 'changed' | 'actions';
 
 /** The selection and options of the most recent Dataform run, kept so it can be repeated. */
 export interface LastRunRequest {
     kind: LastRunKind;
     /**
-     * Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`, and for `changed`
-     * the actions that ran (informational only: a rerun recomputes them).
+     * Workspace-relative .sqlx paths for `currentFile` / `files`, tag names for `tags`, for `changed`
+     * the actions that ran (informational only: a rerun recomputes them), and for `actions` the IDs of the
+     * actions that were asked for (a rerun runs the same ones).
      */
     items: string[];
     /** `changed`: the files whose changes ran, when some changed files were left out; a rerun keeps to them. Absent when every changed file ran. */
@@ -787,7 +738,8 @@ export interface ChangedActionsView {
     defaultBranch?: string;
     /** The checked-out branch is the one being compared against, so only local edits can show up */
     onDefaultBranch?: boolean;
-    changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config')[] }[];
+    /** `macro` is a dbt Project's only: a macro the action calls differs */
+    changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config' | 'macro')[] }[];
     deleted?: { target: string; fileName: string; type: string }[];
     error?: string;
 }
@@ -807,12 +759,6 @@ export interface CachedResults {
     curFileMeta: any;
     targetTablesOrViews: any;
     errorMessage: string | null;
-    dryRunStatByNodeType: Record<string, string>;
-    dryRunStatByNodeName: Record<string, string>;
-    dryRunErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunIncrementalErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunExpectedOutputErrorsByNodeType: Record<string, { message: string; location?: ErrorLocation }>;
-    dryRunExpectedOutputErrorsByNodeName?: Record<string, { message: string; location?: ErrorLocation }>;
     location: string | undefined;
     compilerOptions: string | undefined;
 }

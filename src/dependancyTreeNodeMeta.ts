@@ -1,6 +1,8 @@
 import { DependancyModelMetadata } from "./types";
+import { compiledJson } from './project';
 import { GraphEdge, buildDependencyGraph } from "./shared/buildDependencyGraph";
 import { getRelativePath, getVSCodeDocument, getWorkspaceFolder, runCompilation } from "./utils";
+import { resolveDataformOptions } from './project/dataformOptions';
 
 export async function generateDependancyTreeMetadata(): Promise<{
     dependancyTreeMetadata: DependancyModelMetadata[];
@@ -8,19 +10,17 @@ export async function generateDependancyTreeMetadata(): Promise<{
     datasetColorMap: Map<string, string>;
     currentActiveEditorIdx: string;
 } | undefined> {
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    let compiled = compiledJson();
+    if (!compiled) {
         const workspaceFolder = await getWorkspaceFolder();
         if (!workspaceFolder) {
             return;
         }
 
-        const { dataformCompiledJson } = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
+        compiled = (await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder))).dataformCompiledJson; // Takes ~1100ms
     }
 
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    if (!compiled) {
         return;
     }
 
@@ -30,7 +30,7 @@ export async function generateDependancyTreeMetadata(): Promise<{
         ? getRelativePath(currentActiveEditorFilePath)
         : "";
 
-    const result = buildDependencyGraph(CACHED_COMPILED_DATAFORM_JSON, {
+    const result = buildDependencyGraph(compiled, {
         focusIdentifier: currentActiveEditorRelativePath || undefined,
     });
 

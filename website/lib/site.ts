@@ -1,10 +1,12 @@
 const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 
 export const site = {
-  name: "Dataform Tools",
-  tagline: "The VS Code extension for Dataform",
+  name: "Tools for Dataform and dbt",
+  /** For the header, where the whole name does not fit beside the navigation */
+  shortName: "Tools for Dataform and dbt",
+  tagline: "The VS Code extension for Dataform and dbt on BigQuery",
   description:
-    "Compiled SQL, dry-run cost, inline diagnostics, dependency graphs and schema-aware editing for Dataform projects — right inside VS Code, Cursor and Antigravity.",
+    "Compiled SQL, dry-run cost, schema, preview and runs for Dataform and dbt™ projects on BigQuery, and for Dataform also inline diagnostics, dependency graphs and schema-aware editing — right inside VS Code, Cursor and Antigravity.",
   url: productionHost ? `https://${productionHost}` : "http://localhost:3000",
   repoUrl: "https://github.com/ashish10alex/vscode-dataform-tools",
   changelogSourceUrl:

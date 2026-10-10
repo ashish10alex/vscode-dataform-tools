@@ -1,0 +1,4 @@
+name: xf_broken
+version: "1.0.0"
+config-version: 2
+profile: xf_example

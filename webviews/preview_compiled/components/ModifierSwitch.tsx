@@ -15,11 +15,32 @@ interface ModifierSwitchProps {
   title: string;
   /** Marks a modifier with side effects worth a second look when it is on. */
   warning?: boolean;
+  /** Drawn as a chip with a dot, for a row with no room for the switch */
+  chip?: boolean;
 }
 
 /** An on/off switch that changes how the run controls beside it execute (e.g. include dependencies). */
-export const ModifierSwitch: React.FC<ModifierSwitchProps> = ({ label, checked, onChange, title, warning }) => {
+export const ModifierSwitch: React.FC<ModifierSwitchProps> = ({ label, checked, onChange, title, warning, chip }) => {
   const onColor = warning ? WARNING_COLOR : ON_COLOR;
+  if (chip) {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        title={title}
+        className={clsx(
+          "inline-flex items-center gap-1 h-6 px-1.5 rounded border text-xs whitespace-nowrap flex-shrink-0 transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]",
+          checked ? "text-[var(--vscode-foreground)] font-medium" : "border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
+        )}
+        style={checked ? { borderColor: `color-mix(in srgb, ${onColor} 60%, transparent)`, background: `color-mix(in srgb, ${onColor} 16%, transparent)` } : undefined}
+      >
+        <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full" style={{ background: checked ? onColor : OFF_TRACK }} />
+        {label}
+      </button>
+    );
+  }
   return (
     <button
       type="button"

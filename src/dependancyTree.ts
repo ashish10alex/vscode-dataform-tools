@@ -1,5 +1,7 @@
 import { Assertion, Declarations, DeclarationsLegendMetadata, DependancyTreeMetadata, Operation, Table, Target } from "./types";
+import { compiledJson } from './project';
 import { getWorkspaceFolder, runCompilation } from "./utils";
+import { resolveDataformOptions } from './project/dataformOptions';
 
 function populateDependancyTree(type: string, structs: Table[] | Operation[] | Assertion[] | Declarations[], dependancyTreeMetadata: DependancyTreeMetadata[], schemaDict: any, schemaIdx: number) {
     let declarationsLegendMetadata: DeclarationsLegendMetadata[] = [];
@@ -80,27 +82,25 @@ export async function generateDependancyTreeMetadata(): Promise<{ dependancyTree
     let schemaDict = {}; // used to keep track of unique schema names ( gcp dataset name ) already seen in the compiled json declarations
     let schemaIdx = 0;   // used to assign a unique index to each unique schema name for color coding dataset in the web panel
 
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    let compiled = compiledJson();
+    if (!compiled) {
 
         let workspaceFolder = await getWorkspaceFolder();
         if (!workspaceFolder) {
             return;
         }
 
-        let {dataformCompiledJson} = await runCompilation(workspaceFolder); // Takes ~1100ms
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
+        compiled = (await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder))).dataformCompiledJson; // Takes ~1100ms
     }
 
     let output;
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    if (!compiled) {
         return { "dependancyTreeMetadata": output ? output["dependancyTreeMetadata"] : dependancyTreeMetadata, "declarationsLegendMetadata": output ? output["declarationsLegendMetadata"] : [] };
     }
-    let tables = CACHED_COMPILED_DATAFORM_JSON.tables;
-    let operations = CACHED_COMPILED_DATAFORM_JSON.operations;
-    let assertions = CACHED_COMPILED_DATAFORM_JSON.assertions;
-    let declarations = CACHED_COMPILED_DATAFORM_JSON.declarations;
+    let tables = compiled.tables;
+    let operations = compiled.operations;
+    let assertions = compiled.assertions;
+    let declarations = compiled.declarations;
 
     if (tables) {
         output = populateDependancyTree("tables", tables, dependancyTreeMetadata, schemaDict, schemaIdx);

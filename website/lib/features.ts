@@ -50,6 +50,15 @@ export const themes: Record<FeatureTheme, { label: string; eyebrow: string; blur
 export const features: Feature[] = [
   // ── compile ────────────────────────────────────────────────
   {
+    id: "dbt",
+    theme: "compile",
+    title: "dbt projects on BigQuery",
+    summary:
+      "Open a dbt™ project and get the same panel: the compiled model with its tests beneath it, dry-run size and cost, schema, preview, `dbt build` runs and a dbt target control. In the editor: go to definition, hover and completions for `ref()`, `source()` and column names, and BigQuery's dry-run errors. Works with dbt Core 1.8 or later and dbt v2.",
+    links: [{ label: "Set-up and what works", href: "https://github.com/ashish10alex/vscode-dataform-tools#dbt-projects" }],
+    mediaTodo: "Compiled query panel on a dbt model, with its tests collapsed beneath it and the dbt target control",
+  },
+  {
     id: "compilation",
     theme: "compile",
     title: "Compiled query & dry run",

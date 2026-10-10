@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { getDataformActionCmdFromActionList, getDataformCompilationTimeoutFromConfig, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
+import { compiledJson } from './project';
+import { getDataformActionCmdFromActionList, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode, LastRunRequest } from './types';
@@ -7,9 +8,17 @@ import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 import { beginRun } from './defer/deferRun';
+import { runDataformRunInTerminal } from './cliRunJobs';
+import { withRunFeedback } from './runFeedback';
+import { resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 /** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
-export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+export function runCurrentFile(...args: Parameters<typeof runCurrentFileNow>): ReturnType<typeof runCurrentFileNow> {
+    return withRunFeedback(args[4], () => runCurrentFileNow(...args));
+}
+
+async function runCurrentFileNow(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
     executionMode = resolveExecutionMode(executionMode);
 
     let relativeFilePath = relativeFilePathOverride;
@@ -26,29 +35,27 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         }
         relativeFilePath = result.value[1];
     }
-    let workspaceFolder = await getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) {
         return;
     }
 
-    let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
 
     let currFileMetadata;
-    await ensureFreshCompilation(workspaceFolder);
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
+    let compiled = compiledJson(workspaceFolder);
+    if (!compiled) {
 
-        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let {dataformCompiledJson, errors} = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder)); // Takes ~1100ms
         if(errors && errors.length > 0){
             vscode.window.showErrorMessage("Error compiling Dataform. Run `dataform compile` to see more details");
             return;
         }
-        if (dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-        }
+        compiled = dataformCompiledJson;
     }
 
-    if (CACHED_COMPILED_DATAFORM_JSON) {
-        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON, workspaceFolder);
+    if (compiled) {
+        currFileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, compiled, workspaceFolder);
     }
     if(!currFileMetadata){
         vscode.window.showErrorMessage(`Unable to get metadata for the current file`);
@@ -57,7 +64,7 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
 
     // PropertyGraph actions produce no queries, so they are absent from `tables` and have to be
     // picked up from the compiled output directly for the file to be runnable at all.
-    const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON)
+    const propertyGraphs = getPropertyGraphsForFile(relativeFilePath, compiled)
         .filter((graph) => !graph.disabled);
 
     // Saved only once the run is about to dispatch, so a cancelled or non-runnable run does not replace the last one.
@@ -80,13 +87,14 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         let dataformActionCmd = "";
 
         // create the dataform run command for the list of actions from actionsList
-        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includDependencies, includeDependents, fullRefresh);
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includDependencies, includeDependents, fullRefresh);
         if (!(await beginRun(lastRunRequest))) { return; }
-        runCommandInTerminal(dataformActionCmd);
+        const targets = [...currFileMetadata.tables.filter((table: any) => table.type !== 'test'), ...propertyGraphs].map(({ target }) => ({ database: target.database, schema: target.schema, name: target.name }));
+        await runDataformRunInTerminal(workspaceFolder, dataformActionCmd, { targets, includeDependencies: includDependencies, includeDependents, fullRefresh });
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
+        const projectId = (gcpProjectIdOveride || compiled?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
             return;

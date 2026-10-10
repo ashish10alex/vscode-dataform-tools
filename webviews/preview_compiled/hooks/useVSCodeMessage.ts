@@ -1,85 +1,26 @@
 import { useEffect, useState } from "react";
-import { WebviewState } from "../types";
+import { PanelSlices, applyMessage, initialSlices } from "../../../src/shared/panelState";
+import { vscode } from "../utils/vscode";
 
 declare global {
   interface Window {
-    initialState?: WebviewState;
+    /** The slices the host put in the panel's first page */
+    initialState?: Partial<PanelSlices>;
   }
 }
 
+/** What the panel knows: the slices the host has sent, each kept as `applyMessage` says */
 export const useVSCodeMessage = () => {
-  const [state, setState] = useState<WebviewState>(window.initialState || {});
+  const [state, setState] = useState<PanelSlices>(() => initialSlices(window.initialState));
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
-      setState((prevState) => {
-        const nextState = {
-          ...prevState,
-          ...message,
-          compilationBackend:
-            message.compilationBackend ??
-            message.compilationInfo?.backend ??
-            prevState.compilationBackend ??
-            prevState.compilationInfo?.backend ??
-            "cli",
-          // Unless the host explicitly says recompiling/dryRunning: true, clear it
-          recompiling:
-            typeof message.recompiling === "boolean"
-              ? message.recompiling
-              : (prevState.recompiling ?? false),
-          dryRunning:
-            typeof message.dryRunning === "boolean"
-              ? message.dryRunning
-              : (prevState.dryRunning ?? false),
-        };
-
-        // Property graph state belongs to one file. A message announcing a different file
-        // must not leave the previous file's graph on screen.
-        if (message.relativeFilePath && message.relativeFilePath !== prevState.relativeFilePath) {
-          nextState.propertyGraphs = message.propertyGraphs ?? null;
-          nextState.propertyGraphValidations = message.propertyGraphValidations ?? null;
-          nextState.deferral = message.deferral ?? null;
-          nextState.leftoverProxies = message.leftoverProxies ?? null;
-        }
-
-        // Element schemas arrive one at a time as the user expands nodes, so they are merged
-        // into the existing map rather than replacing it.
-        if (message.propertyGraphElementSchema) {
-          nextState.propertyGraphElementSchemas = {
-            ...(prevState.propertyGraphElementSchemas ?? {}),
-            [message.propertyGraphElementSchema.elementName]: message.propertyGraphElementSchema,
-          };
-          delete (nextState as Record<string, unknown>).propertyGraphElementSchema;
-        }
-
-        // When starting a new compilation or dry run, clear old errors and stats 
-        // to prevent stale data from persisting until new results arrive.
-        if (message.recompiling === true || message.dryRunning === true) {
-          nextState.errorMessage = message.errorMessage || null;
-          nextState.compilationErrors = message.compilationErrors || null;
-          
-          nextState.dryRunStatByNodeType = message.dryRunStatByNodeType || {};
-          nextState.dryRunStatByNodeName = message.dryRunStatByNodeName || {};
-          nextState.dryRunErrorsByNodeType = message.dryRunErrorsByNodeType || {};
-          nextState.dryRunErrorsByNodeName = message.dryRunErrorsByNodeName || {};
-          nextState.dryRunIncrementalErrorsByNodeName = message.dryRunIncrementalErrorsByNodeName || {};
-          nextState.dryRunIncrementalErrorsByNodeType = message.dryRunIncrementalErrorsByNodeType || {};
-          nextState.dryRunExpectedOutputErrorsByNodeName = message.dryRunExpectedOutputErrorsByNodeName || {};
-          nextState.dryRunExpectedOutputErrorsByNodeType = message.dryRunExpectedOutputErrorsByNodeType || {};
-          nextState.dataformCoreVersion = message.dataformCoreVersion;
-          
-          if (message.recompiling === true) {
-            nextState.compilationTimeMs = undefined;
-            nextState.modelsLastUpdateTimesMeta = [];
-          }
-        }
-
-        return nextState;
-      });
+      setState((slices) => applyMessage(slices, event.data));
     };
 
     window.addEventListener("message", handleMessage);
+    // Only now does anyone listen: the host sends again what it posted while the page was loading
+    vscode.postMessage({ command: "ready" });
 
     return () => {
       window.removeEventListener("message", handleMessage);

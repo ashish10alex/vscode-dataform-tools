@@ -10,17 +10,22 @@ import { CodeCompilationConfig, DataformCompiledJson, ExecutionMode, GraphError 
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
 import { toDataformCompiledJson, ApiCompilationResult, ApiCompilationResultAction } from './remoteCompileAdapter';
 import { DEFAULT_CONFIG_KEY, getRemoteCompile, initRemoteCompileCache, saveRemoteCompile, RemoteCompileEntry } from './remoteCompileCache';
-import { initRemoteModeStatusBar, refreshRemoteModeStatusBar, updateRemoteModeStatusBar } from './remoteModeStatusBar';
-import { createCompilerOptionsObjectForApi, getDataformCompilerOptions } from './dataformCompiler';
-import { buildIndices } from './compiledJsonIndex';
+import { initRemoteModeStatusBar, refreshRemoteModeStatusBar, setRemoteModeStatusBarInDbt, updateRemoteModeStatusBar } from './remoteModeStatusBar';
+import { createCompilerOptionsObjectForApi } from './dataformCompiler';
+import { clearCompiled, currentDataformRoot, onDidChangeActiveProject, projects, setCompiled } from '../project';
 import { setCompilationInfo } from './compilationInfo';
+import type { DataformOptions } from '../backend/dataform/options';
+import type { CompilationMode } from '../project/tools';
+import { initDataformOptions, getSelectedReleaseConfig, isCompilationModeExplicitlySet, isRemoteMode, resolveDataformOptions, setCompilationMode, setSelectedReleaseConfig } from '../project/dataformOptions';
 
 /*
  * Remote mode (beta): compiles the pushed commit of the current branch with the Dataform API
  * instead of the local Dataform CLI, and serves the result from a cache keyed by commit SHA.
+ *
+ * What a compile depends on arrives as `DataformOptions`; the commands at the end of the file are the host's and
+ * resolve them (src/project/dataformOptions.ts).
  */
 
-const RELEASE_CONFIG_STATE_KEY = "vscode_dataform_tools_remote_release_config";
 const REMOTE_COMPILE_CANCELLED = "Remote compilation cancelled";
 
 let extensionContext: vscode.ExtensionContext | undefined;
@@ -39,73 +44,34 @@ export type RemoteCompileOutcome = {
     compilationTimeMs: number | undefined;
 };
 
-export type CompilationBackend = "cli" | "api";
-
-function backendConfig() {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.workspace.workspaceFolders?.[0]?.uri);
-}
-
-export function isRemoteMode(): boolean {
-    return backendConfig().get<string>('compilationBackend') === 'api';
-}
-
-/** True when the user has set the backend at any scope, i.e. they have engaged with remote mode. */
-function isBackendExplicitlySet(): boolean {
-    const inspected = backendConfig().inspect<string>('compilationBackend');
-    return inspected?.globalValue !== undefined || inspected?.workspaceValue !== undefined || inspected?.workspaceFolderValue !== undefined;
-}
-
-/**
- * Writes the backend to the most specific scope that already has a value, so the change takes effect
- * instead of being shadowed by e.g. a workspace value when only the user setting is updated.
- */
-export async function setCompilationBackend(value: CompilationBackend) {
-    const config = backendConfig();
-    const target = pickBackendConfigurationTarget(config.inspect<string>('compilationBackend'), !!vscode.workspace.workspaceFolders?.length);
-    await config.update('compilationBackend', value, target);
-}
-
-/** The most specific scope that already has a value; the workspace (or user settings without one) otherwise. */
-export function pickBackendConfigurationTarget(
-    inspected: { globalValue?: unknown, workspaceValue?: unknown, workspaceFolderValue?: unknown } | undefined,
-    hasWorkspace: boolean
-): vscode.ConfigurationTarget {
-    if (inspected?.workspaceFolderValue !== undefined) {
-        return vscode.ConfigurationTarget.WorkspaceFolder;
-    }
-    if (inspected?.workspaceValue !== undefined) {
-        return vscode.ConfigurationTarget.Workspace;
-    }
-    if (inspected?.globalValue !== undefined || !hasWorkspace) {
-        return vscode.ConfigurationTarget.Global;
-    }
-    return vscode.ConfigurationTarget.Workspace;
-}
-
-async function switchCompilationBackend(value?: CompilationBackend) {
+async function switchCompilationBackend(value?: CompilationMode) {
     if (!value) {
-        const current: CompilationBackend = isRemoteMode() ? "api" : "cli";
-        const items: (vscode.QuickPickItem & { value: CompilationBackend })[] = [
+        const current: CompilationMode = isRemoteMode() ? "api" : "cli";
+        const items: (vscode.QuickPickItem & { value: CompilationMode })[] = [
             { label: "$(terminal) CLI", description: current === "cli" ? "current" : undefined, detail: "Compile locally with the Dataform CLI", value: "cli" },
             { label: "$(cloud) Dataform API (beta)", description: current === "api" ? "current" : undefined, detail: "Compile the pushed commit of the current branch with the Dataform API; no CLI needed", value: "api" },
         ];
         value = (await vscode.window.showQuickPick(items, { placeHolder: "Compile the Dataform project with" }))?.value;
     }
     if (value) {
-        await setCompilationBackend(value);
+        await setCompilationMode(value);
     }
 }
 
 function syncRemoteModeContext() {
     const remote = isRemoteMode();
     vscode.commands.executeCommand('setContext', 'vscode-dataform-tools.remoteMode', remote);
-    refreshRemoteModeStatusBar(remote, isBackendExplicitlySet());
+    refreshRemoteModeStatusBar(remote, isCompilationModeExplicitlySet());
 }
 
 export function initRemoteCompiler(context: vscode.ExtensionContext) {
     extensionContext = context;
+    initDataformOptions(context);
     initRemoteCompileCache(context);
     initRemoteModeStatusBar(context);
+    // Remote mode is Dataform's: its item is not shown while the active Project is a dbt one
+    setRemoteModeStatusBarInDbt(projects.active?.backend === 'dbt');
+    context.subscriptions.push(onDidChangeActiveProject((project) => setRemoteModeStatusBarInDbt(project?.backend === 'dbt')));
     syncRemoteModeContext();
 
     context.subscriptions.push(
@@ -113,7 +79,7 @@ export function initRemoteCompiler(context: vscode.ExtensionContext) {
             if (event.affectsConfiguration('vscode-dataform-tools.compilationBackend')) {
                 syncRemoteModeContext();
                 // Force the next compile to go through the newly selected backend
-                CACHED_COMPILED_DATAFORM_JSON = undefined;
+                clearCompiled();
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.compileRemotely', async () => {
@@ -129,14 +95,6 @@ function getContext(): vscode.ExtensionContext {
         throw new Error("Remote compiler used before initialisation");
     }
     return extensionContext;
-}
-
-function getSelectedReleaseConfig(): string | undefined {
-    return getContext().workspaceState.get<string>(RELEASE_CONFIG_STATE_KEY);
-}
-
-function configKey(): string {
-    return getSelectedReleaseConfig() ?? DEFAULT_CONFIG_KEY;
 }
 
 function readDefaultProjectFromSettings(workspaceFolder: string): string | undefined {
@@ -156,8 +114,23 @@ function readDefaultProjectFromSettings(workspaceFolder: string): string | undef
     return undefined;
 }
 
+/** What API mode says of a Project that is not at the top of its git repository */
+export const notAtRepositoryRootMessage = (settingsDirectory: string) =>
+    `The Dataform API compiles a repository whose settings file is at its top, and this project is in its sub-folder "${settingsDirectory}". Switch to CLI mode to compile it.`;
+
+/** The same directory, whatever links or letter case its path was written with */
+function sameDirectory(a: string, b: string): boolean {
+    const real = (directory: string) => { try { return fs.realpathSync.native(directory); } catch { return path.resolve(directory); } };
+    return real(a) === real(b);
+}
+
 async function getGitInfo(): Promise<{ git: GitService, branch: string, repositoryName: string }> {
     const git = new GitService();
+    // The Dataform API has no setting for a Project below the top of its repository: it would compile nothing, or another Project
+    const topLevel = await git.getTopLevel();
+    if (topLevel && !sameDirectory(topLevel, git.root)) {
+        throw new Error(notAtRepositoryRootMessage(path.relative(fs.realpathSync.native(topLevel), fs.realpathSync.native(git.root)).split(path.sep).join('/')));
+    }
     const gitInfo = await git.getGitBranchAndRepoName();
     if (!gitInfo?.gitBranch || !gitInfo.gitRepoName) {
         throw new Error("Unable to determine the git branch and Dataform repository name");
@@ -165,8 +138,8 @@ async function getGitInfo(): Promise<{ git: GitService, branch: string, reposito
     return { git, branch: gitInfo.gitBranch, repositoryName: gitInfo.gitRepoName };
 }
 
-async function createDataformClient(workspaceFolder: string, repositoryName: string): Promise<DataformTools> {
-    const projectId = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('gcpProjectId')
+async function createDataformClient(workspaceFolder: string, options: DataformOptions, repositoryName: string): Promise<DataformTools> {
+    const projectId = options.api.gcpProjectId
         || readDefaultProjectFromSettings(workspaceFolder);
     if (!projectId) {
         throw new Error("Unable to determine the GCP project. Set `vscode-dataform-tools.gcpProjectId` or `defaultProject` in workflow_settings.yaml");
@@ -175,19 +148,19 @@ async function createDataformClient(workspaceFolder: string, repositoryName: str
     if (!location) {
         throw new Error("Location of the Dataform repository not provided");
     }
-    const serviceAccountJsonPath = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('serviceAccountJsonPath');
+    const serviceAccountJsonPath = options.api.serviceAccountJsonPath;
     const clientOptions = serviceAccountJsonPath ? { projectId, keyFilename: serviceAccountJsonPath } : { projectId };
     return new (await loadDataformTools())(projectId, location, clientOptions);
 }
 
 /** Dataform client for the repository named after the current git repository. */
 export async function createDataformClientForCurrentRepository(): Promise<{ dataformClient: DataformTools, repositoryName: string }> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceFolder) {
         throw new Error("No workspace folder open");
     }
     const { repositoryName } = await getGitInfo();
-    return { dataformClient: await createDataformClient(workspaceFolder, repositoryName), repositoryName };
+    return { dataformClient: await createDataformClient(workspaceFolder, resolveDataformOptions(workspaceFolder), repositoryName), repositoryName };
 }
 
 /**
@@ -276,8 +249,8 @@ async function reportEntry(git: GitService, entry: RemoteCompileEntry, durationM
     const reason = await describeStaleness(git, entry);
     const hasErrors = (entry.compiledJson.graphErrors?.compilationErrors?.length ?? 0) > 0;
     updateRemoteModeStatusBar({ state: "compiled", sha: entry.sha, stale: !!reason, reason, hasErrors });
-    setCompilationInfo({
-        backend: "api",
+    setCompilationInfo(git.root, {
+        mode: "api",
         compiledAt: entry.compiledAt,
         durationMs,
         fromCache: durationMs === undefined,
@@ -324,18 +297,19 @@ async function createCompilationResultWithRetry<T>(create: () => Promise<T>, rep
 }
 
 /**
- * Compiles `gitCommitish` with the Dataform API using `configOverride` when given, else the selected release
- * config's settings, else the compiler options setting.
+ * Compiles `gitCommitish` with the Dataform API using `configOverride` when given, else the settings of
+ * `releaseConfig`, else `compilerOptions`.
  */
 async function createRemoteCompileEntry(
     dataformClient: DataformTools,
     repositoryName: string,
     gitCommitish: string,
     releaseConfig: string | undefined,
+    compilerOptions: string,
     report: (message: string) => void,
     configOverride?: CodeCompilationConfig,
 ): Promise<RemoteCompileEntry> {
-    let codeCompilationConfig: CodeCompilationConfig = configOverride ?? createCompilerOptionsObjectForApi([getDataformCompilerOptions()]);
+    let codeCompilationConfig: CodeCompilationConfig = configOverride ?? createCompilerOptionsObjectForApi([compilerOptions]);
     if (releaseConfig && !configOverride) {
         report("Reading release config…");
         const [config] = await dataformClient.client.getReleaseConfig({ name: releaseConfig });
@@ -367,19 +341,19 @@ async function createRemoteCompileEntry(
  * replaces the current compilation. With `cachedOnly`, returns undefined instead of calling the API
  * when the commit is not cached.
  */
-export async function compileRemoteCommit(workspaceFolder: string, sha: string, cachedOnly = false, cacheTag?: string): Promise<DataformCompiledJson | undefined> {
+export async function compileRemoteCommit(workspaceFolder: string, options: DataformOptions, sha: string, cachedOnly = false, cacheTag?: string): Promise<DataformCompiledJson | undefined> {
     const { repositoryName } = await getGitInfo();
-    const releaseConfig = getSelectedReleaseConfig();
+    const releaseConfig = options.api.releaseConfig;
     const cacheKey = `${releaseConfig ?? DEFAULT_CONFIG_KEY}${cacheTag ? `@${cacheTag}` : ""}`;
     let entry = await getRemoteCompile(repositoryName, sha, cacheKey, false);
     if (!entry && cachedOnly) {
         return undefined;
     }
     if (!entry) {
-        const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
+        const dataformClient = await createDataformClient(workspaceFolder, options, repositoryName);
         entry = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Compiling ${sha.slice(0, 7)} with the Dataform API` },
-            (progress) => createRemoteCompileEntry(dataformClient, repositoryName, sha, releaseConfig, (message) => progress.report({ message })),
+            (progress) => createRemoteCompileEntry(dataformClient, repositoryName, sha, releaseConfig, options.compilerOptions, (message) => progress.report({ message })),
         );
         entry = { ...entry, configKey: cacheKey };
         await saveRemoteCompile(entry, false);
@@ -399,7 +373,7 @@ function notPushedMessage(branch: string): string {
  * Compiled JSON of the pushed commit of the current branch with explicit compilation settings, such as the
  * prod options of defer to prod. Cached by SHA and `cacheTag`, but never replaces the current compilation.
  */
-export async function compileRemoteHeadWithConfig(workspaceFolder: string, codeCompilationConfig: CodeCompilationConfig, cacheTag: string): Promise<DataformCompiledJson> {
+export async function compileRemoteHeadWithConfig(workspaceFolder: string, options: DataformOptions, codeCompilationConfig: CodeCompilationConfig, cacheTag: string): Promise<DataformCompiledJson> {
     const { git, branch, repositoryName } = await getGitInfo();
     const upstreamSha = await git.getUpstreamSha();
     if (!upstreamSha) {
@@ -408,10 +382,10 @@ export async function compileRemoteHeadWithConfig(workspaceFolder: string, codeC
     const cacheKey = `${DEFAULT_CONFIG_KEY}@${cacheTag}`;
     let entry = await getRemoteCompile(repositoryName, upstreamSha, cacheKey, false);
     if (!entry) {
-        const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
+        const dataformClient = await createDataformClient(workspaceFolder, options, repositoryName);
         entry = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Compiling ${upstreamSha.slice(0, 7)} with prod options` },
-            (progress) => createRemoteCompileEntry(dataformClient, repositoryName, upstreamSha, undefined, (message) => progress.report({ message }), codeCompilationConfig),
+            (progress) => createRemoteCompileEntry(dataformClient, repositoryName, upstreamSha, undefined, options.compilerOptions, (message) => progress.report({ message }), codeCompilationConfig),
         );
         entry = { ...entry, configKey: cacheKey };
         await saveRemoteCompile(entry, false);
@@ -423,7 +397,7 @@ export async function compileRemoteHeadWithConfig(workspaceFolder: string, codeC
     return entry.compiledJson;
 }
 
-async function compileRemotely(workspaceFolder: string, interactive: boolean): Promise<RemoteCompileOutcome> {
+async function compileRemotely(workspaceFolder: string, options: DataformOptions, interactive: boolean): Promise<RemoteCompileOutcome> {
     const { git, branch, repositoryName } = await getGitInfo();
     if (interactive) {
         if (!(await confirmRemoteMatchesLocal(git, branch))) {
@@ -434,9 +408,9 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
         throw new Error(notPushedMessage(branch));
     }
 
-    const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
-    // Read once so a config switch mid-compile cannot file this result under the other config
-    const releaseConfig = getSelectedReleaseConfig();
+    const dataformClient = await createDataformClient(workspaceFolder, options, repositoryName);
+    // Resolved before the compile, so a config switch mid-compile cannot file this result under the other config
+    const releaseConfig = options.api.releaseConfig;
 
     updateRemoteModeStatusBar({ state: "compiling" });
     const startTime = performance.now();
@@ -444,7 +418,7 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
         return await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: `Compiling ${branch} with the Dataform API` },
             async (progress) => {
-                const entry = await createRemoteCompileEntry(dataformClient, repositoryName, branch, releaseConfig, (message) => progress.report({ message }));
+                const entry = await createRemoteCompileEntry(dataformClient, repositoryName, branch, releaseConfig, options.compilerOptions, (message) => progress.report({ message }));
                 await saveRemoteCompile(entry);
                 const compilationTimeMs = performance.now() - startTime;
                 await reportEntry(git, entry, compilationTimeMs);
@@ -463,10 +437,10 @@ async function compileRemotely(workspaceFolder: string, interactive: boolean): P
  * Compiled JSON for the current branch in remote mode. Served from the cache when the upstream commit
  * has already been compiled; otherwise (e.g. after checking out another branch) compiles it remotely.
  */
-export async function getRemoteCompiledJson(workspaceFolder: string): Promise<RemoteCompileOutcome> {
+export async function getRemoteCompiledJson(workspaceFolder: string, options: DataformOptions): Promise<RemoteCompileOutcome> {
     const { git, repositoryName } = await getGitInfo();
     const upstreamSha = await git.getUpstreamSha();
-    const cached = upstreamSha ? await getRemoteCompile(repositoryName, upstreamSha, configKey()) : undefined;
+    const cached = upstreamSha ? await getRemoteCompile(repositoryName, upstreamSha, options.api.releaseConfig ?? DEFAULT_CONFIG_KEY) : undefined;
     if (cached) {
         await reportEntry(git, cached);
         return outcomeFromEntry(cached);
@@ -474,7 +448,7 @@ export async function getRemoteCompiledJson(workspaceFolder: string): Promise<Re
 
     // A compile of another commit (e.g. started before a branch switch) must not be reused
     if (!inFlightCompile || inFlightCompileSha !== upstreamSha) {
-        const compile = compileRemotely(workspaceFolder, false).finally(() => {
+        const compile = compileRemotely(workspaceFolder, options, false).finally(() => {
             if (inFlightCompile === compile) {
                 inFlightCompile = undefined;
             }
@@ -487,19 +461,18 @@ export async function getRemoteCompiledJson(workspaceFolder: string): Promise<Re
 
 /** Explicit compile from the command palette or status bar; always calls the API. */
 async function compileRemotelyAndReport() {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceFolder) {
         vscode.window.showErrorMessage("No workspace folder open");
         return;
     }
     try {
-        const outcome = await compileRemotely(workspaceFolder, true);
+        const outcome = await compileRemotely(workspaceFolder, resolveDataformOptions(workspaceFolder), true);
         if (outcome.errors?.[0]?.error === REMOTE_COMPILE_CANCELLED) {
             return;
         }
         if (outcome.dataformCompiledJson) {
-            CACHED_COMPILED_DATAFORM_JSON = outcome.dataformCompiledJson;
-            buildIndices(outcome.dataformCompiledJson);
+            setCompiled(workspaceFolder, outcome.dataformCompiledJson);
             vscode.window.showInformationMessage(`Compiled remotely: ${outcome.dataformCompiledJson.targets.length} actions`);
         } else if (outcome.errors?.length) {
             vscode.window.showErrorMessage(`Remote compilation failed: ${outcome.errors[0].error}`);
@@ -511,13 +484,13 @@ async function compileRemotelyAndReport() {
 }
 
 async function pickReleaseConfig() {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceFolder = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceFolder) {
         return;
     }
     try {
         const { repositoryName } = await getGitInfo();
-        const dataformClient = await createDataformClient(workspaceFolder, repositoryName);
+        const dataformClient = await createDataformClient(workspaceFolder, resolveDataformOptions(workspaceFolder), repositoryName);
         const parent = `projects/${dataformClient.gcpProjectId}/locations/${dataformClient.gcpLocation}/repositories/${repositoryName}`;
         const [releaseConfigs] = await dataformClient.client.listReleaseConfigs({ parent });
         const items: (vscode.QuickPickItem & { value: string | undefined })[] = [
@@ -532,7 +505,7 @@ async function pickReleaseConfig() {
         if (!picked) {
             return;
         }
-        await getContext().workspaceState.update(RELEASE_CONFIG_STATE_KEY, picked.value);
+        await setSelectedReleaseConfig(picked.value);
         await compileRemotelyAndReport();
     } catch (error: any) {
         vscode.window.showErrorMessage(`Unable to list release configs: ${error.message}`);
@@ -550,7 +523,7 @@ async function remoteModeActions() {
         },
         {
             label: "$(terminal) Switch to CLI mode",
-            run: () => setCompilationBackend("cli"),
+            run: () => setCompilationMode("cli"),
         },
     ];
     const picked = await vscode.window.showQuickPick(actions, { placeHolder: "Dataform remote mode (beta)" });

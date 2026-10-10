@@ -1,4 +1,6 @@
+import { withRunFeedback } from './runFeedback';
 import * as vscode from 'vscode';
+import { compiledJson } from './project';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import path from 'path';
@@ -9,11 +11,13 @@ import { logger } from './logger';
 import { changedFileKey, describeComparison } from './shared/changeComparison';
 import { ChangedActionsView, DataformCompiledJson, ExecutionMode, LastRunRequest } from './types';
 import { ChangedAction, CompiledGraphDiff, diffCompiledGraphs } from './utils/compiledGraphDiff';
-import { compileDataform, getDataformCompilerOptions, isCompilationStale, parseCompiledString, runCompilation } from './utils/dataformCompiler';
-import { compileRemoteCommit, isRemoteMode } from './utils/remoteCompiler';
+import { compileDataform, isCompilationStale, parseCompiledString, runCompilation } from './utils/dataformCompiler';
+import { compileRemoteCommit } from './utils/remoteCompiler';
 import { runIncludedTargets } from './utils/dataformHelpers';
 import { extractSnapshot, mirrorTree } from './utils/gitSnapshot';
 import { perfCount } from './perf';
+import { getDataformCompilerOptions, isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 /*
  * "Run changed": runs only the actions whose compiled output differs from the merge-base with the
@@ -31,7 +35,8 @@ export function initChangedActions(context: vscode.ExtensionContext) {
     storageRoot = path.join(context.globalStorageUri.fsPath, 'changed-actions');
 }
 
-function getStorageRoot(): string {
+/** Where bases are kept: the snapshots being compiled or parsed, and what each one gave */
+export function getStorageRoot(): string {
     if (!storageRoot) {
         throw new Error('Changed actions used before initialisation');
     }
@@ -54,7 +59,7 @@ export async function isGitRepo(workspaceFolder: string): Promise<boolean> {
 
 /** Read for the Dataform folder, so a folder-level setting applies in multi-root workspaces. */
 function getDefaultBranch(workspaceFolder: string): string {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).get<string>('defaultBranch')?.trim() || 'main';
+    return extensionConfiguration(vscode.Uri.file(workspaceFolder)).get<string>('defaultBranch')?.trim() || 'main';
 }
 
 /** `origin/<branch>` when it exists, else the local branch. Does not fetch. */
@@ -70,7 +75,7 @@ async function resolveBaseRef(workspaceFolder: string, branch: string): Promise<
     throw new Error(`Neither origin/${branch} nor ${branch} exists. Set \`vscode-dataform-tools.defaultBranch\` to your default branch.`);
 }
 
-interface ChangeBase {
+export interface ChangeBase {
     baseRef: string;
     mergeBaseSha: string;
     headLabel: string;
@@ -85,10 +90,10 @@ interface ChangeBase {
 
 /**
  * Locally the working tree is compared with the merge-base of the default branch and HEAD. Remote mode
- * compiles pushed commits only, so there it is the merge-base with the pushed commit.
+ * compiles pushed commits only, so there it is the merge-base with the pushed commit. A dbt Project is always
+ * compared locally.
  */
-async function resolveChangeBase(workspaceFolder: string): Promise<ChangeBase> {
-    const remote = isRemoteMode();
+export async function resolveChangeBase(workspaceFolder: string, remote = isRemoteMode()): Promise<ChangeBase> {
     const defaultBranch = getDefaultBranch(workspaceFolder);
     const baseRef = await resolveBaseRef(workspaceFolder, defaultBranch);
     // A detached HEAD reports "HEAD", so it counts as a feature branch
@@ -146,7 +151,7 @@ async function compileLocalBase(workspaceFolder: string, sha: string): Promise<D
         if (fs.existsSync(path.join(snapshotDir, 'package.json')) && fs.existsSync(nodeModules)) {
             await mirrorTree(nodeModules, path.join(snapshotDir, 'node_modules'));
         }
-        const { compiledString, errors } = await compileDataform(snapshotDir);
+        const { compiledString, errors } = await compileDataform(snapshotDir, resolveDataformOptions(snapshotDir, 'cli'));
         if (!compiledString) {
             const details = (errors ?? []).slice(0, 3).map((e) => (e.fileName ? `${e.fileName}: ${e.error}` : e.error)).join('\n');
             throw new Error(`Could not compile ${sha.slice(0, 7)}: ${details || 'unknown error'}`);
@@ -204,7 +209,7 @@ async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowComp
 
     if (base.remote) {
         if (!allowCompile) {
-            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, true, day);
+            return compileRemoteCommit(workspaceFolder, resolveDataformOptions(workspaceFolder, 'api'), base.mergeBaseSha, true, day);
         }
     } else {
         const cached = await readLocalBase(key);
@@ -215,7 +220,7 @@ async function getBaseGraph(workspaceFolder: string, base: ChangeBase, allowComp
 
     const compile = (async () => {
         if (base.remote) {
-            return compileRemoteCommit(workspaceFolder, base.mergeBaseSha, false, day);
+            return compileRemoteCommit(workspaceFolder, resolveDataformOptions(workspaceFolder, 'api'), base.mergeBaseSha, false, day);
         }
         const graph = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Window, title: `Compiling ${base.baseRef} @ ${base.mergeBaseSha.slice(0, 7)}` },
@@ -272,7 +277,7 @@ export async function getChangedActionsView(workspaceFolder: string | undefined,
     if (!workspaceFolder || !(await isGitRepo(workspaceFolder))) {
         return { status: 'unavailable' };
     }
-    const head = CACHED_COMPILED_DATAFORM_JSON;
+    const head = compiledJson();
     if (!head || isCompilationStale()) {
         return { status: 'idle' };
     }
@@ -300,7 +305,7 @@ export async function prepareChangedActions(workspaceFolder: string): Promise<Ch
     return vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Working out changed actions…' },
         async () => {
-            const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder);
+            const { dataformCompiledJson, errors } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
             if (!dataformCompiledJson) {
                 vscode.window.showErrorMessage(`Dataform execution aborted: compilation failed. ${errors?.[0]?.error ?? ''}`.trim());
                 return undefined;
@@ -389,7 +394,11 @@ export async function dispatchChangedActions(
  * Compiles the project, works out the changed actions and runs them (only those in `files` when given).
  * Returns the result so the caller can refresh its view, or undefined when it could not be worked out.
  */
-export async function runChangedActions(
+export function runChangedActions(...args: Parameters<typeof runChangedActionsNow>): ReturnType<typeof runChangedActionsNow> {
+    return withRunFeedback(args[5], () => runChangedActionsNow(...args));
+}
+
+async function runChangedActionsNow(
     context: vscode.ExtensionContext,
     workspaceFolder: string,
     includeDependencies: boolean,

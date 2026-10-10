@@ -1,14 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { WebviewState } from '../types';
+import { PanelState } from '../types';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef, ExpandedState } from '@tanstack/react-table';
 import { Download, Edit2, Copy, Check, ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 import type { ColumnMetadata } from '../../../src/types';
 import { buildColumnsConfig, formatAsUnquotedJson, pathKey } from '../../../src/utils/schemaTree';
+import { fileView } from '../utils/fileView';
+import { columnsOnShow } from '../utils/bigQueryView';
 
 interface SchemaTabProps {
-  state: WebviewState;
+  state: PanelState;
+}
+
+interface SchemaTableProps {
+  /** The columns to show, as BigQuery gives a schema: nested ones under their parent */
+  fields: ColumnMetadata[];
+  /** The name of the file "Export JSON" offers */
+  exportName: string;
 }
 
 type SchemaRow = {
@@ -44,19 +53,30 @@ const buildRows = (
 
 const buttonClassName = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm justify-center";
 
+/** The Schema tab of a Dataform file: the columns of its first action, from the last dry runs that gave results */
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
+  const schema = columnsOnShow(state.columns);
+  const target = fileView(state.file).models[0]?.target;
+  return <SchemaTable fields={schema?.fields ?? NO_FIELDS} exportName={target ? `${target.database}_${target.schema}_${target.name}.json` : 'schema.json'} />;
+};
+
+const NO_FIELDS: ColumnMetadata[] = [];
+
+/**
+ * A table of columns with their types and descriptions, for either Backend: a filter on each column, nested columns
+ * that open, descriptions that can be edited, and the columns as JSON to copy or save.
+ */
+export const SchemaTable: React.FC<SchemaTableProps> = ({ fields, exportName }) => {
   const [editedDescriptions, setEditedDescriptions] = useState<Record<string, string>>({});
   const [isCopied, setIsCopied] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
-  const fields = state.compiledQuerySchema?.fields || [];
-
   const data = useMemo(
     () => buildRows(fields, editedDescriptions),
-    [state.compiledQuerySchema, editedDescriptions]
+    [fields, editedDescriptions]
   );
 
-  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [state.compiledQuerySchema]);
+  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [fields]);
 
   const columns = useMemo<ColumnDef<SchemaRow>[]>(() => [
     {
@@ -139,7 +159,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   const handleCopyJson = () => {
     vscode.postMessage({
       command: 'copyToClipboard',
-      value: columnsConfigText()
+      text: columnsConfigText()
     });
     
     setIsCopied(true);
@@ -147,20 +167,14 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   };
 
   const handleExportJson = () => {
-    let filename = 'schema.json';
-    const target = state.targetTablesOrViews?.[0]?.target || state.models?.[0]?.target;
-    if (target) {
-      filename = `${target.database}_${target.schema}_${target.name}.json`;
-    }
-
     vscode.postMessage({
       command: 'exportSchema',
-      value: columnsConfigText(),
-      filename: filename
+      content: columnsConfigText(),
+      fileName: exportName
     });
   };
 
-  if (!state.compiledQuerySchema || state.compiledQuerySchema.fields.length === 0) {
+  if (fields.length === 0) {
     return (
         <div className="p-8 text-center text-[var(--vscode-descriptionForeground)]">
             <p>No schema available.</p>

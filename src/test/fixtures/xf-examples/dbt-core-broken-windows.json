@@ -1,0 +1,1 @@
+{"metadata":{"dbt_version":""},"nodes":null,"sources":null,"exposures":null,"unit_tests":null,"disabled":null,"xf_errors":[{"FileName":"models/order_totals.sql","Message":"Compilation Error\n  Model 'model.xf_broken.order_totals' (models\\order_totals.sql) depends on a node named 'order_lines' which was not found","Stack":""}]}

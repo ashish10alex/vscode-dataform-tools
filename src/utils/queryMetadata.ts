@@ -1,47 +1,11 @@
 import * as vscode from 'vscode';
+import { compiledIndices } from '../project';
 import path from 'path';
 import { logger } from '../logger';
 import { DataformCompiledJson, TablesWtFullQuery, Table, Operation, Assertion, Notebook } from '../types';
-import type { TableQueryEntry, IncrementalQueryEntry, AssertionQueryEntry, OperationQueryEntry, TestQueryEntry, QueryMeta, DryRunAnnotation } from '../types';
+import type { TableQueryEntry, IncrementalQueryEntry, AssertionQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
+import { extensionConfiguration } from '../project/settings';
 
-/** Derive per-node flat maps from the enriched query arrays on QueryMeta. */
-export function deriveNodeMapsFromQueryMeta(queryMeta: QueryMeta | undefined) {
-    const dryRunErrorsByNodeName: Record<string, DryRunAnnotation> = {};
-    const dryRunIncrementalErrorsByNodeName: Record<string, DryRunAnnotation> = {};
-    const dryRunExpectedOutputErrorsByNodeName: Record<string, DryRunAnnotation> = {};
-    const dryRunQueryByNodeName: Record<string, string> = {};
-    const dryRunIncrementalQueryByNodeName: Record<string, string> = {};
-    const dryRunNonIncrementalQueryByNodeName: Record<string, string> = {};
-
-    if (!queryMeta) {
-        return { dryRunErrorsByNodeName, dryRunIncrementalErrorsByNodeName, dryRunExpectedOutputErrorsByNodeName, dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName };
-    }
-
-    for (const tq of queryMeta.tableQueries ?? []) {
-        if (tq.error) { dryRunErrorsByNodeName[tq.targetName] = tq.error; }
-        if (tq.dryRunQuery) { dryRunQueryByNodeName[tq.targetName] = tq.dryRunQuery; }
-    }
-    for (const aq of queryMeta.assertionQueries ?? []) {
-        if (aq.error) { dryRunErrorsByNodeName[aq.targetName] = aq.error; }
-        if (aq.dryRunQuery) { dryRunQueryByNodeName[aq.targetName] = aq.dryRunQuery; }
-    }
-    for (const oq of queryMeta.operationQueries ?? []) {
-        if (oq.error) { dryRunErrorsByNodeName[oq.targetName] = oq.error; }
-        if (oq.dryRunQuery) { dryRunQueryByNodeName[oq.targetName] = oq.dryRunQuery; }
-    }
-    for (const iq of queryMeta.incrementalQueries ?? []) {
-        if (iq.nonIncrementalError) { dryRunErrorsByNodeName[iq.targetName] = iq.nonIncrementalError; }
-        if (iq.incrementalError) { dryRunIncrementalErrorsByNodeName[iq.targetName] = iq.incrementalError; }
-        if (iq.dryRunNonIncrementalQuery) { dryRunNonIncrementalQueryByNodeName[iq.targetName] = iq.dryRunNonIncrementalQuery; }
-        if (iq.dryRunIncrementalQuery) { dryRunIncrementalQueryByNodeName[iq.targetName] = iq.dryRunIncrementalQuery; }
-    }
-    for (const tq of queryMeta.testQueries ?? []) {
-        if (tq.testError) { dryRunErrorsByNodeName[tq.name] = tq.testError; }
-        if (tq.expectedOutputError) { dryRunExpectedOutputErrorsByNodeName[tq.name] = tq.expectedOutputError; }
-    }
-
-    return { dryRunErrorsByNodeName, dryRunIncrementalErrorsByNodeName, dryRunExpectedOutputErrorsByNodeName, dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName };
-}
 function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, relativeFilePath: string, modelObjType: string, isJsFile: boolean) {
     return isJsFile
         ? ` Query could not be determined for ${modelObjType} in  ${relativeFilePath} <br>
@@ -77,7 +41,7 @@ function parseNotebookFilenames(content: string): string[] {
   return filenames;
 }
 
-// Optimized getQueryMetaForCurrentFile using FILE_NODE_MAP cache
+// Optimized getQueryMetaForCurrentFile using the file lookup
 export async function getQueryMetaForCurrentFile(relativeFilePath: string, compiledJson: DataformCompiledJson, workspaceFolder:string): Promise<TablesWtFullQuery> {
 
     const { notebooks } = compiledJson;
@@ -108,7 +72,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
 
     // O(1) Lookup from cache
-    const fileNodes = FILE_NODE_MAP.get(relativeFilePath) || [];
+    const fileNodes = compiledIndices(workspaceFolder).fileNodeMap.get(relativeFilePath) || [];
 
     if (fileNodes.length > 0) {
         // 1. Tables/Views/Incremental
@@ -360,7 +324,7 @@ export async function getDataformTags(compiledJson: DataformCompiledJson) {
 
 export async function getDependenciesAutoCompletionItems(compiledJson: DataformCompiledJson) {
 
-    let sourceAutoCompletionPreference = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sourceAutoCompletionPreference');
+    let sourceAutoCompletionPreference = extensionConfiguration().get('sourceAutoCompletionPreference');
 
     let targets = compiledJson.targets;
     let declarations = compiledJson.declarations;

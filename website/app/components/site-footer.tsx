@@ -28,6 +28,9 @@ export function SiteFooter() {
           <p className="max-w-sm text-xs text-muted-foreground">
             Community-built and open source · not an official Google product.
           </p>
+          <p className="max-w-sm text-xs text-muted-foreground">
+            dbt and dbt Core are trademarks of dbt Labs, LLC. This project is not affiliated with or endorsed by dbt Labs.
+          </p>
         </div>
 
         <nav className="flex flex-col gap-2">

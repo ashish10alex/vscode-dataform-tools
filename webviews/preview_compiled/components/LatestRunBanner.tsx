@@ -1,33 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, ChevronRight, ChevronDown, ExternalLink, Loader2, FileCode, Download, Maximize2, Minimize2 } from 'lucide-react';
-import { ColumnDef } from '@tanstack/react-table';
-import { WebviewState, ActionCounts, WorkflowAction, WorkflowUrlEntry } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronRight, ChevronDown, ExternalLink, Loader2, Maximize2, Minimize2 } from 'lucide-react';
+import { PanelState, ActionCounts } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
-import { DataTable } from '../../components/ui/data-table';
-import { formatDuration, needsJobStats } from '../../../src/shared/jobTiming';
+import { formatDuration } from '../../../src/shared/jobTiming';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
+import { SHOW_RUN_DETAILS_EVENT } from './RunStatusPill';
 import { IncludedTargetsList } from './IncludedTargetsList';
+import { RunViaTag, WorkflowActionsTable, executionModeLabel, useTick, getStatusIcon, workflowDurationMs } from './WorkflowActionsTable';
 
 interface LatestRunBannerProps {
-    state: WebviewState;
+    state: PanelState;
     submittingSince?: number | null;
 }
 
-function getStatusIcon(status?: string | null) {
-    if (!status) { return <CircleDashed className="w-3.5 h-3.5 text-[var(--vscode-descriptionForeground)]" />; }
-    switch (status) {
-        case 'SUCCEEDED':
-            return <CheckCircle2 className="w-3.5 h-3.5 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />;
-        case 'FAILED':
-        case 'CANCELLED':
-            return <XCircle className="w-3.5 h-3.5 text-[var(--vscode-errorForeground)]" />;
-        case 'RUNNING':
-            return <RefreshCw className="w-3.5 h-3.5 text-[var(--vscode-textLink-foreground)] animate-spin" />;
-        default:
-            return <Clock className="w-3.5 h-3.5 text-[var(--vscode-editorMarkerNavigationWarning-foreground)]" />;
-    }
-}
 
 type BadgeTone = 'link' | 'success' | 'error' | 'muted';
 
@@ -53,11 +39,11 @@ function CountBadgeText({ label, value }: { label: string; value?: string }) {
     );
 }
 
-function renderCountBadges(counts: ActionCounts | undefined) {
+function renderCountBadges(counts: ActionCounts | undefined, what: string) {
     if (!counts || counts.total === 0) { return null; }
     return (
         <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">Actions ({counts.total}):</span>
+            <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">{what} ({counts.total}):</span>
             {counts.running > 0 && <CountBadge tone="link" label="Running" count={counts.running} />}
             {counts.succeeded > 0 && <CountBadge tone="success" label="Succeeded" count={counts.succeeded} />}
             {counts.failed > 0 && <CountBadge tone="error" label="Failed" count={counts.failed} />}
@@ -67,192 +53,28 @@ function renderCountBadges(counts: ActionCounts | undefined) {
     );
 }
 
-const TOTAL_CELL_CLASS = 'font-mono text-[10px] font-semibold text-[var(--vscode-foreground)]';
-const STAT_CELL_CLASS = 'font-mono text-[10px] text-[var(--vscode-descriptionForeground)]';
-
-const DURATION_HELP = 'How long the BigQuery job took, start to end, including time spent waiting for free slots. '
-    + 'The total is the whole workflow, start to end, since actions run in parallel.';
-const SLOT_TIME_HELP = 'How much compute the query used: working time added up across all the BigQuery workers (slots) that ran it. '
-    + 'High slot time means an expensive query, even when Duration is short. The total is the sum across jobs.';
-
-/** Column header with a hover explanation; the dotted underline hints that there is one. */
-function HelpHeader({ label, help }: { label: string; help: string }) {
-    return <span title={help} className="cursor-help underline decoration-dotted underline-offset-2">{label}</span>;
-}
-
-/** Time since a running action started, from the Dataform API, until its BigQuery job time is known. */
-function runningElapsedMs(action: WorkflowAction): number | undefined {
-    return action.state === 'RUNNING' && action.startTime ? Date.now() - action.startTime : undefined;
-}
-
-/** Start to end of the whole invocation; runs saved before timing was recorded have none. */
-function workflowDurationMs(entry: WorkflowUrlEntry | undefined): number | undefined {
-    return entry?.invocationStartTime && entry.invocationEndTime ? entry.invocationEndTime - entry.invocationStartTime : undefined;
-}
-
-/**
- * Totals cover the whole workflow regardless of the table's filters: `jobStatsSummary` for BigQuery stats, and the
- * invocation's wall-clock time for Duration, since actions run in parallel.
- */
-function buildActionColumns(workflowInvocationId: string | undefined, summary: WorkflowUrlEntry['jobStatsSummary'], totalDurationMs: number | undefined): ColumnDef<WorkflowAction>[] {
-    const jobCount = (actions: WorkflowAction[]) => actions.filter(a => a.jobStats && !a.jobStats.error).length;
-    return [
-    {
-        accessorKey: 'target',
-        header: 'Target',
-        size: 320,
-        cell: ({ row }) => (
-            <span className="font-mono text-xs text-[var(--vscode-foreground)] break-all">{row.original.target}</span>
-        ),
-        footer: summary ? ({ table }) => (
-            <span className="text-xs font-semibold text-[var(--vscode-foreground)]">
-                Total ({jobCount(table.getCoreRowModel().rows.map(r => r.original))} BigQuery jobs)
-            </span>
-        ) : undefined,
-    },
-    {
-        accessorKey: 'state',
-        header: 'State',
-        size: 140,
-        cell: ({ row }) => (
-            <span className="inline-flex items-center gap-1">
-                {getStatusIcon(row.original.state)}
-                <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]">{row.original.state}</span>
-            </span>
-        ),
-    },
-    {
-        id: 'duration',
-        header: () => <HelpHeader label="Duration" help={DURATION_HELP} />,
-        size: 110,
-        accessorFn: (action) => action.jobStats?.durationMs ?? runningElapsedMs(action) ?? -1,
-        cell: ({ row }) => {
-            const stats = row.original.jobStats;
-            if (stats?.durationMs !== undefined) {
-                const title = `BigQuery job started ${new Date(stats.startTime!).toLocaleString()}\nEnded ${new Date(stats.endTime!).toLocaleString()}`;
-                return <span className={STAT_CELL_CLASS} title={title}>{formatDuration(stats.durationMs)}</span>;
-            }
-            const elapsedMs = runningElapsedMs(row.original);
-            if (elapsedMs !== undefined) {
-                return (
-                    <span className={`${STAT_CELL_CLASS} italic opacity-70 whitespace-nowrap`} title="Time since the action started; replaced by the BigQuery job time when it finishes">
-                        running · {formatDuration(elapsedMs)}
-                    </span>
-                );
-            }
-            return <span className={STAT_CELL_CLASS} title={stats?.error}>{stats?.error ? 'n/a' : ''}</span>;
-        },
-        footer: totalDurationMs !== undefined
-            ? () => <span className={TOTAL_CELL_CLASS} title="Start to end of the whole workflow; actions run in parallel">{formatDuration(totalDurationMs)}</span>
-            : undefined,
-    },
-    {
-        id: 'slotTime',
-        header: () => <HelpHeader label="Slot Time" help={SLOT_TIME_HELP} />,
-        size: 110,
-        accessorFn: (action) => action.jobStats?.totalSlotMs ?? -1,
-        cell: ({ row }) => {
-            const slotMs = row.original.jobStats?.totalSlotMs;
-            return slotMs === undefined ? null : (
-                <span className={STAT_CELL_CLASS} title={`${slotMs.toLocaleString()} slot-ms`}>{formatDuration(slotMs)}</span>
-            );
-        },
-        footer: summary?.totalSlotMs !== undefined
-            ? () => <span className={TOTAL_CELL_CLASS} title={`${summary.totalSlotMs!.toLocaleString()} slot-ms`}>{formatDuration(summary.totalSlotMs!)}</span>
-            : undefined,
-    },
-    {
-        id: 'bytesBilled',
-        header: 'Bytes Billed',
-        size: 110,
-        accessorFn: (action) => action.jobStats?.totalBytesBilled ?? -1,
-        cell: ({ row }) => {
-            const stats = row.original.jobStats;
-            return (
-                <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]" title={stats?.error}>
-                    {stats?.error ? 'n/a' : stats?.bytesBilledLabel ?? ''}
-                </span>
-            );
-        },
-        footer: summary ? () => <span className={TOTAL_CELL_CLASS}>{summary.bytesBilledLabel}</span> : undefined,
-    },
-    {
-        id: 'cost',
-        header: 'Est. Cost',
-        size: 100,
-        accessorFn: (action) => action.jobStats?.cost ?? -1,
-        cell: ({ row }) => (
-            <span className="font-mono text-[10px] text-[var(--vscode-descriptionForeground)]">
-                {row.original.jobStats?.costLabel ?? ''}
-            </span>
-        ),
-        footer: summary ? () => <span className={TOTAL_CELL_CLASS}>{summary.costLabel}</span> : undefined,
-    },
-    {
-        accessorKey: 'failureReason',
-        header: 'Failure Reason',
-        cell: ({ row }) => (
-            <span className="text-[var(--vscode-errorForeground)] whitespace-pre-wrap break-words text-xs">
-                {row.original.failureReason || ''}
-            </span>
-        ),
-    },
-    {
-        id: 'job',
-        header: 'Job',
-        size: 70,
-        enableSorting: false,
-        cell: ({ row }) => row.original.jobId ? (
-            <span className="inline-flex items-center gap-1">
-                <button
-                    onClick={() => vscode.postMessage({ command: 'openExecutedSql', value: { workflowInvocationId, target: row.original.target } })}
-                    className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
-                    title="View executed SQL"
-                    aria-label="View executed SQL"
-                >
-                    <FileCode className="w-3.5 h-3.5" />
-                </button>
-                <button
-                    onClick={() => vscode.postMessage({ command: 'openBigQueryJob', value: { workflowInvocationId, target: row.original.target } })}
-                    className="p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-textLink-foreground)]"
-                    title={`Open BigQuery job ${row.original.jobId}`}
-                    aria-label="Open BigQuery job in the Cloud Console"
-                >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                </button>
-            </span>
-        ) : null,
-    },
-    ];
-}
 
 export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps) {
     const [expanded, setExpanded] = useState(false);
     // Full width covers the whole panel with the run details, giving the actions table room.
     const [fullWidth, setFullWidth] = useState(false);
     const showDetails = expanded || fullWidth;
-    const items = state.workflowUrls || [];
+    const items = state.dataform.workflowUrls || [];
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
-    const actionRows = useMemo<WorkflowAction[]>(() => latest?.actions ?? [], [latest?.actions]);
     const totalDurationMs = workflowDurationMs(latest);
-    const actionColumns = useMemo(
-        () => buildActionColumns(latest?.workflowInvocationId, latest?.jobStatsSummary, totalDurationMs),
-        [latest?.workflowInvocationId, latest?.jobStatsSummary, totalDurationMs]
-    );
+    // A CLI run's entry is sent only when its jobs change, so the time it has run for is counted here
+    useTick(latest?.executionMode === 'cli' && !(latest.state && TERMINAL_WORKFLOW_STATES.has(latest.state)));
 
-    // Job stats normally arrive with each status refresh while the run is in progress. This one-off request
-    // covers history entries that finished without them, when the user opens the run details.
-    const statsRequestedFor = useRef<Set<string>>(new Set());
+    // The pill in the header asks for the details from wherever the panel is scrolled to
+    const banner = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        const invocationId = latest?.workflowInvocationId;
-        if (!showDetails || !invocationId || statsRequestedFor.current.has(invocationId)) { return; }
-        const needsStats = actionRows.some(needsJobStats);
-        const isFinished = !!latest?.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
-        if (needsStats && isFinished) {
-            statsRequestedFor.current.add(invocationId);
-            vscode.postMessage({ command: 'loadWorkflowJobStats', value: { workflowInvocationId: invocationId } });
-        }
-    }, [showDetails, latest?.workflowInvocationId, latest?.state, actionRows]);
+        const show = () => {
+            setExpanded(true);
+            banner.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
+        return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
+    }, []);
 
     useEffect(() => {
         if (!fullWidth) { return; }
@@ -276,10 +98,11 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     if (!latest) { return null; }
 
     const isTerminal = !!latest.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
+    const isCli = latest.executionMode === 'cli';
     const elapsedSec = Math.max(0, Math.floor((Date.now() - latest.timestamp) / 1000));
 
     return (
-        <div className={fullWidth
+        <div ref={banner} className={fullWidth
             ? 'fixed inset-0 z-50 flex flex-col gap-2 overflow-auto bg-[var(--vscode-editor-background)] p-4'
             : 'mt-3 flex flex-col gap-2 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-editorWidget-background)] p-2.5'}>
             <div className="flex items-center gap-2 text-xs">
@@ -294,8 +117,9 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 </button>}
                 {getStatusIcon(latest.state)}
                 <span className="font-mono text-[var(--vscode-foreground)]">
-                    Latest API run: {latest.workspace || '(unknown workspace)'} · {latest.state || 'UNKNOWN'}
+                    Latest run: {isCli ? '' : `${latest.workspace || '(unknown workspace)'} · `}{latest.state || 'UNKNOWN'}
                 </span>
+                <RunViaTag entry={latest} />
                 <span
                     className="text-[var(--vscode-descriptionForeground)]"
                     title={new Date(latest.timestamp).toISOString()}
@@ -307,14 +131,14 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 )}
                 <CancelWorkflowButton entry={latest} />
                 <span className="ml-auto" />
-                <button
+                {latest.url && <button
                     onClick={() => vscode.postMessage({ command: 'openExternal', url: latest.url })}
                     className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] inline-flex items-center gap-1 p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
                     title="Open in GCP"
                     aria-label="Open in GCP"
                 >
                     <ExternalLink className="w-3.5 h-3.5" />
-                </button>
+                </button>}
                 <button
                     onClick={() => setFullWidth(v => !v)}
                     className="text-[var(--vscode-foreground)] p-0.5 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)]"
@@ -326,7 +150,11 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 </button>
             </div>
 
-            {renderCountBadges(latest.actionCounts)}
+            {renderCountBadges(latest.actionCounts, isCli ? 'BigQuery jobs' : 'Actions')}
+
+            {latest.jobsNote && (
+                <div className="text-[11px] text-[var(--vscode-descriptionForeground)]">{latest.jobsNote}</div>
+            )}
 
             {isTerminal && (latest.jobStatsSummary || totalDurationMs !== undefined) && (
                 <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--vscode-descriptionForeground)]">
@@ -348,12 +176,14 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                         <span className="text-[var(--vscode-descriptionForeground)]">Time</span>
                         <span className="text-[var(--vscode-foreground)]">{new Date(latest.timestamp).toLocaleString()}</span>
 
-                        <span className="text-[var(--vscode-descriptionForeground)]">Target Workspace</span>
-                        <span>
-                            <span className="px-2 py-0.5 rounded-full bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] text-xs font-mono">
-                                {latest.workspace || 'unknown'}
+                        {!isCli && <>
+                            <span className="text-[var(--vscode-descriptionForeground)]">Target Workspace</span>
+                            <span>
+                                <span className="px-2 py-0.5 rounded-full bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] text-xs font-mono">
+                                    {latest.workspace || 'unknown'}
+                                </span>
                             </span>
-                        </span>
+                        </>}
 
                         <span className="text-[var(--vscode-descriptionForeground)]">Action</span>
                         <span className="text-[var(--vscode-foreground)]">
@@ -374,7 +204,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
 
                         <span className="text-[var(--vscode-descriptionForeground)]">Execution Mode</span>
                         <span className="text-[var(--vscode-foreground)]">
-                            {latest.executionMode === 'api_workspace' ? 'GCP Workspace' : 'gitCommitish'}
+                            {executionModeLabel(latest)}
                         </span>
 
                         <span className="text-[var(--vscode-descriptionForeground)]">Execution Options</span>
@@ -411,31 +241,9 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                         </span>
                     </div>
 
-                    {actionRows.length > 0 && (
-                        <div className={`flex flex-col gap-1 ${fullWidth ? 'flex-1 min-h-0' : ''}`}>
-                            <div className="flex items-center gap-2 text-xs font-medium text-[var(--vscode-foreground)]">
-                                Actions ({actionRows.length})
-                                <button
-                                    onClick={() => vscode.postMessage({ command: 'exportWorkflowActionsCsv', value: { workflowInvocationId: latest.workflowInvocationId } })}
-                                    className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-normal text-[var(--vscode-textLink-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]"
-                                    title="Export every action with its timing, slot time, bytes billed and cost to a CSV file"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                    Export CSV
-                                </button>
-                            </div>
-                            <div className={fullWidth ? 'flex-1 min-h-[12rem] overflow-auto' : 'max-h-[28rem] overflow-auto'}>
-                                <DataTable
-                                    columns={actionColumns}
-                                    data={actionRows}
-                                    paginated={false}
-                                    autoFocusColumnId="target"
-                                    initialSorting={[{ id: 'state', desc: false }]}
-                                    footerPosition="top"
-                                />
-                            </div>
-                        </div>
-                    )}
+                    <div className={`flex flex-col gap-1 ${fullWidth ? 'flex-1 min-h-0' : ''}`}>
+                        <WorkflowActionsTable entry={latest} className={fullWidth ? 'flex-1 min-h-[12rem] overflow-auto' : 'max-h-[28rem] overflow-auto'} />
+                    </div>
                 </div>
             )}
         </div>

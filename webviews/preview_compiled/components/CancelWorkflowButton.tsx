@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { HostEvent } from "../../../src/shared/panelContract";
 import { CircleStop, Loader2 } from 'lucide-react';
 import { WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
@@ -15,7 +16,8 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
     useEffect(() => {
         if (!requested) { return; }
         const handleMessage = (event: MessageEvent) => {
-            if (event.data?.cancelWorkflowInvocationFailed === entry.workflowInvocationId) {
+            const sent = event.data as HostEvent | undefined;
+            if (sent?.event === 'workflow cancel failed' && sent.workflowInvocationId === entry.workflowInvocationId) {
                 setRequested(false);
             }
         };
@@ -41,10 +43,14 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
         <button
             onClick={() => {
                 setRequested(true);
-                vscode.postMessage({ command: 'cancelWorkflowInvocation', value: { workflowInvocationId: entry.workflowInvocationId } });
+                if (entry.workflowInvocationId) {
+                    vscode.postMessage({ command: 'dataform.cancelWorkflowInvocation', workflowInvocationId: entry.workflowInvocationId });
+                }
             }}
             className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-[var(--vscode-errorForeground)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--vscode-errorForeground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] transition-colors"
-            title="Stop the run: running actions are cancelled and pending ones skipped (cancels the Dataform workflow invocation)"
+            title={entry.executionMode === 'cli'
+                ? 'Stop the run: its running BigQuery jobs are cancelled, and those it starts until it ends (asks first)'
+                : 'Stop the run: running actions are cancelled and pending ones skipped (cancels the Dataform workflow invocation)'}
             aria-label="Stop workflow run"
         >
             <CircleStop className="w-3 h-3" />

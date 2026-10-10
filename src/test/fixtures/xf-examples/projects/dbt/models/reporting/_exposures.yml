@@ -1,0 +1,15 @@
+version: 2
+
+exposures:
+  - name: revenue_dashboard
+    label: Revenue dashboard
+    type: dashboard
+    maturity: medium
+    url: https://lookerstudio.google.com/
+    description: The finance team's revenue dashboard.
+    depends_on:
+      - ref('revenue_report')
+      - ref('daily_revenue')
+    owner:
+      name: Finance
+      email: finance@example.com

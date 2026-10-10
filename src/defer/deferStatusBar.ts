@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
-import { pickBackendConfigurationTarget } from '../utils/remoteCompiler';
+import { currentDataformRoot, onDidChangeActiveProject, projects } from '../project';
 import { getDeferAvailability, isDeferEnabled } from './index';
 import { clearProdTargetCache } from './prodTargets';
 import { clearTableExistenceCache } from './tableExistence';
 import { removeProxyViews } from './proxyViews';
 import { getOrCompileDataformJson } from '../utils/dataformCompiler';
+import { pickConfigurationTarget, resolveDataformOptions } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -16,7 +18,7 @@ const DEFER_SETTINGS = ['deferToProd', 'prodCompilerOptions', 'compilerOptions']
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 function currentWorkspaceFolder(): string | undefined {
-    return globalThis.workspaceFolder || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    return currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
 function refreshStatusBar() {
@@ -24,7 +26,8 @@ function refreshStatusBar() {
         return;
     }
     const workspaceFolder = currentWorkspaceFolder();
-    if (!workspaceFolder) {
+    // Defer to prod is Dataform's: the item is not shown while the active Project is a dbt one
+    if (!workspaceFolder || projects.active?.backend === 'dbt') {
         statusBarItem.hide();
         return;
     }
@@ -49,8 +52,8 @@ function refreshStatusBar() {
 /** Flips defer to prod, or sets it to `enabled` when given, so a caller with a stale view of the setting cannot invert it */
 async function toggleDeferToProd(enabled?: boolean) {
     const workspaceFolder = currentWorkspaceFolder();
-    const config = vscode.workspace.getConfiguration('vscode-dataform-tools', workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
-    const target = pickBackendConfigurationTarget(config.inspect<boolean>('deferToProd'), !!vscode.workspace.workspaceFolders?.length);
+    const config = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    const target = pickConfigurationTarget(config.inspect<boolean>('deferToProd'), !!vscode.workspace.workspaceFolders?.length);
     const value = typeof enabled === 'boolean' ? enabled : !isDeferEnabled(workspaceFolder);
     if (value === isDeferEnabled(workspaceFolder)) {
         return;
@@ -76,7 +79,7 @@ async function removeProxyViewsCommand(ids?: string[]) {
         return;
     }
     const workspaceFolder = currentWorkspaceFolder();
-    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder) : undefined);
+    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder)) : undefined);
 }
 
 async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
@@ -107,6 +110,7 @@ export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: 
     statusBarItem.command = 'vscode-dataform-tools.deferToProdActions';
     context.subscriptions.push(
         statusBarItem,
+        onDidChangeActiveProject(() => refreshStatusBar()),
         vscode.commands.registerCommand('vscode-dataform-tools.toggleDeferToProd', toggleDeferToProd),
         vscode.commands.registerCommand('vscode-dataform-tools.deferToProdActions', () => deferToProdActions(refreshPanel)),
         vscode.commands.registerCommand('vscode-dataform-tools.removeProxyViews', removeProxyViewsCommand),

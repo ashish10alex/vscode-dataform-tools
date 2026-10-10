@@ -2,15 +2,15 @@ import * as vscode from 'vscode';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { DataformCompiledJson, Target, WorkflowUrlEntry } from './types';
+import { QueryWtType, Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformColumnHoverProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
 import { registerConfigBlockFeatures } from './configBlock/providers';
-import { defaultCdnLinks, executablesToCheck } from './constants';
+import { defaultCdnLinks } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
-import { executableIsAvailable, isDataformWorkspace, prewarmCliCompilation } from './utils';
+import { executableIsAvailable, prewarmCliCompilation } from './utils';
 import { initCliCompileCache } from './utils/cliCompileCache';
 import { clearExecutablePathCache, prefetchExecutablePath } from './utils/executableResolver';
 import { sourcesAutoCompletionDisposable, dependenciesAutoCompletionDisposable, tagsAutoCompletionDisposable, schemaAutoCompletionDisposable } from './completions';
@@ -21,7 +21,7 @@ import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './c
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
-import { initRemoteCompiler, isRemoteMode } from './utils/remoteCompiler';
+import { initRemoteCompiler } from './utils/remoteCompiler';
 import { clearRemoteCompileCache } from './utils/remoteCompileCache';
 import { getQueryStringForPreview, previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
@@ -29,9 +29,13 @@ import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
 import { runCurrentFile } from './runCurrentFile';
 import { initLastRun } from './lastRun';
+import { initCliRunJobs } from './cliRunJobs';
+import { initRunFeedback } from './runFeedback';
 import { initChangedActions } from './changedActions';
 import { rerunLastExecution } from './rerunLastExecution';
 import { CompiledQueryPanel, onDidPostPanelMessage, refreshCompiledQueryPanel, registerCompiledQueryPanel } from './views/register-preview-compiled-panel';
+import type { DbtPanelMessage } from './shared/panelContract';
+import type { DbtRunMessage } from './views/register-preview-compiled-panel';
 import { initDeferToProd } from './defer/deferStatusBar';
 import { initProdTargets } from './defer/prodTargets';
 import { registerDeferEditorHints } from './defer/deferEditorHints';
@@ -44,6 +48,19 @@ import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineag
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
 import { debounce } from './debounce';
 import { getPerfSnapshot, perfStart, resetPerf } from './perf';
+import { extensionConfiguration } from './project/settings';
+import { backendContext, currentDataformRoot, initProjects, projects, requiredTools } from './project';
+import { dbtTool, initDbtTools } from './project/dbtTool';
+import { clearDbtArtifacts, compileDbtProject, forgetDbtCompile, initDbtCompile } from './project/dbtCompile';
+import { initDbtRuns, lastDbtRun } from './project/dbtRun';
+import { initDbtChanges } from './project/dbtChanges';
+import { initDbtDiagnostics } from './project/dbtDiagnostics';
+import { initDbtEditor } from './project/dbtEditor';
+import { initDbtWithoutPanel, setDbtWithoutPanel } from './project/dbtWithoutPanel';
+import { heldTableCount, initDbtSchemas, setTableFetch } from './project/dbtSchemas';
+import { setDbtDryRun } from './project/dbtBigQuery';
+import { dbtPreviewFile, dbtRerun, dbtRunChanged, dbtRunFile, dbtRunTag, dbtRunTestsOfFile, dbtRunWithOptions } from './project/dbtCommands';
+import { isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 
 let lastDataformFilePath: string | undefined;
 
@@ -62,8 +79,6 @@ export async function activate(context: vscode.ExtensionContext) {
         dispose: () => logger.dispose()
     });
 
-    globalThis.CACHED_COMPILED_DATAFORM_JSON = undefined as DataformCompiledJson | undefined;
-    logger.debug('Extension activated - initialized global cache (CACHED_COMPILED_DATAFORM_JSON = undefined)');
     globalThis.declarationsAndTargets = [] as string[];
     globalThis.dataformTags = [] as string[];
     globalThis.isRunningOnWindows = os.platform() === 'win32' ? true : false;
@@ -83,9 +98,6 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.workspaceFolder = undefined;
     globalThis.errorInPreOpsDenyList = false;
     globalThis.compilerOptionsMap = {};
-    globalThis.FILE_NODE_MAP = new Map();
-    globalThis.TARGET_DEPENDENTS_MAP = new Map();
-    globalThis.TARGET_NAME_MAP = new Map();
     globalThis.DEBOUNCE_WAIT = 750;
 
     const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
@@ -94,18 +106,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
     initRemoteCompiler(context);
     initLastRun(context);
+    initRunFeedback(context);
+    initCliRunJobs(context);
     initChangedActions(context);
+    initProjects(context);
+    initDbtTools(context);
+    initDbtCompile(context);
+    initDbtRuns(context);
+    initDbtChanges(context);
+    initDbtDiagnostics(context);
+    initDbtSchemas(context);
+    initDbtEditor(context);
+    initDbtWithoutPanel(context);
     initProdTargets(context);
     initCliCompileCache(context);
 
-    // Searching PATH runs `which`/`where`: do it in the background, then warn about anything missing
-    const activationWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const executablesNeeded = executablesToCheck.filter((executable) => !(executable === 'dataform' && isRemoteMode())); // Remote mode compiles with the Dataform API
-    Promise.all(executablesNeeded.map(prefetchExecutablePath)).then(() => {
-        for (const executable of executablesNeeded) {
-            executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
-        }
-    }).catch((error) => logger.error(`Failed to look up executables: ${error}`));
+    // Searching PATH runs `which`/`where`: do it in the background, then warn about anything missing.
+    // Only for a Dataform Project, and only its own tool: a window without one is left alone.
+    const activationWorkspaceFolder = currentDataformRoot() ?? projects.projects.find((project) => project.backend === 'dataform')?.root;
+    if (activationWorkspaceFolder) {
+        const executablesNeeded = requiredTools('dataform', { compilationMode: isRemoteMode() ? 'api' : 'cli' });
+        Promise.all(executablesNeeded.map((executable) => prefetchExecutablePath(executable, activationWorkspaceFolder))).then(() => {
+            for (const executable of executablesNeeded) {
+                executableIsAvailable(executable, true, activationWorkspaceFolder); // Show error if not found
+            }
+        }).catch((error) => logger.error(`Failed to look up executables: ${error}`));
+    }
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
         if (['dataformCliScope', 'dataformExecutablePath', 'gcloudExecutablePath', 'sqlfluffExecutablePath'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
             clearExecutablePathCache();
@@ -119,9 +145,9 @@ export async function activate(context: vscode.ExtensionContext) {
     initDeferToProd(context, refreshCompiledQueryPanel);
 
     // Only when the project is unambiguous: the compiled JSON is shared by the whole window
-    const dataformFolders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath).filter(isDataformWorkspace);
+    const dataformFolders = projects.projects.filter((project) => project.backend === 'dataform').map((project) => project.root);
     if (dataformFolders.length === 1) {
-        prewarmCliCompilation(dataformFolders[0]).catch((error) => logger.error(`Failed to prepare the saved compilation: ${error}`));
+        prewarmCliCompilation(dataformFolders[0], resolveDataformOptions(dataformFolders[0])).catch((error) => logger.error(`Failed to prepare the saved compilation: ${error}`));
     }
     registerDeferEditorHints(context);
     registerExecutedSqlProvider(context);
@@ -135,6 +161,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async () => {
             logger.info('Running query command');
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            if (dbt) {
+                await dbtPreviewFile(dbt);
+                return;
+            }
             await previewQueryResults(queryResultsViewProvider);
         })
     );
@@ -142,11 +173,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // Runs a query the extension generated rather than one taken from the active file,
     // e.g. the starter GQL query built from a property graph.
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runGeneratedQuery', async (query: string, type: string) => {
+        vscode.commands.registerCommand('vscode-dataform-tools.runGeneratedQuery', async (query: string, type: string, place?: QueryWtType['place']) => {
             if (!query) {
                 return;
             }
-            await runQueryInPanel({ query: query, type: type || "table" }, queryResultsViewProvider);
+            await runQueryInPanel({ query: query, type: type || "table", ...(place ? { place } : {}) }, queryResultsViewProvider);
         })
     );
 
@@ -232,6 +263,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runAssertions', async () => {
+            // In a dbt Project: build the tests attached to the open model
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            if (dbt) {
+                await dbtRunTestsOfFile(dbt);
+                return;
+            }
             let curFileMeta = await getCurrentFileMetadata(false);
             if (!curFileMeta?.fileMetadata) {
                 return;
@@ -305,24 +342,34 @@ export async function activate(context: vscode.ExtensionContext) {
             logger.info(`Cleared cached data for key: ${key}`);
         });
         clearRemoteCompileCache();
+        clearDbtArtifacts().catch((error) => logger.error(`Failed to clear the dbt artifacts: ${error}`));
         vscode.window.showInformationMessage('Dataform Tools extension cache cleared.');
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.rerunLastExecution', () => rerunLastExecution(context)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.rerunLastExecution', () => {
+        const dbt = CompiledQueryPanel.activeDbtFile();
+        return dbt ? dbtRerun(dbt) : rerunLastExecution(context);
+    }));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.openLastWorkflowExecution', async () => {
         const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-        const lastEntry = workflowUrls[workflowUrls.length - 1];
-        if (!lastEntry?.url) {
+        // A CLI run has no page to open
+        const lastEntry = workflowUrls.filter((entry) => entry.url).pop();
+        if (!lastEntry) {
             vscode.window.showInformationMessage('No workflow execution found. Run a file or tag using the API first.');
             return;
         }
         await vscode.env.openExternal(vscode.Uri.parse(lastEntry.url));
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', () => { runCurrentFile(context, false, false, false, "cli"); }));
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', () => { runCurrentFile(context, true, false, false, "cli"); }));
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', () => { runCurrentFile(context, false, true, false, "cli"); }));
+    // In a dbt Project the run commands are `dbt build` in the extension's terminal (xf#63)
+    const runFile = (includeDependencies: boolean, includeDependents: boolean) => () => {
+        const dbt = CompiledQueryPanel.activeDbtFile();
+        return dbt ? dbtRunFile(dbt, { includeDependencies, includeDependents, fullRefresh: false }) : runCurrentFile(context, includeDependencies, includeDependents, false, "cli");
+    };
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFile', runFile(false, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', runFile(true, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', runFile(false, true)));
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => {
         let transitiveDependenciesIncluded = false;
@@ -367,7 +414,10 @@ export async function activate(context: vscode.ExtensionContext) {
     }));
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => { runFilesTagsWtOptions(context, "cli"); })
+        vscode.commands.registerCommand('vscode-dataform-tools.runFilesTagsWtOptions', () => {
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            return dbt ? dbtRunWithOptions(dbt) : runFilesTagsWtOptions(context, "cli");
+        })
     );
 
     context.subscriptions.push(
@@ -379,7 +429,11 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.runChangedActions', (args?: RunChangedActionsArgs) => runChangedActionsCommand(context, "cli", args)),
+        // In a dbt Project, what changed is what dbt finds changed (`state:modified`)
+        vscode.commands.registerCommand('vscode-dataform-tools.runChangedActions', (args?: RunChangedActionsArgs) => {
+            const dbt = CompiledQueryPanel.activeDbtFile();
+            return dbt ? dbtRunChanged(dbt, args) : runChangedActionsCommand(context, "cli", args);
+        }),
         vscode.commands.registerCommand('vscode-dataform-tools.runChangedActionsApi', (args?: RunChangedActionsArgs) => runChangedActionsCommand(context, "api", args)),
     );
 
@@ -404,26 +458,13 @@ export async function activate(context: vscode.ExtensionContext) {
             CompiledQueryPanel.getInstance(context.extensionUri, context, true, true, undefined);
         }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', async () => {
-        let includeDependencies = false;
-        let includeDependents = false;
-        let fullRefresh = false;
-        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', async () => {
-        let includeDependencies = true;
-        let includeDependents = false;
-        let fullRefresh = false;
-        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
-    }));
-
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', async () => {
-        let includeDependencies = false;
-        let includeDependents = true;
-        let fullRefresh = false;
-        runTag(context, includeDependencies, includeDependents, fullRefresh, "cli");
-    }));
+    const runATag = (includeDependencies: boolean, includeDependents: boolean) => () => {
+        const dbt = CompiledQueryPanel.activeDbtFile();
+        return dbt ? dbtRunTag(dbt, { includeDependencies, includeDependents, fullRefresh: false }) : runTag(context, includeDependencies, includeDependents, false, "cli");
+    };
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTag', runATag(false, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDeps', runATag(true, false)));
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runTagWtDownstreamDeps', runATag(false, true)));
 
     const errorLensExtensionInstalled = vscode.extensions.getExtension("usernamehw.errorlens");
     //NOTE: in wsl the extension is not visible in wsl remote by the api as it can be installed in client side (windows) if vscode thinks its is a UI based extension instead of workspace based
@@ -477,7 +518,32 @@ export async function activate(context: vscode.ExtensionContext) {
     endActivateSpan();
 
     // Internal: read by `just bench` (src/bench), not a public API
-    return { __perf: { getPerfSnapshot, resetPerf }, __panel: { onDidPostMessage: onDidPostPanelMessage } };
+    return {
+        __perf: { getPerfSnapshot, resetPerf },
+        __panel: {
+            onDidPostMessage: onDidPostPanelMessage,
+            forgetSentSlices: () => CompiledQueryPanel.centerPanel?.forgetSentSlices(),
+            // As if the panel's page had just begun to listen
+            resendAll: () => CompiledQueryPanel.centerPanel?.resendAll(),
+            // As if a button of a dbt Project's panel had been clicked
+            dbtMessage: (message: DbtPanelMessage) => CompiledQueryPanel.centerPanel?.onDbtMessage(message),
+            // As if Run, a Run Tag or Repeat had been clicked in a dbt Project's panel. Resolves to false when the panel shows no dbt file
+            dbtRunMessage: (message: DbtRunMessage) => CompiledQueryPanel.centerPanel?.onDbtRunMessage(message),
+        },
+        // What the tests of a dbt workspace read (src/dbtWorkspace)
+        __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), active: () => projects.active?.root,
+            /** For tests: a setting as the extension reads it for the Project at `root` */
+            setting: (name: string, root: string) => extensionConfiguration(vscode.Uri.file(root)).get(name),
+            backendContext: () => backendContext(), dbtTool, lastDbtRun,
+            /** For tests: compiles a dbt Project for a file as showing it in the panel does, and drops what its compiles left */
+            compileDbt: async (root: string, file: string) => { const project = projects.find(root, 'dbt'); if (project) { await compileDbtProject(project, file, 'open'); } },
+            /** For tests: what asks BigQuery for a table's schema, and how many are held */
+            setTableFetch, heldTableCount, setDbtDryRun,
+            /** For tests: whether a dbt Project is parsed, and compiled on save, while the panel is closed */
+            setDbtWithoutPanel,
+            forgetDbt: (root: string) => { const project = projects.find(root, 'dbt'); if (project) { forgetDbtCompile(project); } },
+        },
+    };
 }
 
 // This method is called when your extension is deactivated

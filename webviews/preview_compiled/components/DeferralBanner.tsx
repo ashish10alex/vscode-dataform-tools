@@ -75,24 +75,78 @@ const STATUS_NOTE: Record<DeferralEntryView["status"], string | undefined> = {
 
 const SECONDARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]";
 const PRIMARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]";
-const WARNING_BOX = "rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs";
+const WARNING_BOX_CLASS = "rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs";
 /** The prod compile takes a few seconds; past this the lookup has most likely failed without saying so */
 const SLOW_LOOKUP_MS = 30_000;
 const NOT_IN_DEV_TITLE = "Not built in dev, so it is read from prod, like dbt --defer.";
 const BUILT_IN_DEV_TITLE = "Built in dev, so it is read from dev, like dbt --defer. Upstream tables are only read from prod when they are not built in dev.";
-const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
+export const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
+
+/** What a lookup of the upstream tables found, in a line */
+function lookupSummary(entries: DeferralEntryView[], builtInDev: { dev: string }[]): { text: string; noneInProd: boolean } {
+  const deferred = entries.filter((entry) => entry.status === "deferred");
+  // Every upstream table that has a prod name is missing there: the prod options likely point at the wrong place
+  const withProd = entries.filter((entry) => entry.prod);
+  const noneInProd = withProd.length > 0 && withProd.every((entry) => entry.status === "missingEverywhere");
+  const text = noneInProd
+    ? `none of the ${withProd.length} upstream table${withProd.length === 1 ? " was" : "s were"} found in prod`
+    : deferred.length === 0
+      ? builtInDev.length === 0
+        ? "no upstream table is read from prod"
+        : `nothing read from prod: ${entries.length > 0 ? `${builtInDev.length} upstream table${builtInDev.length === 1 ? " is" : "s are"}` : builtInDev.length === 1 ? "the upstream table is" : `all ${builtInDev.length} upstream tables are`} built in dev`
+      : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod${builtInDev.length > 0 ? `, ${builtInDev.length} built in dev read from dev` : ""}`;
+  return { text, noneInProd };
+}
+
+/**
+ * Defer to prod in a few words, for where it has one line: whether it is on, and what that does to the file shown.
+ * `attention` is anything the user should know of without opening the section. Undefined where the Project has no
+ * defer to prod.
+ */
+export function deferralSummary(deferral: DeferralView | null | undefined, deferToProd: DeferToProdState | undefined, leftoverProxies: string[] | null | undefined): { on: boolean; text: string; attention: boolean } | undefined {
+  if (!deferToProd) {
+    return undefined;
+  }
+  if (!deferToProd.enabled) {
+    const proxies = leftoverProxies?.length ?? 0;
+    return proxies > 0
+      ? { on: false, text: `${proxies} proxy view${proxies === 1 ? " reads" : "s read"} prod`, attention: true }
+      : { on: false, text: "defer to prod off", attention: false };
+  }
+  if (!deferToProd.available) {
+    return { on: true, text: "on but not applied", attention: true };
+  }
+  if (!deferral) {
+    return { on: true, text: "looking up upstream tables…", attention: false };
+  }
+  if (deferral.status === "error") {
+    return { on: true, text: "could not look up the upstream tables", attention: true };
+  }
+  const looked = lookupSummary(deferral.status === "ready" ? deferral.entries : [], deferral.status === "ready" ? deferral.builtInDev ?? [] : []);
+  return { on: true, text: looked.text, attention: looked.noneInProd };
+}
 
 /**
  * Defer to prod for the file shown: the switch, a one-line summary and, expanded, which upstream tables are read
  * from prod. Always shown for a query file, as a quiet dashed strip while defer to prod is off, so the switch sits
  * next to what it changes.
  */
-export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { deferral?: DeferralView | null; deferToProd?: DeferToProdState; leftoverProxies?: string[] | null }) {
+export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, on: onGiven }: {
+  deferral?: DeferralView | null;
+  deferToProd?: DeferToProdState;
+  leftoverProxies?: string[] | null;
+  /** Under a switch of its own: only what defer to prod does and needs is shown, with no switch and no box, and nothing while it is off */
+  bare?: boolean;
+  /** Whether that switch is on, which it is at the click, before the panel redraws */
+  on?: boolean;
+}) {
   // Collapsed to the summary by default, like the other sections of the panel; kept across recompiles
   const [expanded, setExpanded] = useState(false);
   // Follows the setting, but flips at once on click instead of waiting for the panel to redraw
-  const [on, setOn] = useState(!!deferToProd?.enabled);
+  const [onHere, setOn] = useState(!!deferToProd?.enabled);
   useEffect(() => setOn(!!deferToProd?.enabled), [deferToProd?.enabled]);
+  const on = onGiven ?? onHere;
+  const WARNING_BOX = bare ? "text-xs" : WARNING_BOX_CLASS;
   // Set by Retry until the panel redraws with the new lookup
   const [retrying, setRetrying] = useState(false);
   useEffect(() => setRetrying(false), [deferral]);
@@ -116,16 +170,16 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   const toggle = (checked: boolean) => {
     setOn(checked);
     setExpanded(false);
-    vscode.postMessage({ command: "toggleDeferToProd", value: checked });
+    vscode.postMessage({ command: "dataform.toggleDeferToProd", on: checked });
   };
   const retry = () => {
     setRetrying(true);
     setAttempt((count) => count + 1);
-    vscode.postMessage({ command: "retryDeferral" });
+    vscode.postMessage({ command: "dataform.retryDeferral" });
   };
-  const deferSwitch = <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
+  const deferSwitch = bare ? null : <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
   const setProdOptionsButton = (label: string, primary: boolean) => (
-    <button onClick={() => vscode.postMessage({ command: "openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
+    <button onClick={() => vscode.postMessage({ command: "dataform.openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
       <Settings2 className="w-3 h-3" /> {label}
     </button>
   );
@@ -151,7 +205,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
             {leftoverProxies.length} upstream table{leftoverProxies.length === 1 ? " is a proxy view" : "s are proxy views"} from an earlier deferred run, so {leftoverProxies.length === 1 ? "it reads" : "they read"} prod
           </span>
           <div className="flex-grow" />
-          <button onClick={() => vscode.postMessage({ command: "removeProxyViews", value: leftoverProxies })} className={SECONDARY_BUTTON}>
+          <button onClick={() => vscode.postMessage({ command: "dataform.removeProxyViews", targets: leftoverProxies })} className={SECONDARY_BUTTON}>
             <Trash2 className="w-3 h-3" /> Remove proxy views
           </button>
         </div>
@@ -160,6 +214,10 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
         ))}
       </div>
     );
+  }
+
+  if (!on && bare) {
+    return null;
   }
 
   if (!on) {
@@ -202,7 +260,6 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   }
 
   const entries = deferral?.status === "ready" ? deferral.entries : [];
-  const deferred = entries.filter((entry) => entry.status === "deferred");
   const warnings = entries.filter((entry) => entry.stale || entry.status !== "deferred").length;
   const builtInDev = deferral?.status === "ready" ? deferral.builtInDev ?? [] : [];
   const hasEntries = !pending && (entries.length > 0 || builtInDev.length > 0);
@@ -216,21 +273,14 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   // Prod dataset of each dev dataset, so a table without a prod name is listed with the others of its dataset
   const prodDatasetOf = new Map<string, string>();
   entries.forEach((entry) => entry.prod && !prodDatasetOf.has(splitTableId(entry.dev).dataset) && prodDatasetOf.set(splitTableId(entry.dev).dataset, splitTableId(entry.prod).dataset));
-  // Every upstream table that has a prod name is missing there: the prod options likely point at the wrong place
-  const withProd = entries.filter((entry) => entry.prod);
-  const noneInProd = !pending && withProd.length > 0 && withProd.every((entry) => entry.status === "missingEverywhere");
+  const looked = lookupSummary(entries, builtInDev);
+  const noneInProd = !pending && looked.noneInProd;
   const summary = pending
     ? (slow ? "still looking up upstream tables, this is taking longer than usual" : "looking up upstream tables…")
-    : noneInProd
-      ? `none of the ${withProd.length} upstream table${withProd.length === 1 ? " was" : "s were"} found in prod`
-      : deferred.length === 0
-        ? builtInDev.length === 0
-          ? "no upstream table is read from prod"
-          : `nothing read from prod: ${entries.length > 0 ? `${builtInDev.length} upstream table${builtInDev.length === 1 ? " is" : "s are"}` : builtInDev.length === 1 ? "the upstream table is" : `all ${builtInDev.length} upstream tables are`} built in dev`
-        : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod${builtInDev.length > 0 ? `, ${builtInDev.length} built in dev read from dev` : ""}`;
+    : looked.text;
 
   return (
-    <div className="rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
+    <div className={bare ? "text-xs space-y-1.5" : "rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5"}>
       <div className="flex flex-wrap items-center gap-2 text-[var(--vscode-foreground)]">
         {deferSwitch}
         <button
@@ -254,7 +304,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
         {pending && slow && logsButton}
         {noneInProd && setProdOptionsButton("Check prod options", false)}
         <button
-          onClick={() => vscode.postMessage({ command: "deferToProdActions" })}
+          onClick={() => vscode.postMessage({ command: "dataform.deferToProdActions" })}
           title="Refresh, remove proxy views or configure defer to prod"
           className={SECONDARY_BUTTON}
         >

@@ -63,7 +63,7 @@ function pickRunType(result: ChangedActionsResult): Promise<RunTypeItem['runType
 
 export async function runChangedActionsCommand(context: vscode.ExtensionContext, executionMode: ExecutionMode, args?: RunChangedActionsArgs) {
     executionMode = resolveExecutionMode(executionMode);
-    const workspaceFolder = await getWorkspaceFolder();
+    const workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) {
         return;
     }

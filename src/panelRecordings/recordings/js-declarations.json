@@ -1,89 +1,285 @@
 {
-  "declarations": [
-    {
-      "canonicalTarget": {
-        "database": "drawingfire-b72a8",
-        "name": "PLAYERS",
-        "schema": "football_data"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
+  },
+  "dataform": {
+    "compilerOptions": "",
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [],
+        "dependents": [
+          {
+            "fileName": "definitions/0100_CLUBS.sqlx",
+            "kind": "view",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_CLUBS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "disabled": false,
+        "fileName": "definitions/sources.js",
+        "id": "drawingfire-b72a8.football_data.CLUBS",
+        "kind": "declaration",
+        "runnable": false,
+        "sections": [],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
+          "database": "drawingfire-b72a8",
+          "name": "CLUBS",
+          "schema": "football_data"
+        }
       },
-      "fileName": "definitions/sources.js",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "PLAYERS",
-        "schema": "football_data"
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [],
+        "dependents": [
+          {
+            "fileName": "definitions/0100_GAMES_META.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_GAMES_META",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "088_DOCUMENT_SYMBOLS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/089_CTE_SYMBOLS.sqlx",
+            "kind": "incremental",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "089_CTE_SYMBOLS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "disabled": false,
+        "fileName": "definitions/sources.js",
+        "id": "drawingfire-b72a8.football_data.GAMES",
+        "kind": "declaration",
+        "runnable": false,
+        "sections": [],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
+          "database": "drawingfire-b72a8",
+          "name": "GAMES",
+          "schema": "football_data"
+        }
+      },
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [],
+        "dependents": [
+          {
+            "fileName": "definitions/0100_GAMES_META.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_GAMES_META",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/0200_GAME_DETAILS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0200_GAME_DETAILS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "088_DOCUMENT_SYMBOLS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/089_CTE_SYMBOLS.sqlx",
+            "kind": "incremental",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "089_CTE_SYMBOLS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "disabled": false,
+        "fileName": "definitions/sources.js",
+        "id": "drawingfire-b72a8.football_data.GAME_EVENTS",
+        "kind": "declaration",
+        "runnable": false,
+        "sections": [],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
+          "database": "drawingfire-b72a8",
+          "name": "GAME_EVENTS",
+          "schema": "football_data"
+        }
+      },
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [],
+        "dependents": [
+          {
+            "fileName": "definitions/0100_PLAYERS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_PLAYERS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/0200_GAME_DETAILS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0200_GAME_DETAILS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "088_DOCUMENT_SYMBOLS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/089_CTE_SYMBOLS.sqlx",
+            "kind": "incremental",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "089_CTE_SYMBOLS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "disabled": false,
+        "fileName": "definitions/sources.js",
+        "id": "drawingfire-b72a8.football_data.PLAYERS",
+        "kind": "declaration",
+        "runnable": false,
+        "sections": [],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
+          "database": "drawingfire-b72a8",
+          "name": "PLAYERS",
+          "schema": "football_data"
+        }
+      },
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [],
+        "dependents": [
+          {
+            "fileName": "definitions/0100_PLAYERS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_PLAYERS",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/tests_for_vscode_extension/088_DOCUMENT_SYMBOLS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "088_DOCUMENT_SYMBOLS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "disabled": false,
+        "fileName": "definitions/sources.js",
+        "id": "drawingfire-b72a8.football_data.PLAYER_VALUATIONS",
+        "kind": "declaration",
+        "runnable": false,
+        "sections": [],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
+          "database": "drawingfire-b72a8",
+          "name": "PLAYER_VALUATIONS",
+          "schema": "football_data"
+        }
+      },
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [],
+        "dependents": [
+          {
+            "fileName": "definitions/0200_PLAYER_TRANSFERS.sqlx",
+            "kind": "table",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0200_PLAYER_TRANSFERS",
+              "schema": "dataform"
+            }
+          }
+        ],
+        "disabled": false,
+        "fileName": "definitions/sources.js",
+        "id": "drawingfire-b72a8.football_data.TRANSFERS",
+        "kind": "declaration",
+        "runnable": false,
+        "sections": [],
+        "sqlPresent": true,
+        "tags": [],
+        "target": {
+          "database": "drawingfire-b72a8",
+          "name": "TRANSFERS",
+          "schema": "football_data"
+        }
       }
+    ],
+    "file": "definitions/sources.js",
+    "role": "actions"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
     },
-    {
-      "canonicalTarget": {
-        "database": "drawingfire-b72a8",
-        "name": "CLUBS",
-        "schema": "football_data"
-      },
-      "fileName": "definitions/sources.js",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "CLUBS",
-        "schema": "football_data"
-      }
-    },
-    {
-      "canonicalTarget": {
-        "database": "drawingfire-b72a8",
-        "name": "GAMES",
-        "schema": "football_data"
-      },
-      "fileName": "definitions/sources.js",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "GAMES",
-        "schema": "football_data"
-      }
-    },
-    {
-      "canonicalTarget": {
-        "database": "drawingfire-b72a8",
-        "name": "GAME_EVENTS",
-        "schema": "football_data"
-      },
-      "fileName": "definitions/sources.js",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "GAME_EVENTS",
-        "schema": "football_data"
-      }
-    },
-    {
-      "canonicalTarget": {
-        "database": "drawingfire-b72a8",
-        "name": "PLAYER_VALUATIONS",
-        "schema": "football_data"
-      },
-      "fileName": "definitions/sources.js",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "PLAYER_VALUATIONS",
-        "schema": "football_data"
-      }
-    },
-    {
-      "canonicalTarget": {
-        "database": "drawingfire-b72a8",
-        "name": "TRANSFERS",
-        "schema": "football_data"
-      },
-      "fileName": "definitions/sources.js",
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "TRANSFERS",
-        "schema": "football_data"
-      }
-    }
-  ],
-  "errorMessage": null,
-  "errorType": null,
-  "isHelperFile": false,
-  "propertyGraphs": null,
-  "recompiling": false,
-  "relativeFilePath": "definitions/sources.js",
-  "workspaceFolder": "<workspace>"
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }

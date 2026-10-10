@@ -1,0 +1,780 @@
+{
+    "tables": [
+        {
+            "type": "table",
+            "target": {
+                "schema": "xf_example",
+                "name": "dim_customers",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\n\n\nWITH orders AS (\n  SELECT\n    o.customer_id,\n    MIN(o.order_date) AS first_order_date,\n    COUNT(*) AS order_count,\n    SUM(p.amount) AS lifetime_value\n  FROM `alex-personal-dev-01.xf_example.stg_orders` AS o\n  LEFT JOIN `alex-personal-dev-01.xf_example.stg_payments` AS p USING (order_id)\n  GROUP BY 1\n)\nSELECT\n  c.customer_id,\n  c.email,\n  c.country_code,\n  o.first_order_date,\n  COALESCE(o.order_count, 0) AS order_count,\n  COALESCE(o.lifetime_value, 0) AS lifetime_value\nFROM `alex-personal-dev-01.xf_example.stg_customers` AS c\nLEFT JOIN orders AS o USING (customer_id)\n\n\n",
+            "disabled": false,
+            "preOps": [
+                "\n  DECLARE run_started TIMESTAMP DEFAULT CURRENT_TIMESTAMP();\n"
+            ],
+            "postOps": [
+                "\n  ALTER TABLE `alex-personal-dev-01.xf_example.dim_customers` SET OPTIONS (description = \"Customers with their order history\")\n"
+            ],
+            "fileName": "definitions\\marts\\dim_customers.sqlx",
+            "bigquery": {
+                "partitionBy": "first_order_date",
+                "clusterBy": [
+                    "customer_id"
+                ]
+            },
+            "tags": [
+                "marts",
+                "daily"
+            ],
+            "actionDescriptor": {
+                "description": "Customers with their order history.",
+                "columns": [
+                    {
+                        "description": "Primary key.",
+                        "path": [
+                            "customer_id"
+                        ]
+                    },
+                    {
+                        "description": "Date of the customer's first order.",
+                        "path": [
+                            "first_order_date"
+                        ]
+                    },
+                    {
+                        "description": "Sum of successful payments, in dollars.",
+                        "path": [
+                            "lifetime_value"
+                        ]
+                    }
+                ]
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "stg_orders",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "stg_payments",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "stg_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "dim_customers",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "incremental",
+            "target": {
+                "schema": "xf_example",
+                "name": "fct_orders",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\n\n\nSELECT\n  o.order_id,\n  o.customer_id,\n  o.order_date,\n  o.status,\n  SUM(p.amount) AS amount\nFROM `alex-personal-dev-01.xf_example.stg_orders` AS o\nLEFT JOIN `alex-personal-dev-01.xf_example.stg_payments` AS p USING (order_id)\n\nGROUP BY 1, 2, 3, 4\n",
+            "disabled": false,
+            "protected": false,
+            "preOps": [
+                "\n  DECLARE since DATE DEFAULT (\n    SELECT DATE \"2024-01-01\"\n  );\n"
+            ],
+            "fileName": "definitions\\marts\\fct_orders.sqlx",
+            "bigquery": {
+                "partitionBy": "order_date",
+                "updatePartitionFilter": "order_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)"
+            },
+            "tags": [
+                "marts",
+                "hourly"
+            ],
+            "actionDescriptor": {
+                "description": "Orders with their payment totals, merged on order_id."
+            },
+            "incrementalQuery": "\n\n\n\nSELECT\n  o.order_id,\n  o.customer_id,\n  o.order_date,\n  o.status,\n  SUM(p.amount) AS amount\nFROM `alex-personal-dev-01.xf_example.stg_orders` AS o\nLEFT JOIN `alex-personal-dev-01.xf_example.stg_payments` AS p USING (order_id)\nWHERE o.order_date > since\nGROUP BY 1, 2, 3, 4\n",
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "stg_orders",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "stg_payments",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "incrementalPreOps": [
+                "\n  DECLARE since DATE DEFAULT (\n    SELECT MAX(order_date) FROM `alex-personal-dev-01.xf_example.fct_orders`\n  );\n"
+            ],
+            "uniqueKey": [
+                "order_id"
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "fct_orders",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "INCREMENTAL",
+            "onSchemaChange": "IGNORE"
+        },
+        {
+            "type": "table",
+            "target": {
+                "schema": "xf_example",
+                "name": "legacy_orders",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT * FROM `alex-personal-dev-01.xf_example.stg_orders`\n",
+            "disabled": true,
+            "fileName": "definitions\\marts\\legacy_orders.sqlx",
+            "actionDescriptor": {
+                "description": "Kept for reference; disabled so it never runs."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "stg_orders",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "legacy_orders",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "reporting",
+                "name": "orders_gb",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\nSELECT o.*\nFROM `alex-personal-dev-01.xf_example.fct_orders` AS o\nJOIN `alex-personal-dev-01.xf_example.dim_customers` AS c USING (customer_id)\nWHERE c.country_code = \"gb\"",
+            "disabled": false,
+            "fileName": "definitions\\reports\\orders_by_country.js",
+            "tags": [
+                "generated"
+            ],
+            "actionDescriptor": {
+                "description": "Orders placed by customers in GB."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "fct_orders",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "dim_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "reporting",
+                "name": "orders_gb",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "VIEW"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "reporting",
+                "name": "orders_us",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\nSELECT o.*\nFROM `alex-personal-dev-01.xf_example.fct_orders` AS o\nJOIN `alex-personal-dev-01.xf_example.dim_customers` AS c USING (customer_id)\nWHERE c.country_code = \"us\"",
+            "disabled": false,
+            "fileName": "definitions\\reports\\orders_by_country.js",
+            "tags": [
+                "generated"
+            ],
+            "actionDescriptor": {
+                "description": "Orders placed by customers in US."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "fct_orders",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "dim_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "reporting",
+                "name": "orders_us",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "VIEW"
+        },
+        {
+            "type": "table",
+            "target": {
+                "schema": "reporting",
+                "name": "revenue_report",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT c.country_code, SUM(o.amount) AS revenue\nFROM `alex-personal-dev-01.xf_example.fct_orders` AS o\nJOIN `alex-personal-dev-01.xf_example.dim_customers` AS c USING (customer_id)\nGROUP BY 1\n",
+            "disabled": false,
+            "fileName": "definitions\\reports\\revenue_report.sqlx",
+            "actionDescriptor": {
+                "description": "Revenue by country, in its own dataset under its own name."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "fct_orders",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "dim_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "reporting",
+                "name": "revenue_report",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "xf_example",
+                "name": "stg_customers",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT\n  id AS customer_id,\n  LOWER(email) AS email,\n  country_code,\n  created_at\nFROM `alex-personal-dev-01.raw.customers`\n",
+            "disabled": false,
+            "fileName": "definitions\\staging\\stg_customers.sqlx",
+            "tags": [
+                "staging"
+            ],
+            "actionDescriptor": {
+                "description": "One row per customer, cleaned up.",
+                "columns": [
+                    {
+                        "description": "Primary key.",
+                        "path": [
+                            "customer_id"
+                        ]
+                    },
+                    {
+                        "description": "Lower-cased email address.",
+                        "path": [
+                            "email"
+                        ]
+                    }
+                ]
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "raw",
+                    "name": "customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "stg_customers",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "VIEW"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "xf_example",
+                "name": "stg_orders",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT\n  id AS order_id,\n  user_id AS customer_id,\n  order_date,\n  status\nFROM `alex-personal-dev-01.raw.orders`\nWHERE order_date >= \"2024-01-01\"\n",
+            "disabled": false,
+            "fileName": "definitions\\staging\\stg_orders.sqlx",
+            "tags": [
+                "staging"
+            ],
+            "actionDescriptor": {
+                "description": "One row per order.",
+                "columns": [
+                    {
+                        "description": "Where the order is: `placed`, `shipped`, `completed` or `returned`.",
+                        "path": [
+                            "status"
+                        ]
+                    }
+                ]
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "raw",
+                    "name": "orders",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "stg_orders",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "VIEW"
+        },
+        {
+            "type": "view",
+            "target": {
+                "schema": "xf_example",
+                "name": "stg_payments",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT\n  id AS payment_id,\n  order_id,\n  payment_method,\n  ROUND(amount / 100, 2) AS amount\nFROM `alex-personal-dev-01.raw.payments`\nWHERE status = \"success\"\n",
+            "disabled": false,
+            "fileName": "definitions\\staging\\stg_payments.sqlx",
+            "tags": [
+                "staging"
+            ],
+            "actionDescriptor": {
+                "description": "One row per successful payment, in dollars."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "raw",
+                    "name": "payments",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "stg_payments",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "VIEW"
+        }
+    ],
+    "operations": [
+        {
+            "target": {
+                "schema": "xf_example",
+                "name": "audit_log",
+                "database": "alex-personal-dev-01"
+            },
+            "queries": [
+                "\n\nCREATE TABLE IF NOT EXISTS `alex-personal-dev-01.xf_example.audit_log` (run_at TIMESTAMP, model STRING, row_count INT64);\n",
+                "\nINSERT INTO `alex-personal-dev-01.xf_example.audit_log` (run_at, model, row_count)\nSELECT CURRENT_TIMESTAMP(), \"fct_orders\", COUNT(*) FROM `alex-personal-dev-01.xf_example.fct_orders`\n"
+            ],
+            "fileName": "definitions\\operations\\audit_log.sqlx",
+            "hasOutput": true,
+            "tags": [
+                "daily"
+            ],
+            "actionDescriptor": {
+                "description": "Creates the audit log if need be and records this run."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "fct_orders",
+                    "database": "alex-personal-dev-01"
+                },
+                {
+                    "schema": "xf_example",
+                    "name": "dim_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "audit_log",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "target": {
+                "schema": "xf_example",
+                "name": "create_udf",
+                "database": "alex-personal-dev-01"
+            },
+            "queries": [
+                "\n\nCREATE OR REPLACE FUNCTION `alex-personal-dev-01.xf_example.cents_to_dollars`(cents INT64)\nRETURNS FLOAT64 AS (ROUND(cents / 100, 2))\n"
+            ],
+            "fileName": "definitions\\operations\\create_udf.sqlx",
+            "tags": [
+                "setup"
+            ],
+            "actionDescriptor": {
+                "description": "Creates the UDF the reports use."
+            },
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "create_udf",
+                "database": "alex-personal-dev-01"
+            }
+        }
+    ],
+    "assertions": [
+        {
+            "query": "\n\nSELECT order_id, amount\nFROM `alex-personal-dev-01.xf_example.fct_orders`\nWHERE status = \"completed\" AND amount < 0\n",
+            "fileName": "definitions\\assertions\\assert_positive_order_totals.sqlx",
+            "target": {
+                "schema": "xf_example_assertions",
+                "name": "assert_positive_order_totals",
+                "database": "alex-personal-dev-01"
+            },
+            "actionDescriptor": {
+                "description": "No completed order has a negative total."
+            },
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "fct_orders",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "xf_example_assertions",
+                "name": "assert_positive_order_totals",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    customer_id,\n    COUNT(1) AS index_row_count\n  FROM `alex-personal-dev-01.xf_example.dim_customers`\n  GROUP BY customer_id\n  ) AS data\nWHERE index_row_count > 1\n",
+            "fileName": "definitions\\marts\\dim_customers.sqlx",
+            "target": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_dim_customers_assertions_uniqueKey_0",
+                "database": "alex-personal-dev-01"
+            },
+            "tags": [
+                "marts",
+                "daily"
+            ],
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "dim_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_dim_customers_assertions_uniqueKey_0",
+                "database": "alex-personal-dev-01"
+            },
+            "parentAction": {
+                "schema": "xf_example",
+                "name": "dim_customers",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "query": "\nSELECT\n  'customer_id IS NOT NULL' AS failing_row_condition,\n  *\nFROM `alex-personal-dev-01.xf_example.dim_customers`\nWHERE NOT (customer_id IS NOT NULL)\n",
+            "fileName": "definitions\\marts\\dim_customers.sqlx",
+            "target": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_dim_customers_assertions_rowConditions",
+                "database": "alex-personal-dev-01"
+            },
+            "tags": [
+                "marts",
+                "daily"
+            ],
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "dim_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_dim_customers_assertions_rowConditions",
+                "database": "alex-personal-dev-01"
+            },
+            "parentAction": {
+                "schema": "xf_example",
+                "name": "dim_customers",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    customer_id,\n    COUNT(1) AS index_row_count\n  FROM `alex-personal-dev-01.xf_example.stg_customers`\n  GROUP BY customer_id\n  ) AS data\nWHERE index_row_count > 1\n",
+            "fileName": "definitions\\staging\\stg_customers.sqlx",
+            "target": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_stg_customers_assertions_uniqueKey_0",
+                "database": "alex-personal-dev-01"
+            },
+            "tags": [
+                "staging"
+            ],
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "stg_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_stg_customers_assertions_uniqueKey_0",
+                "database": "alex-personal-dev-01"
+            },
+            "parentAction": {
+                "schema": "xf_example",
+                "name": "stg_customers",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "query": "\nSELECT\n  'customer_id IS NOT NULL' AS failing_row_condition,\n  *\nFROM `alex-personal-dev-01.xf_example.stg_customers`\nWHERE NOT (customer_id IS NOT NULL)\nUNION ALL\nSELECT\n  'email IS NOT NULL' AS failing_row_condition,\n  *\nFROM `alex-personal-dev-01.xf_example.stg_customers`\nWHERE NOT (email IS NOT NULL)\n",
+            "fileName": "definitions\\staging\\stg_customers.sqlx",
+            "target": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_stg_customers_assertions_rowConditions",
+                "database": "alex-personal-dev-01"
+            },
+            "tags": [
+                "staging"
+            ],
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "stg_customers",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_stg_customers_assertions_rowConditions",
+                "database": "alex-personal-dev-01"
+            },
+            "parentAction": {
+                "schema": "xf_example",
+                "name": "stg_customers",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "query": "\nSELECT\n  'status IN (\\'placed\\', \\'shipped\\', \\'completed\\', \\'returned\\')' AS failing_row_condition,\n  *\nFROM `alex-personal-dev-01.xf_example.stg_orders`\nWHERE NOT (status IN ('placed', 'shipped', 'completed', 'returned'))\nUNION ALL\nSELECT\n  'order_id IS NOT NULL' AS failing_row_condition,\n  *\nFROM `alex-personal-dev-01.xf_example.stg_orders`\nWHERE NOT (order_id IS NOT NULL)\nUNION ALL\nSELECT\n  'customer_id IS NOT NULL' AS failing_row_condition,\n  *\nFROM `alex-personal-dev-01.xf_example.stg_orders`\nWHERE NOT (customer_id IS NOT NULL)\n",
+            "fileName": "definitions\\staging\\stg_orders.sqlx",
+            "target": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_stg_orders_assertions_rowConditions",
+                "database": "alex-personal-dev-01"
+            },
+            "tags": [
+                "staging"
+            ],
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "stg_orders",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "canonicalTarget": {
+                "schema": "xf_example_assertions",
+                "name": "xf_example_stg_orders_assertions_rowConditions",
+                "database": "alex-personal-dev-01"
+            },
+            "parentAction": {
+                "schema": "xf_example",
+                "name": "stg_orders",
+                "database": "alex-personal-dev-01"
+            }
+        }
+    ],
+    "projectConfig": {
+        "warehouse": "bigquery",
+        "defaultSchema": "xf_example",
+        "assertionSchema": "xf_example_assertions",
+        "defaultDatabase": "alex-personal-dev-01",
+        "vars": {
+            "start_date": "2024-01-01"
+        },
+        "defaultLocation": "EU"
+    },
+    "graphErrors": {},
+    "declarations": [
+        {
+            "target": {
+                "schema": "raw",
+                "name": "customers",
+                "database": "alex-personal-dev-01"
+            },
+            "actionDescriptor": {
+                "description": "Raw customers loaded by the ingestion job."
+            },
+            "fileName": "definitions\\sources\\declarations.js",
+            "canonicalTarget": {
+                "schema": "raw",
+                "name": "customers",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "target": {
+                "schema": "raw",
+                "name": "orders",
+                "database": "alex-personal-dev-01"
+            },
+            "actionDescriptor": {
+                "description": "Raw orders loaded by the ingestion job."
+            },
+            "fileName": "definitions\\sources\\declarations.js",
+            "canonicalTarget": {
+                "schema": "raw",
+                "name": "orders",
+                "database": "alex-personal-dev-01"
+            }
+        },
+        {
+            "target": {
+                "schema": "raw",
+                "name": "payments",
+                "database": "alex-personal-dev-01"
+            },
+            "actionDescriptor": {
+                "description": "Raw payments, one row per payment attempt."
+            },
+            "fileName": "definitions\\sources\\payments.sqlx",
+            "canonicalTarget": {
+                "schema": "raw",
+                "name": "payments",
+                "database": "alex-personal-dev-01"
+            }
+        }
+    ],
+    "dataformCoreVersion": "3.0.71",
+    "targets": [
+        {
+            "schema": "xf_example_assertions",
+            "name": "assert_positive_order_totals",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example_assertions",
+            "name": "xf_example_dim_customers_assertions_uniqueKey_0",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example_assertions",
+            "name": "xf_example_dim_customers_assertions_rowConditions",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "dim_customers",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "fct_orders",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "legacy_orders",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "audit_log",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "create_udf",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "reporting",
+            "name": "orders_gb",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "reporting",
+            "name": "orders_us",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "reporting",
+            "name": "revenue_report",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "raw",
+            "name": "customers",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "raw",
+            "name": "orders",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "raw",
+            "name": "payments",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example_assertions",
+            "name": "xf_example_stg_customers_assertions_uniqueKey_0",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example_assertions",
+            "name": "xf_example_stg_customers_assertions_rowConditions",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "stg_customers",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example_assertions",
+            "name": "xf_example_stg_orders_assertions_rowConditions",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "stg_orders",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "stg_payments",
+            "database": "alex-personal-dev-01"
+        }
+    ],
+    "jitData": {}
+}
+

@@ -1,13 +1,35 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
+import { ProjectState, activateProject, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
+import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
+import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
+import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
+import { savedWithoutPanel } from '../project/dbtWithoutPanel';
+import type { DryRunResult } from '../bigquery/dryRunService';
+import { lastDbtRun, onDidRunDbt, runDbt } from '../project/dbtRun';
+import { dbtChangesResult, dbtChangesView, forgetDbtChanges, listDbtChangedActions, onDidChangeDbtChanges, repeatLastDbtRun, runDbtChangedActions } from '../project/dbtChanges';
+import type { BigQuerySlice, DataformBlock, DbtBlock, DbtPanelMessage, DryRunKey, FileProblem, FileSlice, HostEvent, HostMessage, PanelMessage } from '../shared/panelContract';
+import { CompileState, actionsNamed, bigQuerySlice, compileStatusSlice, dbtBlock, fileSlice, projectSlice, runStatusSlice } from '../panel/slices';
+import { SliceSender } from '../panel/sliceSender';
+import { affectsCompile } from '../backend';
+import { DBT_COMPILE_FILES, listDbtTargets } from '../backend/dbt';
+import { ProjectInfoWatch } from '../project/projectInfo';
+import { toDryRunResult } from '../bigquery/dryRunService';
+import { ActionId, dryRunScripts, homeAction, slashPath, targetId } from '../shared/compiledGraph';
+import { definitionLine } from '../backend/dbt/locate';
+import { fileModels } from '../shared/panelFileView';
+import type { PanelSlices } from '../shared/panelState';
+import { applyDeferralToAction } from '../defer/deferRules';
+import type { Tool } from '../project/tools';
 import * as vscode from 'vscode';
-import { snoozeManager, compiledQueryWtDryRun, dryRunAndShowDiagnostics, formatDryRunCostSummary, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, deriveNodeMapsFromQueryMeta, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
+import { snoozeManager, getFileNameFromDocument, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
-import { runCurrentFile } from "../runCurrentFile";
-import { runTagWtApi } from "../runTag";
+import { runActions } from "../runActions";
+import { previewAction } from "../previewQueryResults";
+import { runMultipleTagsFromSelection, runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
-import { ActionDescription, CurrentFileMetadata, SupportedCurrency, BigQueryDryRunResponse, WebviewMessage, WorkflowUrlEntry, ActionCounts, WorkflowAction, CompilationErrorType, SchemaMetadata, CachedResults, DryRunAnnotation } from "../types";
-import { currencySymbolMapping, executablesToCheck } from "../constants";
+import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults } from "../types";
+import { currencySymbolMapping } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
 import { logger } from "../logger";
@@ -18,6 +40,8 @@ import { debounce } from "../debounce";
 import { loadDataformTools } from "../lazySdk";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
+import { cancelCliRun, cliRunHint } from "../cliRunJobs";
+import { pendingRun } from "../runFeedback";
 import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
 import { timestampToMs } from "../shared/jobTiming";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
@@ -33,7 +57,7 @@ import {
 import type { PropertyGraph, PropertyGraphValidation, PropertyGraphElementSchema } from "../types";
 import { applyColumnDescriptions, flattenSchemaFields } from "../utils/schemaTree";
 import { getCompilationInfo, setOnCompilationInfoChanged } from '../utils/compilationInfo';
-import { isRemoteMode, setCompilationBackend, setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
+import { setOnRemoteCompileCompleted } from '../utils/remoteCompiler';
 import { buildLastRunView, getLastRun, onDidChangeLastRun } from '../lastRun';
 import { getChangedActionsView, runChangedActions, toChangedActionsView } from '../changedActions';
 import { watchGitHead, watchGitState } from '../gitHeadWatcher';
@@ -41,6 +65,8 @@ import { computeApiRunGitState } from '../apiRunGitState';
 import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
+import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -74,7 +100,7 @@ function getDocumentToRecompile(): vscode.TextDocument | undefined {
  * Disabled graphs are skipped: Dataform will not execute them, so validating them
  * would report failures for something that is never run.
  */
-async function validatePropertyGraphs(postMessage: (message: unknown) => Thenable<boolean>, propertyGraphs: PropertyGraph[]) {
+async function validatePropertyGraphs(send: (validations: PropertyGraphValidation[]) => void, propertyGraphs: PropertyGraph[]) {
     const validations: PropertyGraphValidation[] = await Promise.all(
         propertyGraphs.map(async (graph): Promise<PropertyGraphValidation> => {
             const targetName = fullTargetName(graph.target);
@@ -102,7 +128,7 @@ async function validatePropertyGraphs(postMessage: (message: unknown) => Thenabl
         }),
     );
 
-    await postMessage({ "propertyGraphValidations": validations, "dryRunning": false });
+    send(validations);
 }
 
 /**
@@ -153,9 +179,36 @@ let armedPreviewSpan: ((attrs?: PerfSpan['attrs']) => void) | undefined;
 
 // What an API run leaves out only changes with the working tree or the commits: it is computed again after a
 // save or a git change (coalesced, as one save can raise both), and renders post the last computation
+/** Where each Project's runs go, by the Project's root: see `DataformBlock.runBackend` */
+const RUN_BACKEND_KEY = 'dataform_run_backend';
 let apiRunGitStateGeneration = 0;
 let apiRunGitStateCache: { folder: string, generation: number, state: Promise<ApiRunGitState> } | undefined;
 const refreshApiRunGitStateSoon = debounce(() => CompiledQueryPanel.centerPanel?.postApiRunGitState(), 500);
+/** Whether the git extension will report a change to this file, see `watchGitState` */
+let gitStateIsWatchedFor: (filePath: string) => boolean = () => false;
+/** How long a save waits for the git extension to report the change before reporting it itself */
+const GIT_EVENT_GRACE_MS = 3000;
+let saveFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * A save changes the uncommitted files, and so does the git extension's report of that same save. Counting both made
+ * the state be computed twice whenever they landed more than the refresh debounce apart. So a save in a repository
+ * the git extension watches gives it a moment to report first, and only speaks up itself when it does not: the git
+ * extension stops refreshing while its window is unfocused or with `git.autorefresh` off. Without the git
+ * extension, or outside its repositories, the save is the only signal there is.
+ */
+function apiRunGitStateChangedBySave(filePath: string) {
+    if (!gitStateIsWatchedFor(filePath)) {
+        apiRunGitStateChanged();
+        return;
+    }
+    clearTimeout(saveFallbackTimer);
+    saveFallbackTimer = setTimeout(() => {
+        saveFallbackTimer = undefined;
+        apiRunGitStateChanged();
+    }, GIT_EVENT_GRACE_MS);
+}
+
 function apiRunGitStateChanged() {
     apiRunGitStateGeneration++;
     refreshApiRunGitStateSoon();
@@ -172,11 +225,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     context.subscriptions.push(
         onDidChangeLastRun(() => {
-            CompiledQueryPanel.centerPanel?.postMessage({ lastRun: getLastRunView() });
+            CompiledQueryPanel.centerPanel?.updateDataformBlock({ lastRun: getLastRunView() });
         }),
         onDeferralUpdated(() => {
             const panel = CompiledQueryPanel.centerPanel;
-            panel?.postMessage({ deferral: toDeferralView(panel.deferral) });
+            panel?.updateDataformBlock({ deferral: toDeferralView(panel.deferral) });
         }),
         onDidRecordDryRunSchema(async ({ document, relativeFilePath, fields }) => {
             if (!CompiledQueryPanel.centerPanel || !relativeFilePath) {
@@ -187,7 +240,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             impactHintSeq.set(relativeFilePath, seq);
             const post = (changed: number | undefined) => {
                 if (impactHintSeq.get(relativeFilePath) === seq) {
-                    CompiledQueryPanel.centerPanel?.postMessage({ columnImpact: { relativeFilePath, changed } });
+                    CompiledQueryPanel.centerPanel?.updateDataformBlock({ columnImpact: { file: relativeFilePath, changed } });
                 }
             };
             if (!fields) {
@@ -215,9 +268,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
                 const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                CompiledQueryPanel.centerPanel.postMessage({
-                    workflowUrls: workflowUrls
-                });
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls, cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.snoozeCompilation', async () => {
@@ -233,8 +284,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     snoozeManager.registerWebviewHandlers(
         (msg) => {
+            // The snooze manager only ever says when the pause ends
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
-                CompiledQueryPanel.centerPanel.postMessage(msg);
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ snoozeEndTime: msg.snoozeEndTime ?? null });
             }
         },
         () => !!(CompiledQueryPanel.centerPanel?.webviewPanel?.visible)
@@ -248,12 +300,22 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         } else if (editor && changedActiveEditorFileName && activeEditorFileName !== changedActiveEditorFileName && webviewPanelVisisble) {
             activeEditorFileName = changedActiveEditorFileName;
             activeDocumentObj = editor.document;
+            const dbt = dbtFileOf(editor.document);
+            if (dbt) {
+                await CompiledQueryPanel.showDbt(context.extensionUri, context, dbt.project, dbt.file, 'switch');
+                return;
+            }
             if (snoozeManager.isSnoozeActive()) {
                 // Keep tracking the active file but defer the refresh until snooze ends
                 snoozeManager.markDirtyDuringSnooze();
                 return;
             }
             const endSwitchSpan = perfStart('switchPreview');
+            // The first file shown of a Project waits for the Project's first compile: the panel says so, and takes down what it shows of the Project before
+            const ofFile = projects.forFile(editor.document.uri.fsPath, fileBackendHints(editor.document.uri.fsPath));
+            if (ofFile.kind === 'project' && ofFile.project.backend === 'dataform' && !compiledJson(ofFile.project.root) && getFileNameFromDocument(editor.document, false).success) {
+                CompiledQueryPanel.centerPanel?.showFirstCompile(getRelativePath(editor.document.fileName));
+            }
             let currentFileMetadata = await getCurrentFileMetadata(false, { deferralInBackground: true });
             updateSchemaAutoCompletions(currentFileMetadata);
             armedPreviewSpan = endSwitchSpan;
@@ -262,6 +324,34 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     }, globalThis.DEBOUNCE_WAIT);
 
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
+
+    // A dbt compile that starts or ends, whoever asked for it, is shown when its Project is the one on show
+    context.subscriptions.push(onDidChangeDbtCompile((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
+    // So is what is known of its dbt: another one found, or none any more
+    context.subscriptions.push(onDidChangeDbtTool((root) => CompiledQueryPanel.centerPanel?.dbtToolChanged(root)));
+    // And a run of it sent to the terminal, from the panel or from a command
+    context.subscriptions.push(onDidRunDbt((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
+    context.subscriptions.push(onDidChangeDbtChanges((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
+    // And the settings a dbt compile is made with: another dbt target, other variables or profiles are another result
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (['dbtTarget', 'dbtVars', 'dbtProfilesDir'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
+            CompiledQueryPanel.centerPanel?.dbtOptionsChanged();
+        }
+    }));
+    // The Project tab names the settings in effect, and the tools the path settings choose
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('vscode-dataform-tools')) {
+            CompiledQueryPanel.centerPanel?.projectInfoChanged();
+        }
+    }));
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.showProjectInfo', async () => {
+            const project = await projectForInfo();
+            if (project) {
+                await CompiledQueryPanel.showProjectInfo(context.extensionUri, context, project);
+            }
+        }),
+    );
 
 
     const triggerCompilationForDocument = async (document: vscode.TextDocument, spanName: string = 'recompilePreview') => {
@@ -278,7 +368,7 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         }
         activeEditorFileName = document?.fileName;
         activeDocumentObj = document;
-        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave: boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
         if (showCompiledQueryInVerticalSplitOnSave || (CompiledQueryPanel?.centerPanel?.centerPanelDisposed === false)) {
             if (CompiledQueryPanel?.centerPanel?.webviewPanel?.visible) {
                 const workspaceFolder = await getWorkspaceFolder();
@@ -286,12 +376,8 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
                 if (workspaceFolder) {
                     dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
                 }
-                CompiledQueryPanel?.centerPanel?.postMessage({
-                    "recompiling": true,
-                    "compilationBackend": isRemoteMode() ? "api" : "cli",
-                    "dataformCoreVersion": dataformCoreVersion,
-                    "relativeFilePath": getRelativePath(document.fileName),
-                });
+                CompiledQueryPanel?.centerPanel?.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), file: slashPath(getRelativePath(document.fileName)) } });
+                CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationMode: isRemoteMode() ? "api" : "cli", dataformCoreVersion: dataformCoreVersion ?? undefined });
                 let currentFileMetadata = await getCurrentFileMetadata(true, { deferralInBackground: true });
                 updateSchemaAutoCompletions(currentFileMetadata);
                 armedPreviewSpan = endPreviewSpan;
@@ -318,8 +404,12 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
             .catch((error) => logger.error(`Failed to refresh the panel after the startup compilation: ${error}`));
     });
 
-    setOnCompilationInfoChanged((info) => {
-        CompiledQueryPanel?.centerPanel?.postMessage({ compilationInfo: info });
+    setOnCompilationInfoChanged((info, root) => {
+        // A compile of a Project that is not the one on show is not the panel's to name
+        if (root === currentDataformRoot()) {
+            CompiledQueryPanel?.centerPanel?.updateDataformBlock({ compilationInfo: info });
+        }
+        CompiledQueryPanel.centerPanel?.projectInfoChanged();
     });
 
     recompileActiveDocument = async () => {
@@ -331,6 +421,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     setOnRemoteCompileCompleted(recompileActiveDocument);
 
     snoozeManager.setOnSnoozeEndedCallback(async () => {
+        // What was saved in a dbt Project during the snooze is compiled now
+        if (CompiledQueryPanel.centerPanel?.dbtOptionsChanged('save')) {
+            return;
+        }
         const doc = getDocumentToRecompile();
         if (doc) {
             await triggerCompilationForDocument(doc);
@@ -338,8 +432,28 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
-        // Without the git extension this is the only signal that the uncommitted changes moved
-        apiRunGitStateChanged();
+        // A save in a dbt Project compiles it again when the panel is open, or is opened on save. What is shown stays
+        // the file in focus: a save of a macro shows the model beside it afresh
+        const dbt = dbtFileOf(document);
+        if (dbt) {
+            // A snooze of compilation holds for dbt too: nothing is compiled on save until it ends
+            if (snoozeManager.isSnoozeActive()) {
+                return;
+            }
+            const panelOpen = CompiledQueryPanel.centerPanel?.centerPanelDisposed === false;
+            const opensOnSave = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave') === true;
+            if (affectsCompile(DBT_COMPILE_FILES, dbt.file) && (panelOpen || opensOnSave)) {
+                activeEditorFileName = document.fileName;
+                activeDocumentObj = document;
+                const shown = dbtFileOf(vscode.window.activeTextEditor?.document) ?? dbt;
+                await CompiledQueryPanel.showDbt(context.extensionUri, context, shown.project, shown.file, 'save');
+            } else if (affectsCompile(DBT_COMPILE_FILES, dbt.file)) {
+                // With the panel closed the Project is still read again, for the editor
+                await savedWithoutPanel(dbt, dbtFileOf(vscode.window.activeTextEditor?.document));
+            }
+            return;
+        }
+        apiRunGitStateChangedBySave(document.uri.fsPath);
 
         const fileExtension = document.fileName.split('.').pop();
         const fileName = path.basename(document.fileName, '.' + fileExtension);
@@ -363,13 +477,17 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
 
     // A checkout, commit or pull changes the project without saving a file, so treat it like a save.
     watchGitHead(context, async (repositoryRoot) => {
+        // A dbt Project's list of changed actions belongs to the previous branch too
+        forgetDbtChanges({ repository: repositoryRoot });
+        // The Project tab names the branch
+        CompiledQueryPanel.centerPanel?.projectInfoChanged();
         const doc = activeDocumentObj || vscode.window.activeTextEditor?.document;
         const relative = doc ? path.relative(repositoryRoot, doc.fileName) : '..';
         if (!doc || relative.startsWith('..') || path.isAbsolute(relative)) {
             return; // A different repository from the Dataform project being shown
         }
         // The count belongs to the previous branch; drop it now rather than after the recompile
-        CompiledQueryPanel.centerPanel?.postMessage({ changedActions: { status: 'idle' } });
+        CompiledQueryPanel.centerPanel?.updateDataformBlock({ changedActions: { status: 'idle' } });
         if (snoozeManager.isSnoozeActive()) {
             snoozeManager.markDirtyDuringSnooze();
             return;
@@ -378,11 +496,61 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     // Edits, commits, pushes and fetches change what a Dataform API run leaves out
-    watchGitState(context, () => {
+    gitStateIsWatchedFor = watchGitState(context, () => {
+        // This is the save's own change arriving through the git extension: the save need not report it as well
+        clearTimeout(saveFallbackTimer);
+        saveFallbackTimer = undefined;
         apiRunGitStateChanged();
     });
+    context.subscriptions.push({ dispose: () => clearTimeout(saveFallbackTimer) });
 }
 
+
+/**
+ * The Project "Show Project Info" is about: that of the file in focus, else the active one, which is the only one
+ * when the window has one. With several and none active, the user is asked.
+ */
+async function projectForInfo(): Promise<ProjectState | undefined> {
+    const document = vscode.window.activeTextEditor?.document;
+    if (document?.uri.scheme === 'file') {
+        const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+        if (found.kind === 'project') {
+            return found.project as ProjectState;
+        }
+    }
+    if (projects.active) {
+        return projects.active;
+    }
+    const all = projects.projects;
+    if (all.length === 0) {
+        void vscode.window.showInformationMessage('There is no Dataform or dbt project in this window: no folder here has a workflow_settings.yaml, dataform.json or dbt_project.yml.');
+        return undefined;
+    }
+    const picked = await vscode.window.showQuickPick(
+        all.map((project) => ({ label: projectLabel(project.root) ?? path.basename(project.root), description: project.backend === 'dbt' ? 'dbt' : 'Dataform', detail: project.root, project })),
+        { placeHolder: 'Show the info of which project?' },
+    );
+    if (picked) {
+        activateProject(picked.project);
+    }
+    return picked?.project;
+}
+
+/** The dbt Project a document is in, and the document's path from its root, when it is in one */
+export function dbtFileOf(document: vscode.TextDocument | undefined): { project: ProjectState; file: string } | undefined {
+    if (!document || document.uri.scheme !== 'file') {
+        return undefined;
+    }
+    const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+    if (found.kind !== 'project' || found.project.backend !== 'dbt') {
+        return undefined;
+    }
+    const project = found.project as ProjectState;
+    return { project, file: slashPath(path.relative(project.root, document.uri.fsPath)) };
+}
+
+/** The messages of the contract that start a run */
+export type DbtRunMessage = Extract<PanelMessage, { command: 'run' | 'runTags' | 'repeatLastRun' }>;
 
 const panelMessagePosted = new vscode.EventEmitter<unknown>();
 /** Every message the compiled query panel is sent. For the recorded panel output tests, see src/panelRecordings */
@@ -398,16 +566,20 @@ export class CompiledQueryPanel {
     /** Bumped by every render, so a render still waiting on defer to prod can tell it has been replaced */
     private renderSeq = 0;
     private static readonly viewType = "CenterPanel";
-    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
+    private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true, renderDataform = true) {
+        this.info = new ProjectInfoWatch(extensionContext, (slice) => this.slices.send('project info', slice));
         CompiledQueryPanel.registerListeners(this, extensionContext);
-        this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
+        // A panel opened on a file of a dbt Project is drawn by `showDbt`
+        if (renderDataform) {
+            this.updateView(forceShowVerticalSplit, currentFileMetadata, freshCompilation);
+        }
     }
 
     /**
      * Compiles, dry runs and API calls often finish after the user has closed the panel, and touching a
      * disposed panel's webview throws, so every message goes through here and is dropped once it is closed.
      */
-    public postMessage(message: unknown): Thenable<boolean> {
+    public postMessage(message: HostMessage | HostEvent): Thenable<boolean> {
         if (this.centerPanelDisposed) {
             return Promise.resolve(false);
         }
@@ -415,11 +587,545 @@ export class CompiledQueryPanel {
         return this.webviewPanel.webview.postMessage(message);
     }
 
+    /**
+     * Sends the slices both Backends have, each only when it differs from what the panel was last sent: a save does
+     * not send the Project again, and a dry-run result does not send the SQL again. The `dataform` block is not
+     * sent through it: the panel acts on some of its fields arriving, changed or not (see `updateDataformBlock`).
+     */
+    private readonly slices = new SliceSender((message) => this.postMessage(message));
+
+    /**
+     * Has the next send of each slice go out whatever was sent before. For the recorded panel output, which reads
+     * each file as a panel that starts with it would.
+     */
+    public forgetSentSlices() {
+        this.slices.reset();
+    }
+
+    /**
+     * Sends the panel again everything it has been sent. Its page says when it has begun to listen (`ready`): what
+     * was posted before that, while the page loaded, reached nobody, and a slice is not sent twice otherwise. A
+     * compile that is reused ends within milliseconds of the page being written, so without this the panel could
+     * stay on the "compiling" its first page starts with.
+     */
+    public resendAll() {
+        this.slices.resend();
+        this.postMessage({ slice: 'dataform', value: this.dataformBlock });
+        if (this.projectTabWanted) {
+            this.postMessage({ event: 'show project info' });
+        }
+    }
+
+    /** Tells the panel of something that happened once, see `HostEvent` */
+    public sendEvent(event: HostEvent) {
+        this.postMessage(event);
+    }
+
+    /** What the Project tab shows, looked up while the tab is on show */
+    private readonly info: ProjectInfoWatch;
+    /** The Project the panel was opened for by "Show Project Info" with no file of it in focus. Unset once a file is shown */
+    private projectWithoutFile: ProjectState | undefined;
+    /** The command asked for the Project tab, and the panel has not yet said that it shows it */
+    private projectTabWanted = false;
+
+    /** The Project the panel is about: that of the file on show, else the one it was opened for */
+    private infoProject(): ProjectState | undefined {
+        if (this.dbtOnShow) {
+            return this.dbtOnShow.project;
+        }
+        if (this.projectWithoutFile) {
+            return this.projectWithoutFile;
+        }
+        const root = currentDataformRoot();
+        return root ? projects.find(root, 'dataform') : undefined;
+    }
+
+    /** Something the Project tab shows may have changed: the Project on show, a setting, a compile, the branch */
+    public projectInfoChanged() {
+        if (this.centerPanelDisposed) {
+            return;
+        }
+        this.info.setProject(this.infoProject());
+        this.info.changed();
+    }
+
+    /** Has the panel show its Project tab. Said again when its page begins to listen, until the panel shows the tab */
+    private wantProjectTab() {
+        this.projectTabWanted = true;
+        this.postMessage({ event: 'show project info' });
+    }
+
+    /**
+     * "Show Project Info": opens the panel when there is none, and has it show the Project tab. With a file of the
+     * Project in focus the panel is opened on that file, as ever; without one it is opened on the Project alone.
+     */
+    public static async showProjectInfo(extensionUri: Uri, extensionContext: ExtensionContext, project: ProjectState) {
+        const document = vscode.window.activeTextEditor?.document;
+        const ofDocument = document?.uri.scheme === 'file' ? projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath)) : undefined;
+        const fileInFocus = ofDocument?.kind === 'project' && ofDocument.project === project;
+        let panel = CompiledQueryPanel.centerPanel;
+        if (!panel || panel.centerPanelDisposed) {
+            if (fileInFocus) {
+                await CompiledQueryPanel.getInstance(extensionUri, extensionContext, true, true, undefined);
+            } else {
+                CompiledQueryPanel.openWithoutFile(extensionUri, extensionContext, project);
+            }
+            panel = CompiledQueryPanel.centerPanel;
+        } else {
+            panel.webviewPanel.reveal(undefined, true);
+            if (fileInFocus && panel.infoProject() !== project) {
+                // The panel was hidden while the editor moved to another Project: it shows the file in focus first
+                await CompiledQueryPanel.getInstance(extensionUri, extensionContext, false, true, undefined);
+            } else if (!fileInFocus && panel.infoProject() !== project) {
+                panel.projectWithoutFile = project;
+            }
+        }
+        if (!panel || panel.centerPanelDisposed) {
+            return;
+        }
+        panel.info.setProject(panel.infoProject());
+        panel.wantProjectTab();
+    }
+
+    /** Opens the panel on a Project with no file of it to show: its page says so, and the Project tab has the rest */
+    private static openWithoutFile(extensionUri: Uri, extensionContext: ExtensionContext, project: ProjectState) {
+        const webviewPanel = window.createWebviewPanel(
+            CompiledQueryPanel.viewType,
+            "Compiled Query",
+            { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
+            { enableFindWidget: true, retainContextWhenHidden: true, enableScripts: true, localResourceRoots: [Uri.joinPath(extensionUri, "media"), Uri.joinPath(extensionUri, "dist")] },
+        );
+        const panel = new CompiledQueryPanel(webviewPanel, extensionUri, extensionContext, true, undefined, false, false);
+        CompiledQueryPanel.centerPanel = panel;
+        panel.projectWithoutFile = project;
+        panel.hasPage = true;
+        // The next editor that takes focus is another file than this: the panel then shows it
+        activeEditorFileName = project.root;
+        const noFile: FileSlice = { compile: project.compileNumber, file: '', role: 'not compiled', actions: [], problem: { kind: 'other', message: 'No file of the Project is open. Open one to see its compiled query.' } };
+        if (project.backend === 'dbt' && project.dbtBackend) {
+            const sent = panel.dbtSlices(project, '');
+            webviewPanel.webview.html = panel.pageWith(webviewPanel.webview, { dataform: panel.dataformBlock, project: sent.project, dbt: sent.dbt, compile: sent.compile, file: noFile });
+            return;
+        }
+        const backend = project.dataformBackend;
+        const info = getCompilationInfo(project.root);
+        panel.dataformBlock = { ...panel.dataformBlock, compilationMode: isRemoteMode() ? 'api' : 'cli', snoozeEndTime: snoozeManager.getSnoozeEndTime() ?? null, lastRun: getLastRunView() ?? null, compilationInfo: info ?? undefined };
+        webviewPanel.webview.html = panel.pageWith(webviewPanel.webview, {
+            dataform: panel.dataformBlock,
+            ...(backend ? { project: projectSlice({ root: project.root, label: projectLabel(project.root) }, backend, backend.graph, project.compileNumber) } : {}),
+            compile: compileStatusSlice({ inProject: true, errors: [], ...(info ? { compiled: { compiledAt: info.compiledAt } } : {}) }, project.compileNumber),
+            file: noFile,
+        });
+    }
+
+    /** What only a Dataform Project has, as the panel was last told */
+    public dataformBlock: DataformBlock = {
+        compile: 0, compilerOptions: '', compilationMode: 'cli', snoozeEndTime: null, deferral: null, leftoverProxies: null,
+        lastRun: null, propertyGraphs: null, propertyGraphValidations: null, propertyGraphElementSchemas: {},
+    };
+
+    /**
+     * Tells the panel how the Project's compile stands: one of the seven values of the contract. Called with what is
+     * special about the place it is called from; the rest is what the last compile left.
+     */
+    public sendCompileStatus(state: Partial<CompileState> = {}) {
+        const info = getCompilationInfo(currentDataformRoot());
+        const compiled = info ? { compiledAt: info.compiledAt, ...(info.durationMs === undefined ? {} : { durationMs: info.durationMs }) } : undefined;
+        this.slices.send('compile status', compileStatusSlice({ inProject: true, errors: [], compiled, ...state }, compileNumber()));
+    }
+
+    /**
+     * Shows that `file` waits for the first compile of its Project: what is on show of the Project before is taken
+     * down, and the panel draws as it does while it compiles with nothing to show.
+     */
+    public showFirstCompile(file: string) {
+        this.sendNoActions(file);
+        this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
+        this.sendProject();
+        this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), file: slashPath(file) } });
+    }
+
+    /**
+     * Tells the panel which Project the file belongs to: its root and its tags. Not sent for a file in no Project.
+     */
+    private sendProject() {
+        const backend = dataformBackend();
+        const root = currentDataformRoot();
+        if (backend && root) {
+            this.slices.send('project', projectSlice({ root, label: projectLabel(root) }, backend, compiledGraph(), compileNumber()));
+        }
+        this.projectInfoChanged();
+    }
+
+    /**
+     * Tells the panel what the file on show defines: its actions, each with its SQL and its neighbours.
+     *
+     * @param file Relative to the Project root
+     * @param shown `deferral`: the SQL is sent after defer's rewrite, as it is dry-run. `registered`: actions shown
+     * with the file though the graph gives them another, see `fileSlice`. `role`: what the render found the file to
+     * be, where that is not for the graph to say; no action is sent then.
+     */
+    private sendFileSlice(file: string | undefined, shown: { deferral?: CurrentFileMetadata['deferral']; registered?: ActionId[]; role?: 'project settings' | 'helper' } = {}): FileSlice | undefined {
+        const backend = dataformBackend();
+        if (!backend || !file) {
+            this.sendNoActions(file);
+            return undefined;
+        }
+        const relativePath = slashPath(file);
+        let graph = compiledGraph();
+        const entries = shown.deferral?.entries ?? [];
+        if (graph && entries.length > 0) {
+            const rewritten = [...(graph.files[relativePath] ?? []), ...(shown.registered ?? [])]
+                .filter((id) => graph!.actions[id])
+                .map((id) => [id, applyDeferralToAction(graph!.actions[id], entries)]);
+            graph = { ...graph, actions: { ...graph.actions, ...Object.fromEntries(rewritten) } };
+        }
+        let value = fileSlice(graph, backend, relativePath, compileNumber(), shown.registered);
+        if (shown.role) {
+            value = { ...value, role: shown.role, actions: [] };
+        }
+        this.slices.send('file', value);
+        return value;
+    }
+
+    /**
+     * Tells the panel that there is nothing of the file to show.
+     *
+     * @param problem What is wrong with the file. Left out when the reason is the compile's, which the compile status
+     * sent before this has given: the file is in no Project, the tool was not found, or the compile left errors
+     */
+    private sendNoActions(file?: string, problem?: FileProblem) {
+        this.slices.send('file', { compile: compileNumber(), file: file ? slashPath(file) : '', role: 'not compiled', actions: [], ...(problem ? { problem } : {}) });
+        // And BigQuery has said nothing of it
+        this.sendBigQuery({ results: [], tables: {}, dryRunning: [] });
+    }
+
+    /** What BigQuery has said of the file on show, as last sent */
+    private bigQuery: Omit<BigQuerySlice, 'compile'> = { results: [], dryRunning: [], tables: {}, currencySymbol: '$' };
+
+    /**
+     * Changes what BigQuery has said of the file on show and sends the `bigquery` slice.
+     */
+    public sendBigQuery(fields: Partial<Omit<BigQuerySlice, 'compile'>>) {
+        this.bigQuery = { ...this.bigQuery, ...fields };
+        this.slices.send('bigquery', bigQuerySlice(this.bigQuery, compileNumber()));
+    }
+
+    /**
+     * Changes fields of the `dataform` block and sends the block, saying which fields this send is about (`touched`
+     * in the contract). It is sent every time, changed or not: the panel acts on some of these fields arriving.
+     */
+    public updateDataformBlock(fields: Partial<Omit<DataformBlock, 'compile'>>) {
+        this.dataformBlock = { ...this.dataformBlock, ...fields, compile: compileNumber() };
+        const message: HostMessage = { slice: 'dataform', value: this.dataformBlock, touched: Object.keys(fields) as Array<Exclude<keyof DataformBlock, 'compile'>> };
+        this.postMessage(message);
+    }
+
+    /** The file of a dbt Project a command acts on: the one in the editor in focus, else the one the panel shows */
+    public static activeDbtFile(): { project: ProjectState; file: string } | undefined {
+        return dbtFileOf(vscode.window.activeTextEditor?.document) ?? (vscode.window.activeTextEditor ? undefined : CompiledQueryPanel.centerPanel?.dbtOnShow);
+    }
+
+    /** The dbt Project and file on show, when the panel is showing one */
+    private dbtOnShow: { project: ProjectState; file: string } | undefined;
+    /** Whether the page has been written. A panel opened on a dbt file has none until `showDbt` writes it */
+    private hasPage = false;
+
+    /**
+     * Shows a file of a dbt Project: opens the panel when there is none, asks the Project's compile loop for a
+     * compile (see src/project/dbtCompile.ts for when one is run), and sends the panel what is known before and
+     * after it.
+     *
+     * @param file Relative to the Project root with forward slashes
+     */
+    public static async showDbt(extensionUri: Uri, extensionContext: ExtensionContext, project: ProjectState, file: string, reason: CompileReason) {
+        let panel = CompiledQueryPanel.centerPanel;
+        if (!panel || panel.centerPanelDisposed) {
+            const webviewPanel = window.createWebviewPanel(
+                CompiledQueryPanel.viewType,
+                "Compiled Query",
+                { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
+                { enableFindWidget: true, retainContextWhenHidden: true, enableScripts: true, localResourceRoots: [Uri.joinPath(extensionUri, "media"), Uri.joinPath(extensionUri, "dist")] },
+            );
+            panel = new CompiledQueryPanel(webviewPanel, extensionUri, extensionContext, true, undefined, false, false);
+            CompiledQueryPanel.centerPanel = panel;
+        }
+        panel.dbtOnShow = { project, file };
+        panel.projectWithoutFile = undefined;
+        // What BigQuery said of the last file, or of the last compile, is not for this one
+        panel.sendDbtBigQuery(++panel.dbtDryRunSeq, project.compileNumber, { results: [], dryRunning: [], tables: {} });
+        // Any Dataform render still in flight is no longer wanted
+        panel.renderSeq++;
+        const compiling = compileDbtProject(project, file, reason);
+        if (!panel.hasPage) {
+            panel.hasPage = true;
+            // Synchronously, so that the first message cannot arrive before the page that listens for it. The Project
+            // is in the page, so that the panel never draws a dbt file as Dataform's
+            const sent = panel.dbtSlices(project, file);
+            panel.webviewPanel.webview.html = panel.pageWith(panel.webviewPanel.webview, {
+                dataform: panel.dataformBlock,
+                project: sent.project,
+                dbt: sent.dbt,
+                compile: compileStatusSlice({ ...dbtCompileState(project.root), compiling: { showingPrevious: false, startedAt: Date.now(), file } }, project.compileNumber),
+            });
+        }
+        panel.sendDbt();
+        await compiling;
+        panel.sendDbt();
+        // Not waited for: the SQL is on show, and the dry runs fill in as they arrive
+        panel.dryRunDbt().catch((error) => logger.error(`dbt: the dry runs of ${file} failed: ${error}`));
+    }
+
+    /** Counts the showings of a dbt file, so that dry runs asked for an earlier one are dropped when they arrive */
+    private dbtDryRunSeq = 0;
+
+    private sendDbtBigQuery(seq: number, compile: number, fields: Partial<Omit<BigQuerySlice, 'compile'>>) {
+        if (seq !== this.dbtDryRunSeq || this.centerPanelDisposed) {
+            return;
+        }
+        this.bigQuery = { ...this.bigQuery, ...fields };
+        this.slices.send('bigquery', bigQuerySlice(this.bigQuery, compile));
+    }
+
+    /**
+     * Dry-runs every action on show that has a compiled query, at once, and sends the panel each result as it
+     * arrives (xf#53). It also asks when the table of each action on show was last changed, which needs no compiled
+     * query. Nothing is asked of BigQuery while a compile runs or for a Project of another warehouse, and nothing is
+     * dry-run for a Project that was only parsed.
+     */
+    private async dryRunDbt() {
+        const shown = this.dbtOnShow;
+        const last = shown?.project.dbtBackend?.lastResult;
+        if (!shown || !last) {
+            return;
+        }
+        const { project, file } = shown;
+        const state = dbtCompileState(project.root);
+        const adapter = last.dbt?.adapterType;
+        if (state.compiling || !state.compiled || (adapter && adapter !== 'bigquery')) {
+            return;
+        }
+        const compile = project.compileNumber;
+        const onShow = fileSlice(last.graph, project.dbtBackend!, file, compile).actions.map((action) => action.id);
+        const actions = last.parsedOnly ? [] : dbtActionsToDryRun(last.graph, onShow);
+        const seq = this.dbtDryRunSeq;
+        const out = (done: DryRunResult[]): DryRunKey[] => actions
+            .filter((action) => !done.some((result) => result.action === action.id))
+            .flatMap((action) => dryRunScripts(action).map((script) => ({ action: action.id, script: script.name, incremental: script.incremental })));
+        const results: DryRunResult[] = [];
+        this.sendDbtBigQuery(seq, compile, { results: [], tables: {}, dryRunning: out([]) });
+        const tables = tablesOfActions(onShow.map((id) => last.graph.actions[id]).filter((action) => action !== undefined)).then((found) => {
+            this.sendDbtBigQuery(seq, compile, { tables: found });
+        });
+        if (actions.length > 0) {
+            await dryRunDbtActions(project.root, actions, compile, (arrived) => {
+                results.push(...arrived);
+                const currency = results.find((result) => result.cost)?.cost?.currency as SupportedCurrency | undefined;
+                this.sendDbtBigQuery(seq, compile, { results: [...results], dryRunning: out(results), ...(currency && currencySymbolMapping[currency] ? { currencySymbol: currencySymbolMapping[currency] } : {}) });
+            });
+        }
+        await tables;
+    }
+
+    /** The slices of a file of a dbt Project, as things stand: the three Backend-neutral ones and dbt's own block */
+    private dbtSlices(project: ProjectState, file: string) {
+        const backend = project.dbtBackend!;
+        const state = dbtCompileState(project.root);
+        const last = backend.lastResult;
+        const tool = dbtToolNow(project.root);
+        const settings = dbtSettings(project.root);
+        const shown = fileSlice(last?.graph, backend, file, project.compileNumber);
+        const targets = listDbtTargets(project.root, { profilesDir: settings.profilesDir });
+        const block: DbtBlock = dbtBlock({
+            ...(tool?.status === 'found' ? { dbt: { path: tool.path, foundBy: tool.foundBy, flavour: tool.probe.flavour, version: tool.probe.version } } : {}),
+            looking: !tool || tool.status === 'looking',
+            // What was chosen or set is in force at once, before the compile that uses it has ended. With neither,
+            // dbt chooses, and its log says what it chose
+            target: settings.target ?? last?.target,
+            targetOverridden: settings.overridden,
+            targetSetting: settings.settingTarget,
+            targets,
+            vars: settings.vars,
+            profilesDir: settings.profilesDir,
+            profile: targets?.profile,
+            parsedForHooks: last?.parsedOnly === true && !!last.notice,
+            data: last?.dbt,
+            graph: last?.graph,
+            shown: actionsNamed(shown),
+            file,
+            changedActions: dbtChangesView(project.root),
+        }, project.compileNumber);
+        return {
+            project: projectSlice({ root: project.root, label: projectLabel(project.root) }, backend, last?.graph, project.compileNumber),
+            // While a compile for another file runs, the panel names the file on show, not that one
+            compile: compileStatusSlice(state.compiling ? { ...state, compiling: { ...state.compiling, file } } : state, project.compileNumber),
+            file: shown,
+            dbt: block,
+        };
+    }
+
+    /**
+     * Sends the slices for the dbt file on show: the Project, dbt's own block, how the compile stands, and the file's
+     * actions. Each goes out only when it differs from what the panel was last sent.
+     */
+    public sendDbt(root?: string) {
+        const shown = this.dbtOnShow;
+        if (!shown?.project.dbtBackend || (root !== undefined && root !== shown.project.root)) {
+            return;
+        }
+        const slices = this.dbtSlices(shown.project, shown.file);
+        this.slices.send('project', slices.project);
+        this.slices.send('dbt', slices.dbt);
+        this.slices.send('compile status', slices.compile);
+        this.slices.send('file', slices.file);
+        this.slices.send('run status', runStatusSlice(lastDbtRun(shown.project.root), shown.project.compileNumber));
+        this.projectInfoChanged();
+    }
+
+    /**
+     * What is known of a Project's dbt has changed. While it is looked for, the panel is only told so; once the
+     * search has ended, the file on show is shown again, which compiles it if the dbt found is another one. A
+     * compile that is waiting for the search does that by itself.
+     */
+    public dbtToolChanged(root: string) {
+        const shown = this.dbtOnShow;
+        if (!shown || shown.project.root !== root || this.centerPanelDisposed) {
+            return;
+        }
+        if (dbtToolNow(root)?.status === 'looking' || dbtCompilePending(root)) {
+            this.sendDbt(root);
+            return;
+        }
+        CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, shown.project, shown.file, 'switch')
+            .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
+    }
+
+    /**
+     * A setting that a dbt compile is made with has changed: the file on show is shown again, which compiles it if
+     * its Project is affected. With the reason `save` it is compiled whatever has changed. False when the panel shows no dbt file
+     */
+    public dbtOptionsChanged(reason: CompileReason = 'switch'): boolean {
+        const shown = this.dbtOnShow;
+        if (!shown || this.centerPanelDisposed) {
+            return false;
+        }
+        CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, shown.project, shown.file, reason)
+            .catch((error) => logger.error(`dbt: could not show ${shown.file} again: ${error}`));
+        return true;
+    }
+
+    /** Opens the file that defines an action of the dbt Project on show. False when the panel is not showing one */
+    private openDbtAction(target: { database: string; schema: string; name: string }): boolean {
+        const shown = this.dbtOnShow;
+        if (!shown) {
+            return false;
+        }
+        const last = shown.project.dbtBackend?.lastResult;
+        const action = last?.graph.actions[targetId(target)];
+        if (last && action?.fileName) {
+            const file = Uri.file(path.join(shown.project.root, action.fileName));
+            // A YAML file defines many things: the editor goes to this one's entry. A generic test has no entry
+            // of its own, so to that of what it tests
+            const named = /\.ya?ml$/i.test(action.fileName) ? homeAction(last.graph, action) ?? action : undefined;
+            const name = named && last.dbt?.names[named.id];
+            vscode.workspace.openTextDocument(file)
+                .then((document) => {
+                    const line = name ? definitionLine(document.getText(), name) : undefined;
+                    const at = new vscode.Position(line ?? 0, 0);
+                    return vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false, ...(line !== undefined ? { selection: new vscode.Range(at, at) } : {}) });
+                })
+                .then(undefined, (error) => logger.error(`dbt: could not open ${action.fileName}: ${error}`));
+        }
+        return true;
+    }
+
+    /**
+     * Run, Run Tag and Repeat for the dbt Project on show: `dbt build` in the extension's terminal. Resolves to false
+     * when the panel shows no dbt file, and the message is Dataform's to answer.
+     */
+    public async onDbtRunMessage(message: DbtRunMessage): Promise<boolean> {
+        const shown = this.dbtOnShow;
+        if (!shown) {
+            return false;
+        }
+        if (message.command === 'repeatLastRun') {
+            await repeatLastDbtRun(shown.project);
+            return true;
+        }
+        const { includeDependencies, includeDependents, fullRefresh } = message;
+        const selection = message.command === 'run' ? { actions: message.actions.map(targetId), tags: [] } : { actions: [], tags: message.tags };
+        await runDbt(shown.project, { ...selection, includeDependencies, includeDependents, fullRefresh });
+        return true;
+    }
+
+    /** What a button of a dbt Project's panel asks for */
+    public async onDbtMessage(message: DbtPanelMessage) {
+        const shown = this.dbtOnShow;
+        if (!shown) {
+            return;
+        }
+        const { project, file } = shown;
+        const configuration = extensionConfiguration(Uri.file(project.root));
+        switch (message.command) {
+            case 'dbt.compileWithHooks':
+                // For this workspace only: the hooks of another Project are another decision
+                await configuration.update('dbtCompileWithHooks', message.on, vscode.ConfigurationTarget.Workspace);
+                await CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, project, file, 'save');
+                return;
+            case 'dbt.chooseExecutable': {
+                const [chosen] = (await vscode.window.showOpenDialog({ canSelectMany: false, canSelectFiles: true, canSelectFolders: false, openLabel: 'Use this dbt', title: 'Choose a dbt executable' })) ?? [];
+                if (chosen) {
+                    // The setting's change makes the extension look for dbt again, which shows the file again
+                    await configuration.update('dbtExecutablePath', chosen.fsPath, vscode.ConfigurationTarget.Workspace);
+                }
+                return;
+            }
+            case 'dbt.lookForDbtAgain':
+                await lookForDbt(project.root);
+                return;
+            case 'dbt.computeChangedActions':
+                // The panel is told why there is no list
+                await listDbtChangedActions(project).catch(() => undefined);
+                return;
+            case 'dbt.runChangedActions': {
+                const { includeDependencies, includeDependents, fullRefresh, files } = message;
+                // The list on show is what the user chose from
+                await runDbtChangedActions(project, { includeDependencies, includeDependents, fullRefresh, ...(Array.isArray(files) ? { files } : {}) }, dbtChangesResult(project.root));
+                return;
+            }
+            case 'dbt.setTarget':
+                // What changed was worked out with the other dbt target
+                forgetDbtChanges({ file: path.join(project.root, file) });
+                await setDbtTargetOverride(project.root, message.name);
+                // Another dbt target is another result: this compiles, and replaces a compile that is running
+                await CompiledQueryPanel.showDbt(this._extensionUri, this.extensionContext, project, file, 'switch');
+                return;
+        }
+    }
+
     public static async getInstance(extensionUri: Uri, extensionContext: ExtensionContext, freshCompilation:boolean, forceShowInVeritcalSplit:boolean, currentFileMetadata:any) {
+        // A file of a dbt Project is shown by the dbt path, whichever way the panel was asked for
+        const document = vscode.window.activeTextEditor?.document ?? activeDocumentObj;
+        const dbt = dbtFileOf(document);
+        if (dbt) {
+            // What the listener for a change of editor compares the next editor with
+            activeEditorFileName = document!.fileName;
+            activeDocumentObj = document;
+            await CompiledQueryPanel.showDbt(extensionUri, extensionContext, dbt.project, dbt.file, freshCompilation ? 'save' : 'switch');
+            return;
+        }
+        const leaving = CompiledQueryPanel.centerPanel;
+        if (leaving?.dbtOnShow || leaving?.projectWithoutFile?.backend === 'dbt') {
+            leaving.dbtOnShow = undefined;
+            // Dry runs still out for it are dropped when they arrive
+            leaving.dbtDryRunSeq++;
+            // The panel draws by the Project's Backend: it must not go on drawing the next file as dbt's
+            leaving.slices.send('project', null);
+        }
         // An outdated saved compilation is shown straight away; the startup compile redraws the panel when it finishes
         const renderFresh = freshCompilation && !isCompilationStale();
         if(CompiledQueryPanel.centerPanel && !this.centerPanel?.centerPanelDisposed){
-            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && !forceShowInVeritcalSplit){
                 if (CompiledQueryPanel?.centerPanel?.webviewPanel){
                     CompiledQueryPanel.centerPanel.webviewPanel.dispose();
@@ -429,7 +1135,7 @@ export class CompiledQueryPanel {
             CompiledQueryPanel.centerPanel.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, renderFresh);
             CompiledQueryPanel.centerPanel.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
         } else {
-            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+            const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
             if(!showCompiledQueryInVerticalSplitOnSave && showCompiledQueryInVerticalSplitOnSave !== undefined && !forceShowInVeritcalSplit){
                 let currentFileMetadata = await getCurrentFileMetadata(freshCompilation);
                 if (!currentFileMetadata) {
@@ -470,7 +1176,7 @@ export class CompiledQueryPanel {
 
             const panel = window.createWebviewPanel(
                 CompiledQueryPanel.viewType,
-                "Dataform Tools",
+                "Compiled Query",
                 { preserveFocus: true, viewColumn: vscode.ViewColumn.Beside },
                 {
                     enableFindWidget: true,
@@ -493,6 +1199,7 @@ export class CompiledQueryPanel {
 
         panel.webviewPanel.onDidDispose(() => {
                 panel.centerPanelDisposed = true;
+                panel.info.dispose();
                 if(this.centerPanel === panel){
                     this.centerPanel = undefined;
                 }
@@ -503,28 +1210,44 @@ export class CompiledQueryPanel {
             );
 
         panel.webviewPanel.webview.onDidReceiveMessage(
-          async message => {
+          async (message: PanelMessage) => {
             switch (message.command) {
-              case 'startSnooze':
+              case 'ready':
+                panel.resendAll();
+                return;
+              case 'dataform.startSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
                 return;
-              case 'stopSnooze':
+              case 'dataform.stopSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.stopSnoozeCompilation');
                 return;
-              case 'lineageNavigation':
-                const projectId = message.value.split(".")[0];
-                const datasetId = message.value.split(".")[1];
-                const tableId = message.value.split(".")[2];
+              case 'openFile': {
+                const root = panel.dbtOnShow?.project.root ?? currentDataformRoot();
+                // Only a file inside the Project the panel shows
+                const resolved = root ? path.resolve(root, message.file) : undefined;
+                if (!root || !resolved || path.relative(root, resolved).startsWith('..')) {
+                    return;
+                }
+                const at = new vscode.Position(Math.max(0, (message.line ?? 1) - 1), 0);
+                vscode.window.showTextDocument(Uri.file(resolved), { viewColumn: vscode.ViewColumn.One, preview: false, selection: new vscode.Range(at, at) })
+                    .then(undefined, (error) => logger.error(`Could not open ${message.file}: ${error}`));
+                return;
+              }
+              case 'openAction':
+                if (panel.openDbtAction(message.action)) {
+                    return;
+                }
+                const { database: projectId, schema: datasetId, name: tableId } = message.action;
 
-                if(!CACHED_COMPILED_DATAFORM_JSON){
+                if(!compiledJson()){
                     // this should never happen as the view exposing the dependents can only be created when compilation is done;
                     vscode.window.showWarningMessage(`compile Dataform project before navigating to dependencies & dependents`);
                 }
 
-                let tables = CACHED_COMPILED_DATAFORM_JSON?.tables;
-                let operations = CACHED_COMPILED_DATAFORM_JSON?.operations;
-                let assertions = CACHED_COMPILED_DATAFORM_JSON?.assertions;
-                let declarations = CACHED_COMPILED_DATAFORM_JSON?.declarations;
+                let tables = compiledJson()?.tables;
+                let operations = compiledJson()?.operations;
+                let assertions = compiledJson()?.assertions;
+                let declarations = compiledJson()?.declarations;
 
                 const modelTypes = [tables, operations, assertions];
                 for (const model of modelTypes) {
@@ -561,13 +1284,13 @@ export class CompiledQueryPanel {
 
                 return;
               case 'copyToClipboard':
-                const textToCopy = message.value;
+                const textToCopy = message.text;
                 await vscode.env.clipboard.writeText(textToCopy);
                 vscode.window.showInformationMessage('Schema copied to clipboard!');
                 return;
               case 'exportSchema':
-                const schemaData = message.value;
-                const defaultFilename = message.filename || 'schema.json';
+                const schemaData = message.content;
+                const defaultFilename = message.fileName || 'schema.json';
                 const uri = await vscode.window.showSaveDialog({
                     defaultUri: vscode.Uri.file(defaultFilename),
                     filters: {
@@ -580,9 +1303,9 @@ export class CompiledQueryPanel {
                     vscode.window.showInformationMessage('Schema exported successfully!');
                 }
                 return;
-              case 'exportCostEstimateCsv':
-                const csvData = message.value;
-                const defaultCsvFilename = message.filename || 'cost_estimate.csv';
+              case 'dataform.exportTagCostCsv':
+                const csvData = message.content;
+                const defaultCsvFilename = message.fileName || 'cost_estimate.csv';
                 const csvUri = await vscode.window.showSaveDialog({
                     defaultUri: vscode.Uri.file(defaultCsvFilename),
                     filters: {
@@ -594,13 +1317,13 @@ export class CompiledQueryPanel {
                     vscode.window.showInformationMessage('Cost estimate exported successfully!');
                 }
                 return;
-              case 'selectWorkspaceFolder':
+              case 'selectProject':
                 await selectWorkspaceFolder();
                 vscode.commands.executeCommand("vscode-dataform-tools.showCompiledQueryInWebView");
                 return;
-              case 'updateCompilerOptions': {
-                const compilerOptions = message.value;
-                const config = vscode.workspace.getConfiguration('vscode-dataform-tools');
+              case 'dataform.updateCompilerOptions': {
+                const compilerOptions = message.compilerOptions;
+                const config = extensionConfiguration();
                 // Respect where the user has already configured `compilerOptions`.
                 // VS Code's `update()` default writes to Workspace settings, which
                 // leaks team-shared `.vscode/settings.json` when the user
@@ -614,120 +1337,103 @@ export class CompiledQueryPanel {
                 config.update('compilerOptions', compilerOptions, target);
                 return;
               }
-              case 'dependencyGraph':
+              case 'showDependencyGraph':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyGraphPanel");
                 return;
-              case 'dependencyInspector':
+              case 'dataform.showDependencyInspector':
                 await vscode.commands.executeCommand("vscode-dataform-tools.dependencyInspector");
                 return;
-              case 'columnLineage':
+              case 'dataform.showColumnLineage':
                 await vscode.commands.executeCommand("vscode-dataform-tools.columnLineage");
                 return;
-              case 'previewResults':
-                if(message.value){
-                    await vscode.commands.executeCommand('vscode-dataform-tools.runQuery');
+              case 'preview':
+                if (panel.dbtOnShow) {
+                    await previewDbtAction(panel.dbtOnShow.project.dbtBackend?.lastResult?.graph, message.action, message.section);
+                    return;
                 }
+                await previewAction(message.action, message.section, message.alone);
                 return;
-              case 'compileRemotely':
+              case 'dataform.compileRemotely':
                 await vscode.commands.executeCommand('vscode-dataform-tools.compileRemotely');
                 return;
-              case 'deferToProdActions':
+              case 'dataform.deferToProdActions':
                 await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
                 return;
-              case 'removeProxyViews':
-                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews', message.value);
+              case 'dataform.removeProxyViews':
+                await vscode.commands.executeCommand('vscode-dataform-tools.removeProxyViews', message.targets);
                 await refreshCompiledQueryPanel();
                 return;
-              case 'toggleDeferToProd':
-                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.value);
+              case 'dataform.toggleDeferToProd':
+                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.on);
                 return;
-              case 'openDeferToProdSettings':
+              case 'dataform.setRunBackend': {
+                // Kept for the Project, so the choice is there after the panel is closed, and for no other Project
+                const root = currentDataformRoot();
+                const workspaceState = this.centerPanel?.extensionContext.workspaceState;
+                if (root && workspaceState) {
+                    await workspaceState.update(RUN_BACKEND_KEY, { ...workspaceState.get<Record<string, 'cli' | 'api'>>(RUN_BACKEND_KEY), [root]: message.backend });
+                }
+                this.centerPanel?.updateDataformBlock({ runBackend: message.backend });
+                return;
+              }
+              case 'dataform.openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
                 return;
-              case 'retryDeferral':
+              case 'dataform.retryDeferral':
                 try {
                   await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
                 } catch (error: any) {
                   // The banner waits for a new deferral after Retry, so without one it would stay on "looking up"
                   logger.error(`Defer to prod: retry failed: ${error?.message}`);
-                  panel.postMessage({ deferral: toDeferralView(undefined, `Retry failed: ${error?.message ?? error}`) });
+                  panel.updateDataformBlock({ deferral: toDeferralView(undefined, `Retry failed: ${error?.message ?? error}`) });
                 }
                 return;
               case 'showLogs':
                 logger.show();
                 return;
-              case 'switchCompilationBackend': {
+              case 'dataform.switchCompilationMode': {
                 try {
-                  await setCompilationBackend(message.value === 'api' ? 'api' : 'cli');
+                  await setCompilationMode(message.compilationMode === 'api' ? 'api' : 'cli');
                   await recompileActiveDocument?.();
                 } catch (error: any) {
-                  vscode.window.showErrorMessage(`Unable to switch the compilation backend: ${error.message}`);
+                  vscode.window.showErrorMessage(`Unable to switch the compilation mode: ${error.message}`);
                 }
                 return;
               }
-              case 'runTests': {
-                const _workspaceFolder = message.value.workspaceFolder;
-                await runTests(_workspaceFolder);
+              case 'dataform.runTests': {
+                await runTests(currentDataformRoot());
                 return;
               }
-              case 'runModel':
-                const includeDependencies = message.value.includeDependencies;
-                const includeDependents = message.value.includeDependents;
-                const fullRefresh = message.value.fullRefresh;
-                await runCurrentFile(extensionContext, includeDependencies, includeDependents, fullRefresh, "cli");
-                return;
-              case 'runModelApi':
-                const _includeDependencies = message.value.includeDependencies;
-                const _includeDependents = message.value.includeDependents;
-                const _fullRefresh = message.value.fullRefresh;
-                // FIXME: there must be a way to avoid double calls before and after function invocation ?
-                const _runModelApiNodeMaps = deriveNodeMapsFromQueryMeta(this.centerPanel?._cachedResults?.fileMetadata?.queryMeta);
-                let messageDict: WebviewMessage = {
-                    "tableOrViewQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
-                    "assertionQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.assertionQuery,
-                    "preOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.preOpsQuery,
-                    "postOperations": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.postOpsQuery,
-                    "incrementalPreOpsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalPreOpsQuery,
-                    "incrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                    "nonIncrementalQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                    "operationsQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.operationsQuery,
-                    "testQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.testQuery,
-                    "expectedOutputQuery": this.centerPanel?._cachedResults?.fileMetadata.queryMeta.expectedOutputQuery,
-                    "relativeFilePath": this.centerPanel?._cachedResults?.fileMetadata.pathMeta?.relativeFilePath,
-                    "errorMessage": this.centerPanel?._cachedResults?.errorMessage,
-                    "dryRunErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunErrorsByNodeType,
-                    "dryRunErrorsByNodeName": _runModelApiNodeMaps.dryRunErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeName": _runModelApiNodeMaps.dryRunIncrementalErrorsByNodeName,
-                    "dryRunExpectedOutputErrorsByNodeName": _runModelApiNodeMaps.dryRunExpectedOutputErrorsByNodeName || this.centerPanel?._cachedResults?.dryRunExpectedOutputErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeType": this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType,
-                    "dryRunQueryByNodeName": _runModelApiNodeMaps.dryRunQueryByNodeName,
-                    "dryRunIncrementalQueryByNodeName": _runModelApiNodeMaps.dryRunIncrementalQueryByNodeName,
-                    "dryRunNonIncrementalQueryByNodeName": _runModelApiNodeMaps.dryRunNonIncrementalQueryByNodeName,
-                    "compiledQuerySchema": compiledQuerySchema,
-                    "targetTablesOrViews": this.centerPanel?._cachedResults?.targetTablesOrViews,
-                    "models": this.centerPanel?._cachedResults?.curFileMeta?.fileMetadata?.tables,
-                    "dependents": this.centerPanel?._cachedResults?.curFileMeta?.dependents,
-                    "dataformTags": dataformTags,
-                    "apiUrlLoading": true,
-                };
-                this.centerPanel?.postMessage(messageDict);
-                const result = await runCurrentFile(extensionContext, _includeDependencies, _includeDependents, _fullRefresh, "api");
-                if(!result){
+              case 'run':
+                if (await panel.onDbtRunMessage(message)) {
                     return;
                 }
-                const {workflowInvocationUrlGCP, errorWorkflowInvocation} = result;
-                const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                messageDict = { ...messageDict, "workflowInvocationUrlGCP": workflowInvocationUrlGCP, "errorWorkflowInvocation": errorWorkflowInvocation, "apiUrlLoading": false, "workflowUrls": updatedWorkflowUrls };
-                this.centerPanel?.postMessage(messageDict);
+                await runActions(extensionContext, message.actions.map(targetId), message, "cli");
                 return;
-              case 'runTagApi': {
-                const tagsToRun: string[] = Array.isArray(message.value.selectedTags)
-                    ? message.value.selectedTags.filter((t: unknown): t is string => typeof t === 'string' && t.trim() !== '')
+              case 'runTags': {
+                if (await panel.onDbtRunMessage(message)) {
+                    return;
+                }
+                const tagsWorkspaceFolder = await getWorkspaceFolder();
+                if (!tagsWorkspaceFolder || message.tags.length === 0) { return; }
+                await runMultipleTagsFromSelection(tagsWorkspaceFolder, message.tags, message.includeDependencies, message.includeDependents, message.fullRefresh);
+                return;
+              }
+              case 'dataform.runApi':
+                if (!(await runActions(extensionContext, message.actions.map(targetId), message, message.workspace ? "api_workspace" : "api"))) {
+                    return;
+                }
+                const updatedWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                this.centerPanel?.updateDataformBlock({ workflowUrls: updatedWorkflowUrls });
+                return;
+              case 'dataform.runTagsApi': {
+                const tagsToRun: string[] = Array.isArray(message.tags)
+                    ? message.tags.filter((t: unknown): t is string => typeof t === 'string' && t.trim() !== '')
                     : [];
                 if (tagsToRun.length === 0) { return; }
-                const includeDependencies = !!message.value.includeDependencies;
-                const includeDependents = !!message.value.includeDependents;
-                const fullRefresh = !!message.value.fullRefresh;
+                const includeDependencies = !!message.includeDependencies;
+                const includeDependents = !!message.includeDependents;
+                const fullRefresh = !!message.fullRefresh;
                 await runTagWtApi(
                     extensionContext,
                     tagsToRun,
@@ -738,73 +1444,33 @@ export class CompiledQueryPanel {
                 );
                 return;
               }
-              case 'costEstimator': {
+              case 'dataform.estimateTagCost': {
 
-                const selectedTags: string[] = message.value.selectedTags;
-                const includeDependenciesCost = message.value.includeDependencies;
-                const includeDependentsCost = message.value.includeDependents;
+                const selectedTags: string[] = message.tags;
+                const includeDependenciesCost = message.includeDependencies;
+                const includeDependentsCost = message.includeDependents;
                 const costWorkspaceFolder = await getWorkspaceFolder();
                 if (costWorkspaceFolder) {
-                    await ensureFreshCompilation(costWorkspaceFolder);
+                    await ensureFreshCompilation(costWorkspaceFolder, resolveDataformOptions(costWorkspaceFolder));
                 }
-                if(CACHED_COMPILED_DATAFORM_JSON){
+                const compiledForCost = compiledJson(costWorkspaceFolder);
+                if(compiledForCost){
                     logger.debug('Using cached compilation for tag cost estimation');
-                    const tagDryRunStatsMeta = await costEstimator(CACHED_COMPILED_DATAFORM_JSON, selectedTags, includeDependenciesCost, includeDependentsCost);
+                    const tagDryRunStatsMeta = await costEstimator(compiledForCost, selectedTags, includeDependenciesCost, includeDependentsCost);
                     let currency = "USD" as SupportedCurrency;
                     let currencySymbol = "$";
                     if(tagDryRunStatsMeta?.tagDryRunStatsList){
                         currency = tagDryRunStatsMeta?.tagDryRunStatsList[0].currency;
                         currencySymbol = currencySymbolMapping[currency];
                     }
-                    const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
-                    const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                    const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
-                    const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
-                    const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
-                    const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
-                    const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
-                    const dryRunIncrementalErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
-                    const _costEstNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
-                    this.centerPanel?.postMessage({
-                        "tableOrViewQuery": fileMetadata?.queryMeta?.tableQueries?.map((t: any) => t.query).join("\n"),
-                        "assertionQuery": fileMetadata?.queryMeta?.assertionQuery,
-                        "preOperations": fileMetadata?.queryMeta?.preOpsQuery,
-                        "postOperations": fileMetadata?.queryMeta?.postOpsQuery,
-                        "incrementalPreOpsQuery": fileMetadata?.queryMeta?.incrementalPreOpsQuery,
-                        "incrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                        "nonIncrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                        "operationsQuery": fileMetadata?.queryMeta?.operationsQuery,
-                        "testQuery": fileMetadata?.queryMeta?.testQuery,
-                        "expectedOutputQuery": fileMetadata?.queryMeta?.expectedOutputQuery,
-                        "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                        "tagDryRunStatsMeta": tagDryRunStatsMeta,
-                        "currencySymbol": currencySymbol,
-                        "errorMessage": errorMessage,
-                        "dryRunStatByNodeType": dryRunStatByNodeType,
-                        "dryRunStatByNodeName": dryRunStatByNodeName,
-                        "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
-                        "dryRunErrorsByNodeName": _costEstNodeMaps.dryRunErrorsByNodeName,
-                        "dryRunIncrementalErrorsByNodeName": _costEstNodeMaps.dryRunIncrementalErrorsByNodeName,
-                        "dryRunExpectedOutputErrorsByNodeName": _costEstNodeMaps.dryRunExpectedOutputErrorsByNodeName || this.centerPanel?._cachedResults?.dryRunExpectedOutputErrorsByNodeName,
-                        "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
-                        "dryRunQueryByNodeName": _costEstNodeMaps.dryRunQueryByNodeName,
-                        "dryRunIncrementalQueryByNodeName": _costEstNodeMaps.dryRunIncrementalQueryByNodeName,
-                        "dryRunNonIncrementalQueryByNodeName": _costEstNodeMaps.dryRunNonIncrementalQueryByNodeName,
-                        "compiledQuerySchema": compiledQuerySchema,
-                        "targetTablesOrViews": targetTablesOrViews,
-                        "models": curFileMeta?.fileMetadata?.tables,
-                        "dependents": curFileMeta?.dependents,
-                        "dataformTags": dataformTags,
-                        "selectedTags": selectedTags,
-                        "modelType": fileMetadata?.queryMeta?.type,
-                        "actionTypes": [...new Set((curFileMeta?.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
-                    });
+                    this.centerPanel?.sendBigQuery({ currencySymbol });
+                    this.centerPanel?.updateDataformBlock({ tagCostEstimate: tagDryRunStatsMeta && { rows: tagDryRunStatsMeta.tagDryRunStatsList, error: tagDryRunStatsMeta.error, tags: selectedTags } });
                 }else{
                     vscode.window.showErrorMessage("No cached data to estimate cost from");
                 }
                 return;
               }
-              case 'formatCurrentFile':
+              case 'formatFile':
                 const formattedText:any = await formatCurrentFile(diagnosticCollection);
                 const activeEditorFilePath = activeDocumentObj?.uri.fsPath;
                 if(activeEditorFilePath){
@@ -815,22 +1481,15 @@ export class CompiledQueryPanel {
                     });
                 }
                 return;
-              case 'lintCurrentFile':
+              case 'lintFile':
                 await vscode.commands.executeCommand('vscode-dataform-tools.lintCurrentFile');
                 return;
-              case 'lineageMetadata': {
+              case 'dataform.loadLineage': {
                 const fileMetadata  = this.centerPanel?._cachedResults?.fileMetadata;
                 const curFileMeta  = this.centerPanel?._cachedResults?.curFileMeta;
-                const targetTablesOrViews  = this.centerPanel?._cachedResults?.targetTablesOrViews;
-                const errorMessage  = this.centerPanel?._cachedResults?.errorMessage;
-                const dryRunStatByNodeType = this.centerPanel?._cachedResults?.dryRunStatByNodeType;
-                const dryRunStatByNodeName = this.centerPanel?._cachedResults?.dryRunStatByNodeName;
-                const dryRunErrorsByNodeType = this.centerPanel?._cachedResults?.dryRunErrorsByNodeType;
-                const dryRunIncrementalErrorsByNodeTypeLineage = this.centerPanel?._cachedResults?.dryRunIncrementalErrorsByNodeType;
-                const _lineageNodeMaps = deriveNodeMapsFromQueryMeta(fileMetadata?.queryMeta);
                 const locationLineage = this.centerPanel?._cachedResults?.location ||
                     curFileMeta?.projectConfig?.defaultLocation ||
-                    CACHED_COMPILED_DATAFORM_JSON?.projectConfig?.defaultLocation;
+                    compiledJson()?.projectConfig?.defaultLocation;
 
                 if (!locationLineage) {
                     vscode.window.showErrorMessage("Location for lineage metadata not found. Please set 'defaultLocation' in your Dataform configuration.");
@@ -839,127 +1498,97 @@ export class CompiledQueryPanel {
 
                 const lineageMetadata = await getLiniageMetadata(fileMetadata?.tables?.[0]?.target, locationLineage);
 
-                this.centerPanel?.postMessage({
-                    "tableOrViewQuery": fileMetadata?.queryMeta?.tableQueries?.map((t: any) => t.query).join("\n"),
-                    "assertionQuery": fileMetadata?.queryMeta?.assertionQuery,
-                    "preOperations": fileMetadata?.queryMeta?.preOpsQuery,
-                    "postOperations": fileMetadata?.queryMeta?.postOpsQuery,
-                    "incrementalPreOpsQuery": fileMetadata?.queryMeta?.incrementalPreOpsQuery,
-                    "incrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                    "nonIncrementalQuery": fileMetadata?.queryMeta?.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                    "operationsQuery": fileMetadata?.queryMeta?.operationsQuery,
-                    "testQuery": fileMetadata?.queryMeta?.testQuery,
-                    "expectedOutputQuery": fileMetadata?.queryMeta?.expectedOutputQuery,
-                    "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                    "lineageMetadata": lineageMetadata,
-                    "errorMessage": errorMessage,
-                    "dryRunStatByNodeType": dryRunStatByNodeType,
-                    "dryRunStatByNodeName": dryRunStatByNodeName,
-                    "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
-                    "dryRunErrorsByNodeName": _lineageNodeMaps.dryRunErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeName": _lineageNodeMaps.dryRunIncrementalErrorsByNodeName,
-                    "dryRunExpectedOutputErrorsByNodeName": _lineageNodeMaps.dryRunExpectedOutputErrorsByNodeName || this.centerPanel?._cachedResults?.dryRunExpectedOutputErrorsByNodeName,
-                    "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeTypeLineage,
-                    "dryRunQueryByNodeName": _lineageNodeMaps.dryRunQueryByNodeName,
-                    "dryRunIncrementalQueryByNodeName": _lineageNodeMaps.dryRunIncrementalQueryByNodeName,
-                    "dryRunNonIncrementalQueryByNodeName": _lineageNodeMaps.dryRunNonIncrementalQueryByNodeName,
-                    "compiledQuerySchema": compiledQuerySchema,
-                    "targetTablesOrViews": targetTablesOrViews,
-                    "models": curFileMeta?.fileMetadata?.tables,
-                    "dependents": curFileMeta?.dependents,
-                    "dataformTags": dataformTags,
-                    "modelType": fileMetadata?.queryMeta?.type,
-                    "actionTypes": [...new Set((curFileMeta?.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
-                });
+                this.centerPanel?.updateDataformBlock({ lineage: lineageMetadata });
                 return;
               }
-              case 'getWorkflowUrls':
+              case 'dataform.loadWorkflowUrls':
                 const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                this.centerPanel?.postMessage({
-                    workflowUrls: currentWorkflowUrls
-                });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls, cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
                 return;
-              case 'clearWorkflowUrls':
+              case 'dataform.clearWorkflowUrls':
                 await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
-                this.centerPanel?.postMessage({
-                    workflowUrls: []
-                });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: [] });
                 return;
-              case 'cancelWorkflowInvocation':
-                if (message.value?.workflowInvocationId && this.centerPanel) {
-                    const cancelled = await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.value.workflowInvocationId);
+              case 'dataform.cancelWorkflowInvocation':
+                if (message.workflowInvocationId && this.centerPanel) {
+                    const cancelled = message.workflowInvocationId.startsWith('cli-')
+                        ? await cancelCliRun(message.workflowInvocationId)
+                        : await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
                     if (!cancelled) {
-                        this.centerPanel?.postMessage({ cancelWorkflowInvocationFailed: message.value.workflowInvocationId });
+                        this.centerPanel?.sendEvent({ event: 'workflow cancel failed', workflowInvocationId: message.workflowInvocationId });
                     }
                 }
                 return;
-              case 'loadWorkflowJobStats':
-              case 'exportWorkflowActionsCsv':
-              case 'openExecutedSql':
-              case 'openBigQueryJob': {
+              case 'dataform.loadWorkflowJobStats':
+              case 'dataform.exportWorkflowActionsCsv':
+              case 'dataform.openExecutedSql':
+              case 'dataform.openBigQueryJob': {
                 const context = this.centerPanel?.extensionContext;
                 const storedUrls = context?.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                const entry = storedUrls.find((item) => item.workflowInvocationId === message.value?.workflowInvocationId);
+                const entry = storedUrls.find((item) => item.workflowInvocationId === message.workflowInvocationId);
                 if (!context || !entry) {
                     return;
                 }
-                if (message.command === 'openExecutedSql') {
-                    await openExecutedSql(entry, message.value.target);
-                } else if (message.command === 'exportWorkflowActionsCsv') {
+                if (message.command === 'dataform.openExecutedSql') {
+                    await openExecutedSql(entry, message.action);
+                } else if (message.command === 'dataform.exportWorkflowActionsCsv') {
                     await exportWorkflowActionsCsv(entry);
-                } else if (message.command === 'openBigQueryJob') {
-                    const action = entry.actions?.find((a) => a.target === message.value.target);
+                } else if (message.command === 'dataform.openBigQueryJob') {
+                    const jobAction = message.action;
+                    // A CLI run has a row for each job, and an action may have several
+                    const action = entry.actions?.find((a) => a.target === jobAction && (!message.jobId || a.jobId === message.jobId));
                     if (action) {
                         openBigQueryJobInConsole(entry, action);
                     }
                 } else if (await loadJobStatsForInvocation(entry)) {
                     await context.workspaceState.update('dataform_workflow_urls', storedUrls);
-                    this.centerPanel?.postMessage({ workflowUrls: storedUrls });
+                    this.centerPanel?.updateDataformBlock({ workflowUrls: storedUrls });
                 }
                 return;
               }
-              case 'rerunLastExecution': {
+              case 'repeatLastRun': {
+                if (await panel.onDbtRunMessage(message)) {
+                    return;
+                }
                 const previousTimestamp = getLastRun()?.timestamp;
                 await vscode.commands.executeCommand('vscode-dataform-tools.rerunLastExecution');
                 // Every runner records the run just before dispatching it, so an unchanged timestamp means
                 // the rerun was cancelled or failed its checks and the webview should stop showing progress.
                 if (getLastRun()?.timestamp === previousTimestamp) {
-                  this.centerPanel?.postMessage({ rerunAborted: true });
+                  this.centerPanel?.sendEvent({ event: 'rerun aborted' });
                 }
                 return;
               }
-              case 'computeChangedActions':
+              case 'dataform.computeChangedActions':
                 await this.centerPanel?.postChangedActions(true);
                 return;
-              case 'runChangedActions': {
+              case 'dataform.runChangedActions': {
                 const _workspaceFolder = await getWorkspaceFolder();
                 if (!_workspaceFolder) { return; }
                 const result = await runChangedActions(
                     extensionContext,
                     _workspaceFolder,
-                    !!message.value.includeDependencies,
-                    !!message.value.includeDependents,
-                    !!message.value.fullRefresh,
-                    message.value.api ? 'api' : 'cli',
-                    Array.isArray(message.value.files) ? message.value.files : undefined,
+                    !!message.includeDependencies,
+                    !!message.includeDependents,
+                    !!message.fullRefresh,
+                    message.api ? 'api' : 'cli',
+                    Array.isArray(message.files) ? message.files : undefined,
                 );
                 if (result) {
-                    this.centerPanel?.postMessage({ changedActions: toChangedActionsView(result) });
+                    this.centerPanel?.updateDataformBlock({ changedActions: toChangedActionsView(result) });
                 }
                 return;
               }
-              case 'runFilesTagsWtOptionsApi':
-                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsApi');
+              case 'dataform.runWithOptions':
+                await vscode.commands.executeCommand(message.workspace ? 'vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace' : 'vscode-dataform-tools.runFilesTagsWtOptionsApi');
                 return;
-              case 'runFilesTagsWtOptionsInRemoteWorkspace':
-                await vscode.commands.executeCommand('vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace');
-                return;
-              case 'refreshWorkflowStatuses':
+              case 'dataform.refreshWorkflowStatuses':
                 const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
 
                 if (urlsToRefresh.length > 0) {
                     const refreshedUrls = await Promise.all(urlsToRefresh.map(async (original) => {
                         const item = { ...original };
+                        if (item.executionMode === 'cli') { return item; }
                         const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
                         const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
                         const needsCountsBackfill = !item.actionCounts;
@@ -1040,17 +1669,16 @@ export class CompiledQueryPanel {
                     const latestUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
                     const updatedUrls = latestUrls.map((current) => {
                         const index = urlsToRefresh.findIndex((item) => item.workflowInvocationId && item.workflowInvocationId === current.workflowInvocationId);
-                        if (index === -1 || urlsToRefresh[index].state !== current.state) { return current; }
+                        // A CLI run is not the Dataform API's to tell of: what follows its jobs writes its entry meanwhile
+                        if (index === -1 || current.executionMode === 'cli' || urlsToRefresh[index].state !== current.state) { return current; }
                         return refreshedUrls[index];
                     });
                     await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
-                    this.centerPanel?.postMessage({
-                        workflowUrls: updatedUrls
-                    });
+                    this.centerPanel?.updateDataformBlock({ workflowUrls: updatedUrls });
                 }
                 return;
-              case 'propertyGraphElementSchema': {
-                const { elementName, target } = message.value ?? {};
+              case 'dataform.loadPropertyGraphElementSchema': {
+                const { elementName, table: target } = message;
                 if (!elementName || !target) {
                     return;
                 }
@@ -1068,16 +1696,17 @@ export class CompiledQueryPanel {
                     // the only signal available that the table could not be read.
                     error: columns.length === 0 ? `Could not read the schema of ${fullTableId}` : undefined,
                 };
-                await this.centerPanel?.postMessage({
-                    "propertyGraphElementSchema": elementSchema,
-                });
+                if (this.centerPanel) {
+                    const known = this.centerPanel.dataformBlock.propertyGraphElementSchemas;
+                    this.centerPanel.updateDataformBlock({ propertyGraphElementSchemas: { ...known, [elementSchema.elementName]: elementSchema } });
+                }
                 return;
               }
-              case 'runGeneratedQuery':
+              case 'dataform.runGeneratedQuery':
                 await vscode.commands.executeCommand(
                     'vscode-dataform-tools.runGeneratedQuery',
-                    message.value?.query,
-                    message.value?.type ?? "table",
+                    message.query,
+                    message.kind ?? "table",
                 );
                 return;
               case 'openExternal':
@@ -1085,6 +1714,32 @@ export class CompiledQueryPanel {
                     vscode.env.openExternal(vscode.Uri.parse(message.url));
                 }
                 return;
+              case 'projectInfoShown':
+                panel.projectTabWanted = false;
+                panel.info.show(panel.infoProject());
+                return;
+              case 'projectInfoHidden':
+                panel.info.hide();
+                return;
+              case 'refreshProjectInfo':
+                panel.info.refresh();
+                return;
+              case 'followInfoLink':
+                await panel.info.follow(message.link);
+                return;
+              case 'dbt.setTarget':
+              case 'dbt.compileWithHooks':
+              case 'dbt.chooseExecutable':
+              case 'dbt.lookForDbtAgain':
+              case 'dbt.computeChangedActions':
+              case 'dbt.runChangedActions':
+                await panel.onDbtMessage(message);
+                return;
+              default: {
+                // Every message of the contract has a case above: this line fails the type-check when one is added without
+                const unhandled: never = message;
+                logger.error(`Unhandled message from the compiled query panel: ${JSON.stringify(unhandled)}`);
+              }
             }
             return;
           },
@@ -1113,9 +1768,10 @@ export class CompiledQueryPanel {
             return;
         }
         const renderId = ++this.renderSeq;
+        // A file is being shown: the panel is no longer on a Project alone
+        this.projectWithoutFile = undefined;
         const webview = this.webviewPanel.webview;
-        const compilerOptions = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('compilerOptions');
-        const workflowUrls = this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+        const compilerOptions = extensionConfiguration().get<string>('compilerOptions');
 
         const workspaceFolder = await getWorkspaceFolder();
         let dataformCoreVersion = undefined;
@@ -1123,16 +1779,9 @@ export class CompiledQueryPanel {
             dataformCoreVersion = await readDataformCoreVersion(workspaceFolder);
         }
 
-        const missingExecutables: string[] = [];
-        for (let i = 0; i < executablesToCheck.length; i++) {
-            let executable = executablesToCheck[i];
-            if (executable === 'dataform' && isRemoteMode()) {
-                continue; // Remote mode compiles with the Dataform API, the CLI is not needed
-            }
-            if (!executableIsAvailable(executable, false, workspaceFolder)) {
-                missingExecutables.push(executable);
-            }
-        }
+        // Only the Backend's own tool gates the panel. Signing in to Google Cloud is not checked: a BigQuery call says so
+        const missingExecutables: string[] = requiredTools('dataform', { compilationMode: isRemoteMode() ? 'api' : 'cli' })
+            .filter((executable) => !executableIsAvailable(executable, false, workspaceFolder));
 
         // Setting html on a panel closed during the awaits above would throw
         if (this.centerPanelDisposed) {
@@ -1141,37 +1790,37 @@ export class CompiledQueryPanel {
 
         if (missingExecutables.length > 0) {
             if(this.webviewPanel.webview.html === ""){
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { missingExecutables, recompiling: false, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
+                this.hasPage = true;
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool: missingExecutables[0] as Tool, compilerOptions, dataformCoreVersion });
             } else {
-                await this.postMessage({
-                    "missingExecutables": missingExecutables,
-                    "recompiling": false,
-                    "errorType": CompilationErrorType.MISSING_EXECUTABLE,
-                    "isHelperFile": false,
-                    "tableOrViewQuery": null,
-                    "projectConfig": null,
-                    "packageJsonContent": null,
-                    "declarations": null,
-                    "compiledQuerySchema": null,
-                });
+                this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
+                this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             }
             return;
         }
 
         if(this.webviewPanel.webview.html === ""){
-            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { recompiling: freshCompilation, compilerOptions, dataformCoreVersion, compilationBackend: isRemoteMode() ? "api" : "cli" });
+            this.hasPage = true;
+            this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: freshCompilation, compilerOptions, dataformCoreVersion });
         }
+
+        // Every render that gets this far sends these, as the payloads of a compiled file used to
+        this.updateDataformBlock({
+            workflowUrls: this.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [],
+            cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null,
+            lastRun: getLastRunView(),
+            // Of the Project of the file on show: the one shown before may have been compiled another way, by another tool
+            compilationInfo: getCompilationInfo(currentDataformRoot()),
+            runBackend: this.extensionContext.workspaceState.get<Record<string, 'cli' | 'api'>>(RUN_BACKEND_KEY)?.[currentDataformRoot() ?? ''] ?? 'cli',
+        });
 
         // Notify webview that we are starting compilation
         if (freshCompilation) {
-            await this.postMessage({
-                "recompiling": true,
-                "compilationBackend": isRemoteMode() ? "api" : "cli",
-                "compilerOptions": compilerOptions,
-                "dataformCoreVersion": dataformCoreVersion,
-                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                "workspaceFolder": workspaceFolder,
-            });
+            const compilingFor = curFileMeta?.pathMeta?.relativeFilePath;
+            this.sendCompileStatus({ compiling: { showingPrevious: false, startedAt: Date.now(), ...(compilingFor ? { file: slashPath(compilingFor) } : {}) } });
+            this.sendProject();
+            this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', compilationMode: isRemoteMode() ? "api" : "cli", dataformCoreVersion: dataformCoreVersion ?? undefined });
         }
 
         if(!curFileMeta){
@@ -1179,82 +1828,40 @@ export class CompiledQueryPanel {
         }
 
         if(!curFileMeta){
-            await this.postMessage({
-                "errorMessage": `File type not supported. Supported file types are sqlx, js`,
-                "recompiling": false,
-                "errorType": CompilationErrorType.UNSUPPORTED_FILE_TYPE,
-                "isHelperFile": false,
-                "declarations": null,
-                "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "compiledQuerySchema": null,
-            });
+            this.sendCompileStatus();
+            this.sendNoActions(undefined, { kind: 'unsupported file type', message: `File type not supported. Supported file types are sqlx, js` });
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
 
 
         if (curFileMeta.isDataformWorkspace===false){
-            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-            const currentDirectory = workspaceFolder?.uri.fsPath;
-            await this.postMessage({
-                "errorMessage": `${currentDirectory} is not a Dataform workspace. Hint: Open workspace rooted in workflow_settings.yaml or dataform.json`,
-                "recompiling": false,
-                "errorType": CompilationErrorType.NOT_A_DATAFORM_WORKSPACE,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "declarations": null,
-                "compiledQuerySchema": null,
-            });
+            this.sendCompileStatus({ inProject: false });
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.errorGettingFileNameFromDocument){
-            await this.postMessage({
-                "errorMessage": curFileMeta?.errors?.errorGettingFileNameFromDocument,
-                "recompiling": false,
-                "errorType": CompilationErrorType.COMPILATION_ERROR,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "declarations": null,
-                "compiledQuerySchema": null,
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: curFileMeta?.errors?.errorGettingFileNameFromDocument });
+            this.sendProject();
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
-            const workspaceFolder = await getWorkspaceFolder();
-            await this.postMessage({
-                "errorType": CompilationErrorType.FILE_NOT_FOUND,
-                "relativeFilePath": curFileMeta?.pathMeta?.relativeFilePath,
-                "workspaceFolder": workspaceFolder,
-                "recompiling": false,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "declarations": null
-            });
+            this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'no action' });
+            this.sendProject();
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         } else if (curFileMeta?.errors?.queryMetaError){
-            await this.postMessage({
-                "errorMessage": curFileMeta.errors.queryMetaError,
-                "recompiling": false,
-                "errorType": CompilationErrorType.QUERY_META_ERROR,
-                "isHelperFile": false,
-                "declarations": null,
-                "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "compiledQuerySchema": null,
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'no sql', message: curFileMeta.errors.queryMetaError });
+            this.sendProject();
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
         if(curFileMeta.errors?.dataformCompilationErrors){
             let workspaceFolder = await getWorkspaceFolder();
             if (!workspaceFolder) {
-                await this.postMessage({ "recompiling": false });
+                this.sendCompileStatus();
                 return;
             }
 
@@ -1271,32 +1878,16 @@ export class CompiledQueryPanel {
                 }
             }
 
-            await this.postMessage({
-                "compilationErrors": curFileMeta.errors.dataformCompilationErrors?.map((compilationError: { error: string; fileName: string; stack?: string }) => {
+            this.sendCompileStatus({
+                errors: curFileMeta.errors.dataformCompilationErrors.map((compilationError: { error: string; fileName: string; stack?: string }) => {
                     const { lineNumber, sourceContext } = parseCompilationStack(compilationError.stack);
-                    return { error: compilationError.error, fileName: compilationError.fileName, lineNumber, sourceContext };
+                    return { message: compilationError.error, fileName: compilationError.fileName, line: lineNumber, sourceContext };
                 }),
-                "possibleResolutions": curFileMeta.possibleResolutions ?? [],
-                "errorMessage": null,
-                "recompiling": false,
-                "errorType": CompilationErrorType.COMPILATION_ERROR,
-                "isHelperFile": false,
-                "declarations": null,
-                "tableOrViewQuery": null,
-                "assertionQuery": null,
-                "preOperations": null,
-                "postOperations": null,
-                "incrementalPreOpsQuery": null,
-                "incrementalQuery": null,
-                "nonIncrementalQuery": null,
-                "operationsQuery": null,
-                "testQuery": null,
-                "expectedOutputQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "compiledQuerySchema": null,
-                "workspaceFolder": workspaceFolder,
             });
+            // The compile status has named the errors; with none to name, the file still has nothing to show
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, curFileMeta.errors.dataformCompilationErrors.length === 0 ? { kind: 'other' } : undefined);
+            this.sendProject();
+            this.updateDataformBlock({ possibleResolutions: curFileMeta.possibleResolutions ?? [], projectConfig: undefined, packageJson: undefined });
             return;
         }
 
@@ -1307,26 +1898,12 @@ export class CompiledQueryPanel {
         );
 
         if (isConfigFile) {
-            await this.postMessage({
-                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "projectConfig": curFileMeta.projectConfig,
-                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "packageJsonContent": curFileMeta.packageJsonContent,
-                "recompiling": false,
-                "isHelperFile": false,
-                "declarations": null,
-                "errorType": null,
-                "errorMessage": null,
-                "tableOrViewQuery": null,
-                "assertionQuery": null,
-                "preOperations": null,
-                "postOperations": null,
-                "incrementalPreOpsQuery": null,
-                "incrementalQuery": null,
-                "nonIncrementalQuery": null,
-                "operationsQuery": null,
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendCompileStatus();
+            // package.json is shown as the settings files are
+            this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'project settings' });
+            this.sendProject();
+            this.updateDataformBlock({ dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
+            this.updateDataformBlock({ projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             return;
         }
         // PropertyGraph actions live in yaml files that produce no queries, so they never
@@ -1334,77 +1911,46 @@ export class CompiledQueryPanel {
         // an empty panel.
         const relativeFilePathForGraphs = curFileMeta.pathMeta?.relativeFilePath;
         if (isPropertyGraphCandidateFile(relativeFilePathForGraphs)) {
-            const propertyGraphs = getPropertyGraphsForFile(relativeFilePathForGraphs, CACHED_COMPILED_DATAFORM_JSON);
+            const propertyGraphs = getPropertyGraphsForFile(relativeFilePathForGraphs, compiledJson());
 
             if (propertyGraphs.length > 0) {
                 if (diagnosticCollection) {
                     diagnosticCollection.clear();
                 }
-                await this.postMessage({
-                    "propertyGraphs": propertyGraphs,
-                    "propertyGraphValidations": null,
-                    "relativeFilePath": relativeFilePathForGraphs,
-                    "compilationTimeMs": curFileMeta.compilationTimeMs,
-                    "dataformTags": dataformTags,
-                    "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                    "compilerOptions": compilerOptions,
-                    "workflowUrls": workflowUrls,
-                    "lastRun": getLastRunView(),
-                    "workspaceFolder": workspaceFolder,
-                    "recompiling": false,
-                    "dryRunning": true,
-                    "errorType": null,
-                    "errorMessage": null,
-                    "isHelperFile": false,
-                    "declarations": null,
-                    "models": null,
-                    "tableOrViewQuery": null,
-                    "assertionQuery": null,
-                    "preOperations": null,
-                    "postOperations": null,
-                    "incrementalPreOpsQuery": null,
-                    "incrementalQuery": null,
-                    "nonIncrementalQuery": null,
-                    "operationsQuery": null,
-                    "testQuery": null,
-                    "expectedOutputQuery": null,
-                    "projectConfig": null,
-                    "packageJsonContent": null,
-                    "compiledQuerySchema": null,
-                });
+                this.sendCompileStatus();
+                this.sendFileSlice(relativeFilePathForGraphs);
+                this.sendProject();
+                // The validation of a graph is a dry run of the statement that would create it
+                this.sendBigQuery({ results: [], tables: {}, dryRunning: propertyGraphs.map((graph) => ({ action: targetId(graph.target), script: 'validation', incremental: false })) });
+                this.updateDataformBlock({ propertyGraphs, propertyGraphValidations: null });
+                this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
 
                 if (isCompilationStale()) {
-                    await this.postMessage({ "dryRunning": false });
+                    this.sendBigQuery({ dryRunning: [] });
                     return;
                 }
                 // Validation is a network round trip; do not hold up the render for it.
-                validatePropertyGraphs((message) => this.postMessage(message), propertyGraphs).catch((error) => {
+                validatePropertyGraphs((validations) => {
+                    this.updateDataformBlock({ propertyGraphValidations: validations });
+                    this.sendBigQuery({ dryRunning: [] });
+                }, propertyGraphs).catch((error) => {
                     logger.error(`Error validating property graphs: ${error}`);
-                    // The render above set dryRunning: true; without this the webview spins forever.
-                    this.postMessage({ "dryRunning": false });
+                    // The render above said a dry run is out; without this the webview spins forever.
+                    this.sendBigQuery({ dryRunning: [] });
                 });
                 return;
             }
 
-            const coreVersion = curFileMeta.dataformCoreVersion ?? CACHED_COMPILED_DATAFORM_JSON?.dataformCoreVersion;
+            const coreVersion = curFileMeta.dataformCoreVersion ?? compiledJson()?.dataformCoreVersion;
             if (!isCoreVersionAtLeast(coreVersion, PROPERTY_GRAPHS_MIN_CORE_VERSION)) {
-                await this.postMessage({
-                    "errorMessage": `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.`,
-                    "errorType": CompilationErrorType.COMPILATION_ERROR,
-                    "relativeFilePath": relativeFilePathForGraphs,
-                    "dataformCoreVersion": coreVersion,
-                    "recompiling": false,
-                    "dryRunning": false,
-                    "isHelperFile": false,
-                    "propertyGraphs": null,
-                    "models": null,
-                    "declarations": null,
-                    "tableOrViewQuery": null,
-                    "projectConfig": null,
-                    "packageJsonContent": null,
-                    "compiledQuerySchema": null,
-                    "workspaceFolder": workspaceFolder,
-                });
+                this.sendCompileStatus();
+                this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Property graphs require @dataform/core ${PROPERTY_GRAPHS_MIN_CORE_VERSION} or later. This project is on ${coreVersion}, so the compiled output contains no propertyGraphs for this file.` });
+                this.sendProject();
+                this.sendBigQuery({ dryRunning: [] });
+                this.updateDataformBlock({ propertyGraphs: null });
+                this.updateDataformBlock({ dataformCoreVersion: coreVersion ?? undefined });
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
                 return;
             }
         }
@@ -1415,48 +1961,29 @@ export class CompiledQueryPanel {
 
         if((curFileMeta.errors?.fileNotFoundError === true || curFileMeta.fileMetadata?.tables.length === 0 ) && isJs){
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
-                if(CACHED_COMPILED_DATAFORM_JSON){
-                    if (CACHED_COMPILED_DATAFORM_JSON?.declarations) { 
-                        const filteredDeclarations = CACHED_COMPILED_DATAFORM_JSON.declarations
+                const compiled = compiledJson();
+                if(compiled){
+                    if (compiled.declarations) { 
+                        const filteredDeclarations = compiled.declarations
                             .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
 
                         if (filteredDeclarations.length > 0) {
                             if(diagnosticCollection){
                                 diagnosticCollection.clear();
                             }
-                            await this.postMessage({
-                                "declarations": filteredDeclarations,
-                                "propertyGraphs": null,
-                                "recompiling": false,
-                                "errorType": null,
-                                "errorMessage": null,
-                                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                                "isHelperFile": false,
-                                "workspaceFolder": workspaceFolder,
-                            });
+                            this.sendCompileStatus();
+                            this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath);
+                            this.sendProject();
+                            this.updateDataformBlock({ propertyGraphs: null });
                             return;
                         }
                     }
                     
                     // If it's a JS file but has no tables and no declarations, it's a helper file
-                    await this.postMessage({
-                        "isHelperFile": true,
-                        "propertyGraphs": null,
-                        "recompiling": false,
-                        "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                        "errorType": null,
-                        "errorMessage": null,
-                        "declarations": null,
-                        "tableOrViewQuery": null,
-                        "assertionQuery": null,
-                        "preOperations": null,
-                        "postOperations": null,
-                        "incrementalPreOpsQuery": null,
-                        "incrementalQuery": null,
-                        "nonIncrementalQuery": null,
-                        "operationsQuery": null,
-                        "workspaceFolder": workspaceFolder,
-                    });
+                    this.sendCompileStatus();
+                    this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'helper' });
+                    this.sendProject();
+                    this.updateDataformBlock({ propertyGraphs: null });
                     return;
                 }
             }
@@ -1465,18 +1992,10 @@ export class CompiledQueryPanel {
 
         const fm = curFileMeta.fileMetadata;
         if (!fm) {
-            await this.postMessage({
-                "errorMessage": `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.`,
-                "recompiling": false,
-                "errorType": CompilationErrorType.COMPILATION_ERROR,
-                "isHelperFile": false,
-                "tableOrViewQuery": null,
-                "projectConfig": null,
-                "packageJsonContent": null,
-                "declarations": null,
-                "compiledQuerySchema": null,
-                "workspaceFolder": workspaceFolder,
-            });
+            this.sendCompileStatus();
+            this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'other', message: `Unable to retrieve metadata for this file. Please check if it's a valid Dataform file and ensure the project compiles correctly.` });
+            this.sendProject();
+            this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             return;
         }
 
@@ -1484,44 +2003,22 @@ export class CompiledQueryPanel {
         let targetTablesOrViews = fm.tables;
         this.deferral = curFileMeta.deferral;
 
-        await this.postMessage({
-            "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
-            "deferToProd": getDeferToProdState(workspaceFolder),
-            "leftoverProxies": curFileMeta.leftoverProxies ?? null,
-            "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
-            "assertionQuery": fileMetadata.queryMeta.assertionQuery,
-            "preOperations": fileMetadata.queryMeta.preOpsQuery,
-            "postOperations": fileMetadata.queryMeta.postOpsQuery,
-            "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-            "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-            "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-            "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-            "testQuery": fileMetadata.queryMeta.testQuery,
-            "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
-            "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-            "lineageMetadata": curFileMeta.lineageMetadata,
-            "compilationTimeMs": curFileMeta.compilationTimeMs,
-            "compiledQuerySchema": compiledQuerySchema,
-            "targetTablesOrViews": targetTablesOrViews,
-            "dependents": curFileMeta.dependents,
-            "dataformTags": dataformTags,
-            "modelType": fileMetadata.queryMeta.type,
-            "actionTypes": [...new Set((fm.tables || []).map((m: any) => m.type).filter(Boolean))],
-            "models": fm.tables,
-            "propertyGraphs": null,
-            "recompiling": false,
-            "dryRunning": true,
-            "declarations": null,
-            "compilerOptions": compilerOptions,
-            "workflowUrls": workflowUrls,
-            "lastRun": getLastRunView(),
-            "errorType": null,
-            "errorMessage": null,
-            "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-            "packageJsonContent": curFileMeta.packageJsonContent,
-            "isHelperFile": false,
-            "workspaceFolder": workspaceFolder,
-    });
+        this.sendCompileStatus();
+        // A notebook belongs to its own file in the graph; the JavaScript file that registers it shows it
+        const registered = fm.tables.filter((table) => table.type === "notebook" && table.target).map((table) => targetId(table.target));
+        const shownFile = this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { deferral: curFileMeta.deferral, registered });
+        // The panel lists the actions in the slice's order, and matches the last-modified times to them by position
+        const shown = shownFile ? fileModels(shownFile) : [];
+        this.sendProject();
+        this.updateDataformBlock({ lineage: curFileMeta.lineageMetadata ?? null });
+        // The dry runs that are now out: every script of every action shown. Their results are for this compile
+        const dryRunCompile = compileNumber();
+        const graph = compiledGraph();
+        const dryRunning: DryRunKey[] = (shownFile?.actions ?? []).flatMap(({ id }) =>
+            (graph?.actions[id] ? dryRunScripts(graph.actions[id]) : []).map((script) => ({ action: id, script: script.name, incremental: script.incremental })));
+        this.sendBigQuery({ results: [], tables: {}, dryRunning });
+        this.updateDataformBlock({ deferral: toDeferralView(curFileMeta.deferral, curFileMeta.deferralError), deferToProd: getDeferToProdState(workspaceFolder), leftoverProxies: curFileMeta.leftoverProxies ?? null, propertyGraphs: null });
+        this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
 
         logger.debug(`Compiled query panel rendered ${curFileMeta.pathMeta?.relativeFilePath}${curFileMeta.deferralPending ? ", waiting for defer to prod" : ""}`);
         if (curFileMeta.deferralPending) {
@@ -1537,7 +2034,7 @@ export class CompiledQueryPanel {
         if (isCompilationStale()) {
             // Dry running outdated SQL would report errors and costs of queries that may no longer exist.
             // The panel is redrawn, with a dry run, once the fresh compilation finishes.
-            await this.postMessage({ "dryRunning": false });
+            this.sendBigQuery({ dryRunning: [] });
             return;
         }
 
@@ -1547,42 +2044,32 @@ export class CompiledQueryPanel {
 
         let queryAutoCompMeta = await gatherQueryAutoCompletionMeta();
         if (!queryAutoCompMeta || !curFileMeta.document || !targetTablesOrViews){
-            await this.postMessage({
-                "recompiling": false,
-                "dryRunning": false,
-            });
+            this.sendCompileStatus();
+            this.sendBigQuery({ dryRunning: [] });
             return;
         }
 
         // Filter out test nodes as they don't have a table to check last modified time for
-        const tablesForLastModified = targetTablesOrViews.filter(table => table.type !== "test");
+        const tablesForLastModified = shown.filter(({ model }) => model.type !== "test" && model.target);
 
-        const assertionQueriesMeta: { targetName: string; query: string }[] = curFileMeta.fileMetadata?.queryMeta?.assertionQueries ?? [];
-        const tableQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.tableQueries ?? [];
-        const incrementalQueriesMeta: { targetName: string; incrementalQuery: string; nonIncrementalQuery: string; preOpsQuery: string; incrementalPreOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.incrementalQueries ?? [];
-        const operationQueriesMeta: { targetName: string; query: string; preOpsQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.operationQueries ?? [];
-        const testQueriesMeta: { name: string; testQuery: string; expectedOutputQuery: string }[] = curFileMeta.fileMetadata?.queryMeta?.testQueries ?? [];
 
         const [dryRunResults, _modelsLastUpdateTimesMeta] = await Promise.all([
             perfTimed('dryRuns', () => dryRunAndShowDiagnostics(curFileMeta, curFileMeta.document!, diagnosticCollection, false)),
-            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map((table) => table.target))) : Promise.resolve([]),
+            tablesForLastModified.length > 0 ? perfTimed('lastModified', () => getModelLastModifiedTime(tablesForLastModified.map(({ model }) => model.target!))) : Promise.resolve([]),
         ]);
         if (dryRunResults.accessDeniedTargets.length > 0) {
             // Read again so the prod tables we cannot read keep their dev refs, then show and dry run that
             return this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, await getCurrentFileMetadata(false), false);
         }
-        const { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults } = dryRunResults;
-        const modelsLastUpdateTimesMeta: any[] = [];
-        let timeIndex = 0;
-        const safeModelsLastUpdateTimesMeta = _modelsLastUpdateTimesMeta || [];
-        for (const table of targetTablesOrViews) {
-            if (table.type !== "test") {
-                modelsLastUpdateTimesMeta.push(safeModelsLastUpdateTimesMeta[timeIndex]);
-                timeIndex++;
-            } else {
-                modelsLastUpdateTimesMeta.push(null);
+        const { mainQuery: dryRunResult } = dryRunResults;
+        // What BigQuery knows of each table, by its action. Nothing is known when there is no BigQuery client
+        const tables: BigQuerySlice['tables'] = {};
+        (_modelsLastUpdateTimesMeta ?? []).forEach((meta, index) => {
+            const table = tablesForLastModified[index];
+            if (meta && table) {
+                tables[table.action.id] = { lastModified: meta.lastModifiedTime, modifiedToday: meta.modelWasUpdatedToday, error: meta.error?.message };
             }
-        }
+        });
 
 
         let currency = "USD" as SupportedCurrency;
@@ -1593,105 +2080,7 @@ export class CompiledQueryPanel {
             currencySymbol = currencySymbolMapping[currency];
         }
 
-        const formatCost = (result: BigQueryDryRunResponse | undefined, type: string) => formatDryRunCostSummary(result, type, currencySymbol);
-
-        const isJsFile = fileMetadata.queryMeta.type === "js";
-
-        const nodeType = fileMetadata.queryMeta.type;
-        const hasTableOrViewNodes = fileMetadata.tables.some((t: any) => t.type === "table" || t.type === "view");
-        const hasOperationsNodes = fileMetadata.tables.some((t: any) => t.type === "operations");
-        const dryRunStatByNodeType: Record<string, string> = {};
-        if (nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) {
-            const cost = formatCost(dryRunResult, "");
-            if (cost) { dryRunStatByNodeType["table"] = cost; dryRunStatByNodeType["view"] = cost; }
-        }
-        if (nodeType === "operations" || (isJsFile && hasOperationsNodes && !hasTableOrViewNodes)) {
-            const cost = formatCost(dryRunResult, "");
-            if (cost) { dryRunStatByNodeType["operations"] = cost; }
-        }
-        const hasIncrementalNodes = fileMetadata.tables.some((t: any) => t.type === "incremental");
-        if (nodeType === "incremental" || (isJsFile && hasIncrementalNodes)) {
-            const parts = [formatCost(nonIncrementalDryRunResult, ""), formatCost(incrementalDryRunResult, "Incremental")].filter(Boolean);
-            if (parts.length) { dryRunStatByNodeType["incremental"] = parts.join("<br>"); }
-        }
-        { const cost = formatCost(assertionDryRunResult, ""); if (cost) { dryRunStatByNodeType["assertion"] = cost; } }
-        const dryRunStatByNodeName: Record<string, string> = {};
-        (perAssertionDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && assertionQueriesMeta[i]) {
-                dryRunStatByNodeName[assertionQueriesMeta[i].targetName] = cost;
-            }
-        });
-        (perTableDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && tableQueriesMeta[i]) {
-                dryRunStatByNodeName[tableQueriesMeta[i].targetName] = cost;
-            }
-        });
-        (perNonIncrementalDryRunResults ?? []).forEach((nonIncResult: BigQueryDryRunResponse, i: number) => {
-            const incResult = (perIncrementalDryRunResults ?? [])[i];
-            const nonIncCost = formatCost(nonIncResult, "Non incremental");
-            const incCost = formatCost(incResult, "Incremental");
-            const parts = [nonIncCost, incCost].filter(Boolean);
-            if (parts.length > 0 && incrementalQueriesMeta[i]) {
-                dryRunStatByNodeName[incrementalQueriesMeta[i].targetName] = parts.join("<br>");
-            }
-        });
-        (perOperationDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const cost = formatCost(result, "");
-            if (cost && operationQueriesMeta[i]) {
-                dryRunStatByNodeName[operationQueriesMeta[i].targetName] = cost;
-            }
-        });
-        {
-            const testCost = formatCost(testDryRunResult, "Input");
-            const expectedCost = formatCost(expectedOutputDryRunResult, "Expected");
-            const parts = [testCost, expectedCost].filter(Boolean);
-            if (parts.length) { dryRunStatByNodeType["test"] = parts.join("<br>"); }
-        }
-        (perTestDryRunResults ?? []).forEach((result: BigQueryDryRunResponse, i: number) => {
-            const inputCost = formatCost(result, "Input");
-            const expectedCost = formatCost(perExpectedOutputDryRunResults?.[i], "Expected");
-            const parts = [inputCost, expectedCost].filter(Boolean);
-            const combined = parts.join("<br>");
-            if (combined && testQueriesMeta[i]) {
-                dryRunStatByNodeName[testQueriesMeta[i].name] = combined;
-            }
-        });
-
-
-        // Build aggregate (node-type-keyed) error maps as fallback for single-node files
-        const dryRunErrorsByNodeType: Record<string, DryRunAnnotation> = {};
-        const dryRunIncrementalErrorsByNodeType: Record<string, DryRunAnnotation> = {};
-        const dryRunExpectedOutputErrorsByNodeType: Record<string, DryRunAnnotation> = {};
-
-        if ((nodeType === "table" || nodeType === "view" || (isJsFile && hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["table"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
-            dryRunErrorsByNodeType["view"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
-        }
-        if ((nodeType === "operations" || (isJsFile && hasOperationsNodes && !hasTableOrViewNodes)) && dryRunResult?.error?.hasError) {
-            dryRunErrorsByNodeType["operations"] = { message: dryRunResult.error.message, location: dryRunResult.error.location };
-        }
-        if (nodeType === "incremental" || (isJsFile && hasIncrementalNodes)) {
-            if (incrementalDryRunResult?.error?.hasError) {
-                dryRunIncrementalErrorsByNodeType["incremental"] = { message: incrementalDryRunResult.error.message, location: incrementalDryRunResult.error.location };
-            }
-            if (nonIncrementalDryRunResult?.error?.hasError) {
-                dryRunErrorsByNodeType["incremental"] = { message: nonIncrementalDryRunResult.error.message, location: nonIncrementalDryRunResult.error.location };
-            }
-        }
-        if (assertionDryRunResult?.error?.hasError && !(perAssertionDryRunResults?.length)) {
-            dryRunErrorsByNodeType["assertion"] = { message: assertionDryRunResult.error.message, location: assertionDryRunResult.error.location };
-        }
-        if (testDryRunResult?.error?.hasError && !(perTestDryRunResults?.length)) {
-            dryRunErrorsByNodeType["test"] = { message: testDryRunResult.error.message, location: testDryRunResult.error.location };
-        }
-        if (expectedOutputDryRunResult?.error?.hasError) {
-            dryRunExpectedOutputErrorsByNodeType["test"] = { message: expectedOutputDryRunResult.error.message, location: expectedOutputDryRunResult.error.location };
-        }
-
-        // Per-node maps are derived from the enriched query arrays (set by dryRunOrchestrator)
-        const { dryRunErrorsByNodeName, dryRunIncrementalErrorsByNodeName, dryRunExpectedOutputErrorsByNodeName, dryRunQueryByNodeName, dryRunIncrementalQueryByNodeName, dryRunNonIncrementalQueryByNodeName } = deriveNodeMapsFromQueryMeta(fileMetadata.queryMeta);
+        this.updateDataformBlock({ packageJson: curFileMeta.packageJsonContent ?? undefined });
 
         // errorMessage is now null for dry-run errors; BigQuery client auth errors arrive via a separate path
         const errorMessage = null;
@@ -1724,69 +2113,18 @@ export class CompiledQueryPanel {
 
         dataformTags = queryAutoCompMeta.dataformTags;
         if(showCompiledQueryInVerticalSplitOnSave || forceShowInVeritcalSplit){
-            await this.postMessage({
-                "deferral": toDeferralView(curFileMeta.deferral, curFileMeta.deferralError),
-                "deferToProd": getDeferToProdState(workspaceFolder),
-            "leftoverProxies": curFileMeta.leftoverProxies ?? null,
-                "tableOrViewQuery": fileMetadata.queryMeta.tableQueries?.map((t: any) => t.query).join("\n"),
-                "assertionQuery": fileMetadata.queryMeta.assertionQuery,
-                "preOperations": fileMetadata.queryMeta.preOpsQuery,
-                "postOperations": fileMetadata.queryMeta.postOpsQuery,
-                "incrementalPreOpsQuery": fileMetadata.queryMeta.incrementalPreOpsQuery,
-                "incrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.incrementalQuery).join("\n"),
-                "nonIncrementalQuery": fileMetadata.queryMeta.incrementalQueries?.map((q: any) => q.nonIncrementalQuery).join("\n"),
-                "operationsQuery": fileMetadata.queryMeta.operationsQuery,
-                "testQuery": fileMetadata.queryMeta.testQuery,
-                "expectedOutputQuery": fileMetadata.queryMeta.expectedOutputQuery,
-                "relativeFilePath": curFileMeta.pathMeta?.relativeFilePath,
-                "lineageMetadata": curFileMeta.lineageMetadata,
-                "compilationTimeMs": curFileMeta.compilationTimeMs,
-                "errorMessage": errorMessage,
-                "dryRunStatByNodeType": dryRunStatByNodeType,
-                "dryRunStatByNodeName": dryRunStatByNodeName,
-                "dryRunErrorsByNodeType": dryRunErrorsByNodeType,
-                "dryRunErrorsByNodeName": dryRunErrorsByNodeName,
-                "dryRunIncrementalErrorsByNodeName": dryRunIncrementalErrorsByNodeName,
-                "dryRunIncrementalErrorsByNodeType": dryRunIncrementalErrorsByNodeType,
-                "dryRunExpectedOutputErrorsByNodeName": dryRunExpectedOutputErrorsByNodeName,
-                "dryRunExpectedOutputErrorsByNodeType": dryRunExpectedOutputErrorsByNodeType,
-                "dryRunQueryByNodeName": dryRunQueryByNodeName,
-                "dryRunIncrementalQueryByNodeName": dryRunIncrementalQueryByNodeName,
-                "dryRunNonIncrementalQueryByNodeName": dryRunNonIncrementalQueryByNodeName,
-                "testDryRunResult": testDryRunResult,
-                "expectedOutputDryRunResult": expectedOutputDryRunResult,
-                "currencySymbol": currencySymbol,
-                "compiledQuerySchema": compiledQuerySchema,
-                "targetTablesOrViews": targetTablesOrViews,
-                "models": curFileMeta.fileMetadata?.tables,
-                "dependents": curFileMeta.dependents,
-                "dataformTags": dataformTags,
-                "modelType": fileMetadata.queryMeta.type,
-                "actionTypes": [...new Set((curFileMeta.fileMetadata?.tables || []).map((m: any) => m.type).filter(Boolean))],
-                "snoozeEndTime": snoozeManager.getSnoozeEndTime(),
-                "modelsLastUpdateTimesMeta": modelsLastUpdateTimesMeta,
-                "recompiling": false,
-                "dryRunning": false,
-                "declarations": null,
-                "compilerOptions": compilerOptions,
-                "workflowUrls": workflowUrls,
-                "lastRun": getLastRunView(),
-                "errorType": null,
-                "projectConfig": curFileMeta.projectConfig,
-                "dataformCoreVersion": curFileMeta.dataformCoreVersion,
-                "packageJsonContent": curFileMeta.packageJsonContent,
-                "isHelperFile": false
-            });
+            this.sendCompileStatus();
+            this.sendProject();
+            this.updateDataformBlock({ lineage: curFileMeta.lineageMetadata ?? null });
+            this.sendBigQuery({ results: dryRunResults.dryRuns.map(({ action, script, response }) => toDryRunResult(action, script, dryRunCompile, response)), dryRunning: [], tables, currencySymbol });
+            this.updateDataformBlock({ deferral: toDeferralView(curFileMeta.deferral, curFileMeta.deferralError), deferToProd: getDeferToProdState(workspaceFolder), leftoverProxies: curFileMeta.leftoverProxies ?? null });
+            this.updateDataformBlock({ compilerOptions: compilerOptions ?? '', dataformCoreVersion: curFileMeta.dataformCoreVersion ?? undefined });
+            this.updateDataformBlock({ snoozeEndTime: snoozeManager.getSnoozeEndTime(), projectConfig: curFileMeta.projectConfig ?? undefined, packageJson: curFileMeta.packageJsonContent ?? undefined });
             this._cachedResults = {
                 fileMetadata,
                 curFileMeta,
                 targetTablesOrViews,
                 errorMessage,
-                dryRunStatByNodeType,
-                dryRunStatByNodeName,
-                dryRunErrorsByNodeType,
-                dryRunIncrementalErrorsByNodeType,
-                dryRunExpectedOutputErrorsByNodeType,
                 location,
                 compilerOptions
             };
@@ -1800,19 +2138,19 @@ export class CompiledQueryPanel {
      * which keeps the button's count current after every compile without compiling the base unprompted.
      */
     public async refreshFromCache(currentFileMetadata: CurrentFileMetadata | undefined) {
-        const showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave = extensionConfiguration().get<boolean>('showCompiledQueryInVerticalSplitOnSave');
         await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, true, currentFileMetadata, false);
     }
 
     public async postChangedActions(allowCompile: boolean) {
-        if (this.centerPanelDisposed || (!allowCompile && !CACHED_COMPILED_DATAFORM_JSON)) {
+        if (this.centerPanelDisposed || (!allowCompile && !compiledJson())) {
             return; // Nothing compiled yet, e.g. not a Dataform workspace, which the compile has already reported
         }
         if (allowCompile) {
-            await this.postMessage({ changedActions: { status: 'computing' } });
+            this.updateDataformBlock({ changedActions: { status: 'computing' } });
         }
         const changedActions = await getChangedActionsView(await getWorkspaceFolder(), allowCompile);
-        await this.postMessage({ changedActions });
+        this.updateDataformBlock({ changedActions });
     }
 
     private apiRunGitStateRequest = 0;
@@ -1840,12 +2178,12 @@ export class CompiledQueryPanel {
         const apiRunGitState = await apiRunGitStateCache.state;
         // A slower earlier request must not overwrite a newer answer
         if (request === this.apiRunGitStateRequest) {
-            await this.postMessage({ apiRunGitState });
+            this.updateDataformBlock({ apiRunGitState });
         }
     }
 
     private async updateView(forceShowInVeritcalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true) {
-        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        const showCompiledQueryInVerticalSplitOnSave:boolean | undefined = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
         let webview = await this.sendUpdateToView(showCompiledQueryInVerticalSplitOnSave, forceShowInVeritcalSplit, currentFileMetadata, freshCompilation);
         this.postChangedActions(false).catch((error) => logger.error(`Failed to refresh changed actions: ${error}`));
         this.postApiRunGitState().catch((error) => logger.error(`Failed to refresh the API run git state: ${error}`));
@@ -1856,19 +2194,33 @@ export class CompiledQueryPanel {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview, initialState: any = {}) {
-        if (initialState.snoozeEndTime === undefined) {
-            initialState.snoozeEndTime = snoozeManager.getSnoozeEndTime();
-        }
-        if (initialState.compilationBackend === undefined) {
-            initialState.compilationBackend = isRemoteMode() ? "api" : "cli";
-        }
-        if (initialState.lastRun === undefined) {
-            initialState.lastRun = getLastRunView();
-        }
-        if (initialState.compilationInfo === undefined) {
-            initialState.compilationInfo = getCompilationInfo();
-        }
+    /**
+     * The panel's page. It is given the slices the panel starts with, so that its first paint is right before any
+     * message: the `dataform` block and how the compile stands.
+     */
+    private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: Tool; compilerOptions?: string; dataformCoreVersion?: string | null }) {
+        const compilationInfo = getCompilationInfo(currentDataformRoot());
+        this.dataformBlock = {
+            ...this.dataformBlock,
+            compilerOptions: first.compilerOptions ?? '',
+            compilationMode: isRemoteMode() ? "api" : "cli",
+            dataformCoreVersion: first.dataformCoreVersion ?? undefined,
+            snoozeEndTime: snoozeManager.getSnoozeEndTime() ?? null,
+            lastRun: getLastRunView() ?? null,
+            compilationInfo: compilationInfo ?? undefined,
+        };
+        const compile = compileStatusSlice({
+            inProject: true,
+            errors: [],
+            ...(first.missingTool ? { missingTool: { tool: first.missingTool, lookedIn: [] } } : {}),
+            ...(first.compiling ? { compiling: { showingPrevious: false, startedAt: Date.now() } } : {}),
+            ...(compilationInfo ? { compiled: { compiledAt: compilationInfo.compiledAt } } : {}),
+        }, compileNumber());
+        return this.pageWith(webview, { dataform: this.dataformBlock, compile });
+    }
+
+    /** The panel's page, starting with the slices given */
+    private pageWith(webview: vscode.Webview, initialState: Partial<PanelSlices>) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
         const styleUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.css"));
         const nonce = getNonce();
@@ -1881,7 +2233,7 @@ export class CompiledQueryPanel {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
             <link href="${styleUri}" rel="stylesheet">
-            <title>Dataform Tools</title>
+            <title>Compiled Query</title>
         </head>
         <body>
             <div id="root"></div>

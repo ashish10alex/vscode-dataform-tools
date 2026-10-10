@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { getBigQueryClient, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { getBigQueryClientFor, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import type { JobPlace } from './bigquery/jobPlace';
 import { QueryResultsOptions } from '@google-cloud/bigquery';
 import { getBigQueryTimeoutMs } from './constants';
 import { formatBytes } from './utils';
@@ -159,10 +160,10 @@ function transformBigValues(obj: any) {
     return obj;
 }
 
-export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false, place?: JobPlace): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
     await checkAuthentication();
 
-    const bigquery = getBigQueryClient();
+    const bigquery = await getBigQueryClientFor(place);
     if (!bigquery) {
         vscode.window.showErrorMessage('Error creating BigQuery client Please check your authentication.');
         return { rows: undefined, jobStats: undefined, errorMessage: "Error creating BigQuery client Please check your authentication." };
@@ -177,14 +178,14 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
     // Capture job in a local variable so concurrent calls don't overwrite each other's reference
     let localJob: typeof bigQueryJob;
     try {
-        [localJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs() });
+        [localJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs(), ...(place?.location ? { location: place.location } : {}) });
         bigQueryJob = localJob;  // keep global updated for cancellation
         _bigQueryJobId = localJob?.id;
     } catch (error: any) {
         try {
             await handleBigQueryError(error, alreadyRetried);
             // The client was recreated after an authentication error: retry once
-            return await runQueryInBigQuery(query, true);
+            return await runQueryInBigQuery(query, true, place);
         } catch (finalError: any) {
             // vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
             return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};
@@ -338,9 +339,9 @@ export function processQueryResults(rows: any[]): { results: any[], columns: any
     return { results, columns };
 }
 
-export async function queryBigQuery(query: string): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function queryBigQuery(query: string, place?: JobPlace): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
 
-    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query);
+    let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query, false, place);
 
     if (errorMessage) {
         return { results: undefined, columns: undefined, jobStats: jobStats, errorMessage: errorMessage };

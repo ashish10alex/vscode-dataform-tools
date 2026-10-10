@@ -1,0 +1,22 @@
+# Builds in the alex-personal-dev-01 project, where examples/data/load.sh
+# loaded the raw tables; set XF_GCP_PROJECT to use another. dbt calls
+# BigQuery as your Application Default Credentials
+# (`gcloud auth application-default login`). The ci target builds the same
+# project into xf_example_ci: `xf --dbt-target ci` compiles with it.
+xf_example:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('XF_GCP_PROJECT', 'alex-personal-dev-01') }}"
+      dataset: xf_example
+      location: EU
+      threads: 4
+    ci:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('XF_GCP_PROJECT', 'alex-personal-dev-01') }}"
+      dataset: xf_example_ci
+      location: EU
+      threads: 4

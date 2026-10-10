@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: One row per customer, cleaned up.
+    columns:
+      - name: customer_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: email
+        description: Lower-cased email address.
+        data_tests: [not_null]
+  - name: stg_orders
+    description: One row per order.
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: status
+        description: '{{ doc("order_status") }}'
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['placed', 'shipped', 'completed', 'returned']
+  - name: stg_payments
+    description: One row per successful payment, in dollars.

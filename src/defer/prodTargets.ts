@@ -6,9 +6,11 @@ import crypto from 'crypto';
 import { logger } from '../logger';
 import { Target } from '../types';
 import { baseCacheDay } from '../changedActions';
-import { compileDataform, createCompilerOptionsObjectForApi, getDataformCompilerOptions, parseCompiledString } from '../utils/dataformCompiler';
-import { compileRemoteHeadWithConfig, isRemoteMode } from '../utils/remoteCompiler';
+import { compileDataform, createCompilerOptionsObjectForApi, parseCompiledString } from '../utils/dataformCompiler';
+import { compileRemoteHeadWithConfig } from '../utils/remoteCompiler';
 import { buildProdTargetMap } from './deferRules';
+import { getDataformCompilerOptions, isRemoteMode, resolveDataformOptions } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * The Prod Target of every action comes from compiling the project with the Prod Options. A compile takes a
@@ -36,11 +38,20 @@ export function initProdTargets(context: vscode.ExtensionContext) {
  * dev and prod are then the same tables.
  */
 export function getProdCompilerOptions(workspaceFolder: string): string | undefined {
-    const explicit = vscode.workspace.getConfiguration('vscode-dataform-tools', vscode.Uri.file(workspaceFolder)).get<string>('prodCompilerOptions')?.trim();
+    const explicit = extensionConfiguration(vscode.Uri.file(workspaceFolder)).get<string>('prodCompilerOptions')?.trim();
     if (explicit) {
         return explicit;
     }
     return getDataformCompilerOptions().trim() ? "" : undefined;
+}
+
+/**
+ * Whether the `prodCompilerOptions` setting is set at any level, even to "", which says the project's default
+ * targets are prod. Unset, column impact says it compared with the default targets, which may be dev tables.
+ */
+export function isProdCompilerOptionsSet(workspaceFolder: string): boolean {
+    const setting = extensionConfiguration(vscode.Uri.file(workspaceFolder)).inspect<string>('prodCompilerOptions');
+    return [setting?.globalValue, setting?.workspaceValue, setting?.workspaceFolderValue].some((value) => value !== undefined);
 }
 
 function hash(value: string): string {
@@ -95,12 +106,12 @@ async function saveEntry(key: string, entry: ProdTargetEntry) {
 
 async function compileProdTargets(workspaceFolder: string, prodOptions: string, key: string): Promise<ProdTargetEntry> {
     if (isRemoteMode()) {
-        const graph = await compileRemoteHeadWithConfig(workspaceFolder, createCompilerOptionsObjectForApi([prodOptions]), `prod-${hash(prodOptions)}`);
+        const graph = await compileRemoteHeadWithConfig(workspaceFolder, resolveDataformOptions(workspaceFolder, 'api'), createCompilerOptionsObjectForApi([prodOptions]), `prod-${hash(prodOptions)}`);
         return { targets: buildProdTargetMap(graph), knownMissing: new Set() };
     }
     const { compiledString, errors } = await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Window, title: "Compiling with prod options for defer to prod" },
-        () => compileDataform(workspaceFolder, prodOptions),
+        () => compileDataform(workspaceFolder, resolveDataformOptions(workspaceFolder, 'cli'), prodOptions),
     );
     if (!compiledString) {
         const details = (errors ?? []).slice(0, 3).map((e) => (e.fileName ? `${e.fileName}: ${e.error}` : e.error)).join('\n');

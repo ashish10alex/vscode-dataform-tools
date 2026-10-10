@@ -1,16 +1,12 @@
 import { Settings, Package } from 'lucide-react';
-import { WebviewState } from '../types';
+import { PanelState } from '../types';
 
 interface ProjectConfigTabProps {
-  state: WebviewState;
+  state: PanelState;
 }
 
 export const ProjectConfigTab: React.FC<ProjectConfigTabProps> = ({ state }) => {
-  const { 
-    projectConfig, 
-    dataformCoreVersion, 
-    packageJsonContent, 
-  } = state;
+  const { projectConfig, dataformCoreVersion, packageJson: packageJsonContent } = state.dataform;
 
 
   if (packageJsonContent) {

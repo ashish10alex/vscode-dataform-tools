@@ -1,18 +1,29 @@
 {
-  "assertionQuery": null,
-  "declarations": null,
-  "errorMessage": null,
-  "errorType": null,
-  "incrementalPreOpsQuery": null,
-  "incrementalQuery": null,
-  "isHelperFile": true,
-  "nonIncrementalQuery": null,
-  "operationsQuery": null,
-  "postOperations": null,
-  "preOperations": null,
-  "propertyGraphs": null,
-  "recompiling": false,
-  "relativeFilePath": "includes/params.js",
-  "tableOrViewQuery": null,
-  "workspaceFolder": "<workspace>"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
+  },
+  "dataform": {
+    "compilerOptions": "",
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [],
+    "file": "includes/params.js",
+    "role": "helper"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
+    },
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }

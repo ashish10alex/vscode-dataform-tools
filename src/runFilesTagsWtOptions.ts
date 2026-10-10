@@ -1,14 +1,15 @@
 import * as vscode from 'vscode';
-import { getDataformCompilationTimeoutFromConfig, getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runCommandInTerminal, runMultipleFilesFromSelection } from './utils';
+import { getMultipleFileSelection, getRelativePath, getWorkspaceFolder, runMultipleFilesFromSelection } from './utils';
 import { getMultipleTagsSelection, getRunTagsWtOptsCommand, runMultipleTagsFromSelection, runTagWtApi } from './runTag';
 import { ExecutionMode } from './types';
 import { runCurrentFile } from './runCurrentFile';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { beginRun } from './defer/deferRun';
+import { runDataformRunInTerminal } from './cliRunJobs';
+import { withRunFeedback } from './runFeedback';
 
 export function getRunSingleTagCommand(workspaceFolder: string, tag: string, includeDependencies: boolean, includeDependents: boolean, fullRefresh: boolean): string {
-    const defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-    return getRunTagsWtOptsCommand(workspaceFolder, [tag], defaultDataformCompileTime, includeDependencies, includeDependents, fullRefresh);
+    return getRunTagsWtOptsCommand(workspaceFolder, [tag], includeDependencies, includeDependents, fullRefresh);
 }
 
 export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, executionMode: ExecutionMode) {
@@ -31,7 +32,7 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
     }
 
     let multipleFileSelection: string[] | undefined;
-    let workspaceFolder = await getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder){ return; }
     if (firstStageSelection === "run multiple files"){
         multipleFileSelection = await getMultipleFileSelection(workspaceFolder);
@@ -105,8 +106,10 @@ export async function runFilesTagsWtOptions(context: vscode.ExtensionContext, ex
             runCurrentFile(context, includeDependencies, includeDependents, fullRefresh, "cli");
         } else if (firstStageSelection === "run a tag") {
             if(!tagSelection){return;};
-            if (!(await beginRun({ kind: 'tags', items: [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
-            runCommandInTerminal(getRunSingleTagCommand(workspaceFolder, tagSelection, includeDependencies, includeDependents, fullRefresh));
+            await withRunFeedback('cli', async () => {
+                if (!(await beginRun({ kind: 'tags', items: [tagSelection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
+                await runDataformRunInTerminal(workspaceFolder, getRunSingleTagCommand(workspaceFolder, tagSelection, includeDependencies, includeDependents, fullRefresh), { tags: [tagSelection], includeDependencies, includeDependents, fullRefresh });
+            });
         } else if (firstStageSelection === "run multiple files" || firstStageSelection === "run open sqlx files"){
             if(!multipleFileSelection){return;};
             runMultipleFilesFromSelection(context, workspaceFolder, multipleFileSelection, includeDependencies, includeDependents, fullRefresh, "cli");
