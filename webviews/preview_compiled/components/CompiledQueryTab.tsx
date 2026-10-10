@@ -14,12 +14,13 @@ import { workflowDurationMs, useTick } from "./WorkflowActionsTable";
 import { LineageColumns } from "./LineageColumns";
 import { ROW_BUTTON, ROW_LABEL, ROW_PRIMARY_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
 import { RunChangedButton } from "./RunChangedButton";
-import { RunBackend, RunBackendSwitch } from "./RunBackendSwitch";
+import { API_COLOR, RunBackend, RunBackendSwitch } from "./RunBackendSwitch";
 import { ApiRunGitChip } from "./ApiRunGitChip";
 import { ModifierSwitch } from "./ModifierSwitch";
 import { DeferralBanner, deferralSummary, SWITCH_TITLE as DEFER_SWITCH_TITLE } from "./DeferralBanner";
 import {
   Play,
+  Cloud,
   Network,
   GitCompareArrows,
   ListTree,
@@ -57,8 +58,23 @@ import { formatDuration } from "../../../src/shared/jobTiming";
 // A part of the group of run buttons. Its corners are the group's, which rounds its ends
 const RUN_PART_BASE = "flex items-center gap-1 h-6 px-2 rounded-[inherit] border-0 text-xs whitespace-nowrap disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
 /** A run that is not the file's own: in the button colour, thinned, so it is an action and second to the main one */
-export const RUN_PART = `${RUN_PART_BASE} text-[var(--vscode-foreground)] bg-[color-mix(in_srgb,var(--vscode-button-background)_28%,transparent)] hover:bg-[color-mix(in_srgb,var(--vscode-button-background)_45%,transparent)]`;
-const RUN_MAIN_PART = `${RUN_PART_BASE} text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]`;
+export const RUN_PART = `${RUN_PART_BASE} text-[var(--vscode-foreground)] bg-[color-mix(in_srgb,var(--run-tint,var(--vscode-button-background))_28%,transparent)] hover:bg-[color-mix(in_srgb,var(--run-tint,var(--vscode-button-background))_45%,transparent)]`;
+const RUN_MAIN_PART = `${RUN_PART_BASE} text-[var(--vscode-button-foreground)] bg-[var(--run-solid,var(--vscode-button-background))] hover:bg-[var(--run-solid-hover,var(--vscode-button-hoverBackground))]`;
+/**
+ * The run buttons while their runs go through the Dataform API: in the colour the switch has for it, so where a run
+ * goes is seen on the button that starts it. The solid one is darkened, for its text to be read on it in a dark theme.
+ */
+const API_RUN_COLORS = {
+  "--run-tint": API_COLOR,
+  "--run-solid": `color-mix(in srgb, ${API_COLOR} 70%, black)`,
+  "--run-solid-hover": `color-mix(in srgb, ${API_COLOR} 84%, black)`,
+} as React.CSSProperties;
+/** The run buttons' own colours, for the one that does not follow the switch */
+const CLI_RUN_COLORS = {
+  "--run-tint": "var(--vscode-button-background)",
+  "--run-solid": "var(--vscode-button-background)",
+  "--run-solid-hover": "var(--vscode-button-hoverBackground)",
+} as React.CSSProperties;
 // The colour of the Full refresh chip while it is on
 const FULL_REFRESH_COLOR = "var(--vscode-charts-orange, #d18616)";
 
@@ -764,9 +780,9 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   )}
                   {/* Everything that starts a run is one group, each part with the arrow of a run and the name of what it
                       runs: they are told from the settings beside them, which have neither */}
-                  <div role="group" aria-label="Run" className="inline-flex items-stretch gap-px [&>*:first-child]:rounded-l [&>*:last-child]:rounded-r">
+                  <div role="group" aria-label="Run" style={runsViaApi ? API_RUN_COLORS : undefined} className="inline-flex items-stretch gap-px [&>*:first-child]:rounded-l [&>*:last-child]:rounded-r">
                   {showTestRun && (
-                    <button onClick={handleRunTest} disabled={compiling} title="Run the unit tests of this file" className={hasRunnableActions ? RUN_PART : RUN_MAIN_PART}>
+                    <button onClick={handleRunTest} disabled={compiling} title="Run the unit tests of this file, with the Dataform CLI" style={CLI_RUN_COLORS} className={hasRunnableActions ? RUN_PART : RUN_MAIN_PART}>
                       <Play className="w-3 h-3" /> Tests
                     </button>
                   )}
@@ -858,7 +874,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       title={`Run this file's actions via the Dataform ${runBackend === "api" ? "API" : "CLI"}${[includeDependencies && ", with dependencies", includeDependents && ", with dependents", fullRefresh && ", full refresh"].filter(Boolean).join("")}`}
                       className={RUN_MAIN_PART}
                     >
-                      {runningModel ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} File
+                      {runningModel ? <Loader2 className="w-3 h-3 animate-spin" /> : runBackend === "api" ? <Cloud className="w-3 h-3" /> : <Play className="w-3 h-3" />} File
                     </button>
                   )}
                   </div>

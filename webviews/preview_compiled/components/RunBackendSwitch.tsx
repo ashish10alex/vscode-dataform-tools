@@ -3,6 +3,9 @@ import clsx from "clsx";
 
 export type RunBackend = "api" | "cli";
 
+/** The colour of the Dataform API in the Run row: on the switch, and on the run buttons while it is chosen */
+export const API_COLOR = "var(--vscode-charts-purple, #b180d7)";
+
 const OPTIONS = [
   { backend: "cli", label: "CLI", Icon: Terminal, title: "Run locally with the Dataform CLI: your files as they are" },
   { backend: "api", label: "API", Icon: Cloud, title: "Run on GCP with the Dataform API: the branch as it is on the git remote" },
@@ -34,10 +37,12 @@ export function RunBackendSwitch({ backend, isRemoteMode, disabled, onChange }: 
             disabled={disabled || unavailable}
             onClick={() => onChange(option)}
             title={unavailable ? "The project is compiled with the Dataform API, which runs the pushed branch. Compile with the CLI to run your local files" : title}
+            // The chosen side has the colour its runs have: the run buttons beside it take the same one
+            style={option === backend ? { background: `color-mix(in srgb, ${option === "api" ? API_COLOR : "var(--vscode-button-background)"} 50%, transparent)` } : undefined}
             className={clsx(
               "flex items-center gap-1 h-full px-1.5 rounded-sm border-0 text-xs whitespace-nowrap transition-colors disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]",
               option === backend
-                ? "bg-[var(--vscode-list-inactiveSelectionBackground,var(--vscode-toolbar-hoverBackground))] text-[var(--vscode-foreground)]"
+                ? "text-[var(--vscode-foreground)] font-medium"
                 : "bg-transparent text-[var(--vscode-descriptionForeground)] enabled:hover:text-[var(--vscode-foreground)]"
             )}
           >
