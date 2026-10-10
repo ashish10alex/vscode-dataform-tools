@@ -16,7 +16,7 @@ export function Hero() {
       <div className="bg-grid absolute inset-0 -z-10" aria-hidden />
       <div className="glow-brand absolute inset-0 -z-10" aria-hidden />
 
-      <div className="mx-auto max-w-6xl px-4 pb-5 pt-5 text-center sm:px-6 md:pt-7">
+      <div className="mx-auto max-w-6xl px-4 pb-4 pt-4 text-center sm:px-6 md:pt-5">
         <div className="reveal flex flex-wrap items-center justify-center gap-2.5">
           <a
             href="/changelog"
@@ -37,6 +37,18 @@ export function Hero() {
             Recommended by Google&apos;s Dataform team
             <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
           </a>
+
+          <Button asChild size="sm" className="h-7 rounded-full bg-brand px-3.5 text-xs text-brand-foreground hover:bg-brand/90">
+            <a href={site.marketplace.vscode} target="_blank" rel="noopener noreferrer">
+              Install for VS Code
+            </a>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="h-7 rounded-full px-3.5 text-xs">
+            <a href={site.repoUrl} target="_blank" rel="noopener noreferrer">
+              <Github />
+              GitHub
+            </a>
+          </Button>
         </div>
 
         <h1
@@ -48,29 +60,12 @@ export function Hero() {
         </h1>
 
         <p
-          className="reveal mx-auto mt-2.5 max-w-3xl text-balance text-sm text-muted-foreground sm:text-base"
+          className="reveal mx-auto mt-2 max-w-4xl text-balance text-sm text-muted-foreground sm:text-base"
           style={{ "--reveal-delay": "160ms" } as React.CSSProperties}
         >
-          Compiled SQL, dry-run cost, schema, preview and runs for Dataform and dbt projects on BigQuery, in the
-          editor you already use. Try it below.
+          Compiled SQL, dry-run cost, schema, preview and runs on BigQuery, in your editor. Try it below.
         </p>
 
-        <div
-          className="reveal mt-4 flex flex-wrap justify-center gap-3"
-          style={{ "--reveal-delay": "240ms" } as React.CSSProperties}
-        >
-          <Button asChild className="bg-brand px-5 text-brand-foreground hover:bg-brand/90">
-            <a href={site.marketplace.vscode} target="_blank" rel="noopener noreferrer">
-              Install for VS Code
-            </a>
-          </Button>
-          <Button asChild variant="outline" className="px-5">
-            <a href={site.repoUrl} target="_blank" rel="noopener noreferrer">
-              <Github />
-              View on GitHub
-            </a>
-          </Button>
-        </div>
 
       </div>
 
