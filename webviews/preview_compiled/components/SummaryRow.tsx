@@ -53,6 +53,8 @@ interface SummaryRowProps {
   openSummary?: ReactNode;
   /** The row's main buttons, which work without opening it */
   actions?: ReactNode;
+  /** The buttons while the row is open, where there are more of them. They wrap where the panel is narrow */
+  openActions?: ReactNode;
   /** Opens the row when it changes, e.g. when something elsewhere in the panel asks for its details */
   openRequest?: number;
   /** The body is as wide as the panel, for content that needs the room */
@@ -65,7 +67,7 @@ interface SummaryRowProps {
  * A section of the compiled query, as one line that says what it holds and opens to all of it. A row with a problem
  * opens by itself and closes when the problem is gone; a row the user opened or closed stays as they left it.
  */
-export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openRequest, wide, children }: SummaryRowProps) {
+export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openActions, openRequest, wide, children }: SummaryRowProps) {
   const problem = tone === "error";
   // null: follows the problem. Otherwise what the user chose
   const [chosen, setChosen] = useState<boolean | null>(null);
@@ -104,12 +106,14 @@ export function SummaryRow({ label, tone = "calm", summary, openSummary, actions
           disabled={!canOpen}
           aria-expanded={canOpen ? open : undefined}
           title={canOpen ? (open ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`) : undefined}
-          className="flex items-center gap-2 flex-1 min-w-0 h-[30px] text-left bg-transparent border-0 enabled:cursor-pointer enabled:hover:opacity-80 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]"
+          className="flex items-center gap-2 flex-1 min-w-[62px] h-[30px] text-left bg-transparent border-0 enabled:cursor-pointer enabled:hover:opacity-80 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]"
         >
           <span className={ROW_LABEL} style={color ? { color } : undefined}>{label}</span>
           <span className="flex-1 min-w-0 truncate text-[var(--vscode-foreground)]">{open && openSummary !== undefined ? openSummary : summary}</span>
         </button>
-        {actions && <div className="flex items-center gap-1.5 flex-shrink-0">{actions}</div>}
+        {open && openActions
+          ? <div className="flex flex-wrap items-center justify-end gap-1.5 py-[3px]">{openActions}</div>
+          : actions && <div className="flex items-center gap-1.5 flex-shrink-0">{actions}</div>}
       </div>
       {children && (
         <div hidden={!open} className={clsx("pr-3 pb-3 pt-0.5 space-y-2", wide ? "pl-3" : "pl-3 min-[520px]:pl-[82px]")}>

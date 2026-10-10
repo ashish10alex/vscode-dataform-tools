@@ -11,6 +11,7 @@ import { CancelWorkflowButton } from "./CancelWorkflowButton";
 import { SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
 import { clock, runVia } from "./RunStages";
 import { workflowDurationMs, useTick } from "./WorkflowActionsTable";
+import { LineageColumns } from "./LineageColumns";
 import { ROW_BUTTON, ROW_LABEL, ROW_PRIMARY_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
 import { RunChangedButton } from "./RunChangedButton";
 import { RunBackend, RunSplitButton } from "./RunSplitButton";
@@ -25,7 +26,6 @@ import {
   Eye,
   ShieldCheck,
   Wand2,
-  ExternalLink,
   RotateCcw,
   Copy,
   Check,
@@ -299,7 +299,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   // How many the closed section holds, a target that two of the file's actions read counted once. Dataplex's are loaded on request
   const dependencyCount = new Set((view.models ?? []).flatMap((model: any) => (model.dependencyTargets ?? []).map((target: any) => `${target.database}.${target.schema}.${target.name}`))).size;
-  const lineageCounts = `${dependencyCount} ${dependencyCount === 1 ? "dependency" : "dependencies"} · ${localDependentIds.size} ${localDependentIds.size === 1 ? "dependent" : "dependents"}`;
+  const lineageCounts = `reads from ${dependencyCount} · read by ${localDependentIds.size}`;
 
   const handleLineageMetadata = () => {
     setLoadingLineage(true);
@@ -407,6 +407,16 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const columnImpactTitle = changedColumns
     ? `This dry run drops or retypes ${changedColumns} column${changedColumns === 1 ? '' : 's'} against prod. Show every column's lineage, those first (Dataplex lineage)`
     : "Show the lineage of each of this table's columns, and which ones this dry run drops or retypes against prod (Dataplex lineage)";
+  const graphButton = (
+    <button onClick={handleDependencyGraph} disabled={compiling} className={ROW_BUTTON} title="Open the dependency graph">
+      <Network className="w-3 h-3" /> Graph
+    </button>
+  );
+  const previewButton = (
+    <button onClick={handlePreviewResults} disabled={compiling} className={ROW_BUTTON} title="Preview the query results">
+      <Eye className="w-3 h-3" /> Preview Data
+    </button>
+  );
   const columnImpactButton = (className: string) => (
     <button onClick={handleColumnImpact} disabled={compiling || bq.dryRunning} className={className} title={columnImpactTitle}>
       <GitCompareArrows className="w-3 h-3" /> Column impact
@@ -675,98 +685,28 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           )}
           actions={hasTargets && <>
             {canCheckColumnImpact && changedColumns > 0 && columnImpactButton(ROW_BUTTON)}
-            <button onClick={handleDependencyGraph} disabled={compiling} className={ROW_BUTTON} title="Open the dependency graph">
-              <Network className="w-3 h-3" /> Graph
-            </button>
-            <button onClick={handlePreviewResults} disabled={compiling} className={ROW_BUTTON} title="Preview the query results">
-              <Eye className="w-3 h-3" /> Preview Data
-            </button>
+            {graphButton}
+            {previewButton}
           </>}
-        >
-          <div className="flex flex-wrap items-center gap-1.5">
+          // Open, every way to look further is on the line: the lists under it are all there is to read
+          openActions={hasTargets && <>
             <button onClick={handleDependencyInspector} disabled={compiling} className={ROW_BUTTON} title="Inspect upstream and downstream dependencies">
               <ListTree className="w-3 h-3" /> Inspector
             </button>
             {canCheckColumnImpact && columnImpactButton(ROW_BUTTON)}
-          </div>
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] mb-1 uppercase tracking-wider">Dependencies</h4>
-            {!models[0]?.dependencyTargets?.length && <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No dependencies</span>}
-            <ul className="space-y-1">
-              {models.map((model, idx) => (
-                model.dependencyTargets?.map((target: any, tIdx: number) => {
-                  const id = `${target.database}.${target.schema}.${target.name}`;
-                  return (
-                    <li key={`${idx}-${tIdx}`} className="flex items-center text-sm group">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-functionForeground)] opacity-70 mr-2"></span>
-                      <BigQueryTableLink id={target} label={id} />
-                      <button
-                        onClick={() => handleLineageNavigation(id)}
-                        className="ml-2 p-1 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-textLink-foreground)] opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Go to definition"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
-                    </li>
-                  );
-                })
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] mb-1 uppercase tracking-wider">Dependents · local project</h4>
-            {(!view.dependents || view.dependents.length === 0) ? (
-              <span className="text-sm text-[var(--vscode-descriptionForeground)] italic">No local dependents found.</span>
-            ) : (
-              <ul className="space-y-1">
-                {view.dependents.map((dependent: any, idx: number) => {
-                  const id = typeof dependent === 'string' ? dependent : `${dependent.database}.${dependent.schema}.${dependent.name}`;
-                  return (
-                    <li key={idx} className="flex items-center text-sm group">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-symbolIcon-stringForeground)] opacity-70 mr-2"></span>
-                      <BigQueryTableLink id={dependent} label={id} />
-                      <button
-                        onClick={() => handleLineageNavigation(id)}
-                        className="ml-2 p-1 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-textLink-foreground)] opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Go to definition"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--vscode-descriptionForeground)] mb-1 uppercase tracking-wider">Dependents · Dataplex (downstream)</h4>
-            {!state.dataform.lineage ? (
-              <button onClick={handleLineageMetadata} disabled={loadingLineage} className={ROW_BUTTON}>
-                {loadingLineage ? <Loader2 className="w-3 h-3 animate-spin" /> : <Network className="w-3 h-3" />}
-                Load Dataplex Dependencies
-              </button>
-            ) : state.dataform.lineage.error ? (
-              <div className="text-red-500 dark:text-red-400 text-sm">
-                Error: {state.dataform.lineage.error.message || "Unknown error"}
-              </div>
-            ) : (!state.dataform.lineage.dependencies || state.dataform.lineage.dependencies.length === 0) ? (
-              <span className="text-sm text-zinc-500 italic">No Dataplex dependents found.</span>
-            ) : (
-              <ul className="space-y-1">
-                {state.dataform.lineage.dependencies.map((item: string, idx: number) => (
-                  <li key={idx} className="flex items-center text-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span>
-                    <BigQueryTableLink id={item} />
-                    {!localDependentIds.has(item) && (
-                      <span className="ml-2 text-[10px] uppercase font-bold tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                        External
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+            {graphButton}
+            {previewButton}
+          </>}
+        >
+          <LineageColumns
+            reads={models.flatMap((model) => model.dependencyTargets ?? [])}
+            readBy={view.dependents ?? []}
+            own={models.map((model) => model.target).filter(Boolean)}
+            dataplex={state.dataform.lineage}
+            loadingDataplex={loadingLineage}
+            onLoadDataplex={handleLineageMetadata}
+            onOpen={handleLineageNavigation}
+          />
         </SummaryRow>
 
         {/* Run has nothing to open: its modifiers say what Run will do, and its buttons are at the row's end */}
