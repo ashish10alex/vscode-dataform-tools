@@ -359,36 +359,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
       (model.type === 'test' && expectedOutputError) ? `(Expected output): ${expectedOutputError.message}` : '',
     ].filter(Boolean).join('\n');
   };
-  const shortName = (model: any): string => model.type === 'test' ? model.name : model.target ? `${model.target.schema}.${model.target.name}` : '';
   const typeBadge = (type: string) => {
     const style = ACTION_TYPE_BADGE_STYLES[type] || DEFAULT_BADGE_STYLE;
     return <span className={`inline-block align-middle mr-1.5 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>{type}</span>;
   };
 
-  // Target: what the file builds, and what its dry run said
-  const first = models[0];
-  const firstKey = first ? nameKey(first) : null;
-  const firstStat = firstKey ? bq.stats[firstKey] : undefined;
-  const failedModels = models.filter((model) => dryRunErrorOf(model));
   const dryRunning = bq.dryRunning && !compiling;
-  const notUpdatedToday = bq.lastUpdates.some((times) => !!times && !times.error?.message && times.modelWasUpdatedToday === false);
-  const targetTone: RowTone = models.length === 0 ? "off" : failedModels.length > 0 ? "error" : dryRunning ? "busy" : notUpdatedToday ? "warning" : "calm";
-  const targetSummary = !first ? "—" : (
-    <>
-      {typeBadge(first.type)}
-      <span className="font-mono align-middle mr-1.5" title={firstKey ?? undefined}>{shortName(first)}</span>
-      {failedModels.length > 0 ? (
-        <RowChip tone="error">{models.length > 1 ? `${failedModels.length} of ${models.length} failed dry run` : "dry run failed"}</RowChip>
-      ) : dryRunning ? (
-        <RowChip tone="busy"><Loader2 className="w-2.5 h-2.5 animate-spin" /> dry run…</RowChip>
-      ) : firstStat ? (
-        <RowChip title={firstStat.split("<br>").join("\n")}>{renderDryRunStatLine(firstStat.split("<br>")[0])}</RowChip>
-      ) : null}
-      {notUpdatedToday && failedModels.length === 0 && <RowChip tone="warning">not updated today</RowChip>}
-      {models.length > 1 && <RowChip>+{models.length - 1} {models.length === 2 ? models[1].type : "more"}</RowChip>}
-      {failedModels.length > 0 && <span className="align-middle">{dryRunErrorOf(failedModels[0]).split("\n")[0]}</span>}
-    </>
-  );
 
   // Compile: how the SQL was made, and what changes what it says
   const compileFailed = problemType === CompilationErrorType.COMPILATION_ERROR;
@@ -545,28 +521,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     <div className="pb-20">
       {/* The panel's padding is taken back: the rows run from edge to edge */}
       <div className="-mx-4 -mt-4">
-        <SummaryRow
-          label="Target"
-          tone={targetTone}
-          summary={targetSummary}
-          // Open, each action is named under the line, with its own copy button
-          openSummary={<span className="text-[var(--vscode-descriptionForeground)]">{models.length === 1 ? "1 action" : `${models.length} actions`}{failedModels.length > 0 ? ` · ${failedModels.length} failed the dry run` : ""}</span>}
-          openActions={null}
-          actions={first?.target && (
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(`\`${first.target.database}.${first.target.schema}.${first.target.name}\``);
-                setCopiedIndex(0);
-                setTimeout(() => setCopiedIndex(null), 2000);
-              }}
-              className="p-1 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded"
-              title="Copy table ID with backticks"
-              aria-label="Copy table ID with backticks"
-            >
-              {copiedIndex === 0 ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-          )}
-        >
+        {/* Target is always open: what the file builds and what its dry run said is what the panel is opened for */}
+        <div className={clsx("flex gap-2 px-3 py-1.5 border-b border-[var(--vscode-widget-border)] text-[12.5px]", models.length === 0 && "opacity-50")}>
+          <span className={clsx(ROW_LABEL, "leading-[22px]")}>Target</span>
+          <div className="flex-1 min-w-0 space-y-2">
+          {models.length === 0 && <span className="leading-[22px]">—</span>}
           {models.map((model, index) => {
             const target = model.target;
             if (!target && model.type !== 'test') { return null; }
@@ -574,6 +533,19 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const key = nameKey(model);
             const dryRunStat = key ? bq.stats[key] : undefined;
             const errorDisplay = dryRunErrorOf(model);
+            // What the dry run said, at the end of the action's last line: beside when its table was updated, where that is known
+            const dryRunResult = (
+              <>
+                  {dryRunning && <span className="ml-auto"><RowChip tone="busy"><Loader2 className="w-2.5 h-2.5 animate-spin" /> dry run…</RowChip></span>}
+                  {dryRunStat && !bq.dryRunning && (
+                    <span className="ml-auto text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
+                      {dryRunStat.split("<br>").map((line, i) => (
+                        <React.Fragment key={i}>{i > 0 && <br />}{renderDryRunStatLine(line)}</React.Fragment>
+                      ))}
+                    </span>
+                  )}
+              </>
+            );
             return (
               // Each action is set apart, so it is plain which one an error is of
               <div key={index} className={clsx("space-y-1.5 group", index > 0 && "!mt-2.5 pt-2.5 border-t border-[var(--vscode-widget-border)]")}>
@@ -614,17 +586,11 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       </button>
                     </>
                   )}
-                  {dryRunStat && !bq.dryRunning && (
-                    <span className="ml-auto text-xs font-mono font-medium text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] px-2 py-0.5 rounded">
-                      {dryRunStat.split("<br>").map((line, i) => (
-                        <React.Fragment key={i}>{i > 0 && <br />}{renderDryRunStatLine(line)}</React.Fragment>
-                      ))}
-                    </span>
-                  )}
+                  {!lastUpdateMeta && dryRunResult}
                 </div>
 
                 {lastUpdateMeta && (
-                  <div className="flex items-center space-x-2 text-xs text-[var(--vscode-descriptionForeground)]">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--vscode-descriptionForeground)]">
                     <Clock className="w-3 h-3" />
                     <span>Last updated:</span>
                     {lastUpdateMeta.error?.message ? (
@@ -639,6 +605,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         {lastUpdateMeta.lastModifiedTime}
                       </span>
                     )}
+                    {dryRunResult}
                   </div>
                 )}
 
@@ -651,7 +618,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               </div>
             );
           })}
-        </SummaryRow>
+          </div>
+        </div>
 
         <SummaryRow
           label="Compile"
