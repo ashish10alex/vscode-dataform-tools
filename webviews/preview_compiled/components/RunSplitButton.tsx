@@ -18,7 +18,7 @@ interface RunSplitButtonProps {
   onRunTag: () => void;
   /** As small as a button of a summary row, with its menu opening from its right edge: it is at the row's right end */
   compact?: boolean;
-  /** In the warning colour: what it runs has side effects worth a second look, e.g. a full refresh */
+  /** Ringed in the warning colour: what it runs has side effects worth a second look, e.g. a full refresh */
   warning?: boolean;
 }
 
@@ -26,7 +26,7 @@ const BACKEND_SHORT_LABEL: Record<RunBackend, string> = { api: "API", cli: "CLI"
 // A shade darker than the Run half, so the selector reads as its own control.
 const SELECTOR_BACKGROUND = "color-mix(in srgb, var(--vscode-button-background) 78%, black)";
 // The colour of the Full Refresh switch while it is on
-const WARNING_BACKGROUND = "var(--vscode-charts-orange, #d18616)";
+const WARNING_COLOR = "var(--vscode-charts-orange, #d18616)";
 
 interface MenuItem {
   key: string;
@@ -105,12 +105,13 @@ export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
   const segment = (compact ? "h-6 " : "py-1.5 ") + "text-[var(--vscode-button-foreground)] flex items-center disabled:opacity-50 disabled:cursor-default focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]";
 
   return (
-    <div ref={wrapperRef} className="relative inline-flex">
+    // The warning is a ring in the colour of the switch that asked for it: the button keeps its own colours, which
+    // are readable in every theme and while it is disabled
+    <div ref={wrapperRef} className="relative inline-flex rounded" style={warning ? { boxShadow: `0 0 0 1px var(--vscode-editor-background), 0 0 0 3px ${WARNING_COLOR}` } : undefined}>
       <button
         onClick={() => (tagsOnly ? onRunTag() : onRun(backend))}
         disabled={isDisabled}
-        className={clsx(segment, compact ? "px-2 text-xs" : "pl-3 pr-3 text-sm", "rounded-l", !warning && "bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]", warning && "hover:opacity-90")}
-        style={warning ? { background: WARNING_BACKGROUND, color: "var(--vscode-editor-background)" } : undefined}
+        className={clsx(segment, compact ? "px-2 text-xs" : "pl-3 pr-3 text-sm", "rounded-l bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]")}
         title={tagsOnly
           ? `Pick tag(s) to run via the Dataform ${BACKEND_SHORT_LABEL[backend]}`
           : `Run this file's actions via the Dataform ${BACKEND_SHORT_LABEL[backend]}`}
@@ -126,10 +127,9 @@ export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
         onClick={() => setMenuOpen(o => !o)}
         onKeyDown={e => { if (e.key === "ArrowDown" && !menuOpen) { e.preventDefault(); setMenuOpen(true); } }}
         disabled={isDisabled}
-        className={clsx(segment, compact ? "gap-0.5 pl-1.5 pr-1 text-[11px]" : "gap-1 pl-2.5 pr-2 text-xs", "rounded-r font-medium border-l", warning ? "hover:opacity-90" : "hover:!bg-[var(--vscode-button-hoverBackground)]")}
+        className={clsx(segment, compact ? "gap-0.5 pl-1.5 pr-1 text-[11px]" : "gap-1 pl-2.5 pr-2 text-xs", "rounded-r font-medium border-l hover:!bg-[var(--vscode-button-hoverBackground)]")}
         style={{
-          background: warning ? `color-mix(in srgb, ${WARNING_BACKGROUND} 82%, black)` : SELECTOR_BACKGROUND,
-          color: warning ? "var(--vscode-editor-background)" : undefined,
+          background: SELECTOR_BACKGROUND,
           borderLeftColor: "color-mix(in srgb, var(--vscode-button-foreground) 30%, transparent)",
         }}
         aria-label={`Runs via ${BACKEND_SHORT_LABEL[backend]}. Change how to run`}
