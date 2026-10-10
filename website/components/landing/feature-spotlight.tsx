@@ -1,3 +1,4 @@
+import type React from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { EditorFrame } from "@/components/editor-frame";
@@ -9,13 +10,51 @@ interface FeatureSpotlightProps {
   theme: FeatureTheme;
   index: number;
   /** One slide renders a plain frame; several render a switcher that defaults to the first. */
-  slides: MediaSlide[];
+  slides?: MediaSlide[];
+  /** In place of slides: a live frame as wide as the page, which the text then sits above */
+  demo?: React.ReactNode;
+  /** For the landing page, where the section is about a part of its theme */
+  heading?: string;
+  blurb?: string;
   reverse?: boolean;
 }
 
-export function FeatureSpotlight({ theme, index, slides, reverse }: FeatureSpotlightProps) {
-  const { label, eyebrow, blurb } = themes[theme];
+export function FeatureSpotlight({ theme, index, slides = [], demo, heading, blurb: blurbOverride, reverse }: FeatureSpotlightProps) {
+  const { label, eyebrow } = themes[theme];
+  const blurb = blurbOverride ?? themes[theme].blurb;
   const items = featuresByTheme(theme);
+
+  if (demo) {
+    return (
+      <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6 md:mt-24">
+        <div className="grid items-end gap-x-12 gap-y-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div>
+            <p className="font-mono text-xs text-brand">
+              -- {String(index).padStart(2, "0")} · {eyebrow}
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{heading ?? label}</h2>
+            <p className="mt-3 text-muted-foreground">{blurb}</p>
+          </div>
+          <div>
+            <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <Link href={`/features#${item.id}`} title={item.summary} className="group flex items-start gap-2 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                    <span className="group-hover:text-brand">{item.title}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link href={`/features#theme-${theme}`} className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium hover:text-brand">
+              See all features <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+        <div className="mt-8">{demo}</div>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6 md:mt-24">
@@ -24,7 +63,7 @@ export function FeatureSpotlight({ theme, index, slides, reverse }: FeatureSpotl
           <p className="font-mono text-xs text-brand">
             -- {String(index).padStart(2, "0")} · {eyebrow}
           </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{label}</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{heading ?? label}</h2>
           <p className="mt-3 text-muted-foreground">{blurb}</p>
 
           <ul className="mt-6 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { MousePointerClick, X } from "lucide-react";
+import { CircleX, MousePointerClick, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/site";
 import type { DemoSource, TokenKind } from "@/lib/demo-source";
@@ -54,6 +54,7 @@ const NOTES: Record<string, string> = {
   "dataform.clearWorkflowUrls": "Clears the list of runs",
   "dbt.setTarget": "Switches the dbt target and compiles again",
   "dbt.compileWithHooks": "Compiles with the project's on-run hooks",
+  preview: "Runs the query and shows its rows",
   openAction: "Opens the file that defines the table",
   openFile: "Opens the file",
   openExternal: "Opens the Google Cloud console",
@@ -84,34 +85,62 @@ const TOKEN_CLASS: Record<TokenKind, string> = {
 };
 
 const EDITOR = "bg-white text-black dark:bg-[#1e1e1e] dark:text-[#d4d4d4]";
-// The frame is as tall as the panel's compiled query needs, so the panel does not scroll. These are what the two
-// panels need beside the source file; the panel tells its real need once it has loaded (see `height` below).
-const FRAME_HEIGHT: Record<Backend, number> = { dataform: 804, dbt: 912 };
+// The frame is as tall as the panel's compiled query needs, so the panel does not scroll. These are what the
+// panels need beside the source file; a panel that needs more says so once it has loaded (see `height` below).
+// One height for the two files of the hero, so that the frame stays as it is when the other file's tab is chosen.
+const FRAME_HEIGHT: Record<Backend, number> = { dataform: 874, dbt: 874, diagnostics: 640 };
 /** A tab of the panel with a long list, the Project tab say, scrolls rather than stretch the page */
 const TALLEST = 1060;
 // Scrolls as an editor does, without a bar
 const NO_BAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 function Source({ source }: { source: DemoSource }) {
+  const problem = source.problem;
   return (
-    <div className={cn("h-full overflow-auto py-3 text-left font-mono text-[12px] leading-[19px]", NO_BAR, EDITOR)}>
-      <div className="px-4 pb-2 font-sans text-[11px] text-[#616161] dark:text-[#cccccc]/70">{source.path}</div>
-      {source.lines.map((line, index) => (
-        <div key={index} className="flex min-w-max pr-4">
-          <span className="w-11 shrink-0 select-none pr-4 text-right text-[#237893] dark:text-[#858585]" aria-hidden>
-            {index + 1}
-          </span>
-          <span className="whitespace-pre">
-            {line.length === 0
-              ? " "
-              : line.map((token, tokenIndex) => (
-                  <span key={tokenIndex} className={TOKEN_CLASS[token.kind]}>
-                    {token.text}
-                  </span>
-                ))}
-          </span>
+    <div className={cn("flex h-full flex-col text-left", EDITOR)}>
+      <div className={cn("min-h-0 flex-1 overflow-auto py-3 font-mono text-[12px] leading-[19px]", NO_BAR)}>
+        <div className="px-4 pb-2 font-sans text-[11px] text-[#616161] dark:text-[#cccccc]/70">{source.path}</div>
+        {source.lines.map((line, index) => {
+          const failed = problem?.line === index + 1;
+          return (
+            <div key={index} className={cn("flex min-w-max pr-4", failed && "bg-[#f14c4c]/10")}>
+              <span className={cn("w-11 shrink-0 select-none pr-4 text-right", failed ? "text-[#f14c4c]" : "text-[#237893] dark:text-[#858585]")} aria-hidden>
+                {index + 1}
+              </span>
+              <span className="whitespace-pre">
+                {line.length === 0
+                  ? " "
+                  : line.map((token, tokenIndex) => (
+                      <span
+                        key={tokenIndex}
+                        className={cn(TOKEN_CLASS[token.kind], failed && token.text === problem.text && "underline decoration-[#f14c4c] decoration-wavy underline-offset-[3px]")}
+                      >
+                        {token.text}
+                      </span>
+                    ))}
+                {/* The message at the end of the line, as the Error Lens extension shows a diagnostic */}
+                {failed && <span className="pl-6 font-sans text-[11px] italic text-[#f14c4c]">{problem.message}</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {problem && (
+        <div className="shrink-0 border-t text-[12px]">
+          <div className="flex h-8 items-center gap-2 border-b bg-muted px-3.5 text-[11px] uppercase tracking-wide text-foreground">
+            Problems <span className="rounded-full bg-foreground/10 px-1.5 text-[10px]">1</span>
+          </div>
+          <div className="flex items-start gap-2 px-3.5 py-2.5 font-sans">
+            <CircleX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#f14c4c]" aria-hidden />
+            <span>
+              {problem.message}{" "}
+              <span className="text-[#616161] dark:text-[#cccccc]/60">
+                {source.fileName} [Ln {problem.line}]
+              </span>
+            </span>
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -145,12 +174,20 @@ function TerminalPane({ terminal, run }: { terminal: Terminal; run: number }) {
   );
 }
 
-export function LiveDemo({ sources }: { sources: DemoSource[] }) {
+interface LiveDemoProps {
+  /** The files of the frame's tabs; the first is on show */
+  sources: DemoSource[];
+  /** Rings the panel's Run button once it has loaded: for the hero, where the visitor is told the frame is live */
+  pulse?: boolean;
+}
+
+export function LiveDemo({ sources, pulse }: LiveDemoProps) {
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === "light" ? "light" : "dark";
-  const [backend, setBackend] = useState<Backend>("dataform");
-  /** The panel is mounted only once the page has loaded, so that it does not hold up the hero's first paint */
+  const [backend, setBackend] = useState<Backend>(sources[0].backend);
+  /** The panel is mounted only once the page has loaded and the frame is near the window, so that it holds up neither the first paint nor a visitor who never scrolls to it */
   const [mounted, setMounted] = useState(false);
+  const frame = useRef<HTMLElement>(null);
   const [rendered, setRendered] = useState(false);
   /** What the panel on show has said it needs. The frame grows to it and does not shrink, so a click does not make the page jump twice */
   const [height, setHeight] = useState<number | null>(null);
@@ -169,13 +206,28 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
 
   useEffect(() => {
     openedWith.current = theme;
-    const mount = () => setMounted(true);
+    let observer: IntersectionObserver | undefined;
+    const mount = () => {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            setMounted(true);
+            observer?.disconnect();
+          }
+        },
+        { rootMargin: "400px" }
+      );
+      observer.observe(frame.current!);
+    };
     if (document.readyState === "complete") {
       mount();
-      return;
+    } else {
+      window.addEventListener("load", mount, { once: true });
     }
-    window.addEventListener("load", mount, { once: true });
-    return () => window.removeEventListener("load", mount);
+    return () => {
+      window.removeEventListener("load", mount);
+      observer?.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -208,9 +260,9 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
           setHeight((last) => Math.min(TALLEST, Math.max(last ?? 0, message.height)));
           return;
         case "rendered":
-          setHeight(Math.min(TALLEST, message.height));
+          setHeight(Math.min(TALLEST, Math.max(FRAME_HEIGHT[backend], message.height)));
           setRendered(true);
-          if (!pulsed.current) {
+          if (pulse && !pulsed.current) {
             pulsed.current = true;
             setTimeout(() => (panel.current?.contentWindow as (Window & { demoPulse?: () => void }) | null | undefined)?.demoPulse?.(), 500);
           }
@@ -234,7 +286,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [backend]);
+  }, [backend, pulse]);
 
   const choose = useCallback((next: Backend) => {
     setBackend((current) => {
@@ -256,7 +308,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
     );
 
   return (
-    <figure className="overflow-hidden rounded-xl border bg-card shadow-[0_1px_0_0_hsl(var(--border)),0_24px_48px_-24px_rgb(0_0_0/0.35)]">
+    <figure ref={frame} className="overflow-hidden rounded-xl border bg-card shadow-[0_1px_0_0_hsl(var(--border)),0_24px_48px_-24px_rgb(0_0_0/0.35)]">
       <div className="flex h-9 items-stretch border-b bg-muted/40">
         <span className="flex items-center gap-1.5 px-3.5" aria-hidden>
           <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
@@ -277,6 +329,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
               <span className="rounded bg-foreground/10 px-1 py-px font-sans text-[10px] text-muted-foreground">
                 {candidate.backend === "dbt" ? "dbt" : "Dataform"}
               </span>
+              {candidate.problem && <span className="font-sans text-[10px] font-medium text-[#f14c4c]">1</span>}
             </button>
           ))}
         </div>
@@ -327,7 +380,7 @@ export function LiveDemo({ sources }: { sources: DemoSource[] }) {
               key={backend}
               ref={panel}
               src={`/demo/panel.html?backend=${backend}&theme=${openedWith.current}`}
-              title={`Live demo of the compiled query panel, for a ${backend === "dbt" ? "dbt" : "Dataform"} model`}
+              title={`Live demo of the compiled query panel, for a ${backend === "dbt" ? "dbt" : "Dataform"} model${source.problem ? " with an error" : ""}`}
               allow="clipboard-write"
               className={cn("absolute inset-0 h-full w-full border-0 transition-opacity duration-300", rendered ? "opacity-100" : "opacity-0")}
             />

@@ -17,6 +17,8 @@ scripts/demo/build-states.mjs makes the demo's states of what it wrote.
 const EXTENSION_ID = 'ashishalex.dataform-lsp-vscode';
 const OUT = process.env.DEMO_OUT;
 const FILE = process.env.DEMO_FILE;
+/** Set for a file that is only compiled and dry run: one with an error, for the diagnostics the website shows */
+const COMPILE_ONLY = process.env.DEMO_COMPILE_ONLY === '1';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type RunMessage = Extract<PanelMessage, { command: 'run' }>;
@@ -92,6 +94,9 @@ suite('capture for the website demo', function () {
     });
 
     test('project info', async function () {
+        if (COMPILE_ONLY) {
+            this.skip();
+        }
         begin();
         await vscode.commands.executeCommand('vscode-dataform-tools.showProjectInfo');
         await until('project info', () => !!slices.projectInfo && slices.projectInfo.sections.every((section) => !section.looking), 3000);
@@ -99,6 +104,9 @@ suite('capture for the website demo', function () {
     });
 
     test('run', async function () {
+        if (COMPILE_ONLY) {
+            this.skip();
+        }
         begin();
         if (slices.project?.backend === 'dbt') {
             const target = slices.file!.actions[0].target;

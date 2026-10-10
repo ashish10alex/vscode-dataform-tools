@@ -4,7 +4,7 @@
 //
 //   node scripts/demo/build-states.mjs <capture dir> <real GCP project>
 //
-// The capture dir has out-dataform/ and out-dbt/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
+// The capture dir has out-dataform/, out-dbt/ and out-diagnostics/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
 // and terminal-dataform.txt / terminal-dbt.txt (what a run prints). Strings that must never be published and that
 // this script cannot know of go in scripts/demo/deny.local.json, a JSON list that git ignores.
 import { execFileSync } from 'node:child_process';
@@ -198,10 +198,24 @@ function dbt() {
     };
 }
 
+// ---- A file with an error, for the diagnostics the landing page shows
+
+function diagnostics() {
+    const workspace = path.join(captureDir, 'football');
+    const pairs = renames(workspace, `${DEMO_HOME}/football`);
+    const initial = renamed(slicesOnly(read('out-diagnostics', 'compiled.json')), pairs);
+    return {
+        backend: 'diagnostics',
+        compile: lastOf(initial, 'compile status').compile,
+        capturedAt: earliestTime(initial),
+        initial: initial.map(({ message }) => message),
+    };
+}
+
 // ---- Write, then check for leaks
 
 fs.mkdirSync(outDir, { recursive: true });
-for (const state of [dataform(), dbt()]) {
+for (const state of [dataform(), dbt(), diagnostics()]) {
     fs.writeFileSync(path.join(outDir, `${state.backend}.json`), JSON.stringify(state) + '\n');
 }
 

@@ -112,6 +112,9 @@ website-demo-capture gcp_project:
     rm -rf /tmp/vdt-demo-ud
     DEMO_WORKSPACE="$work/football-dbt" DEMO_OUT="$work/out-dbt" DEMO_FILE=models/fct_player_transfers.sql \
         VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    rm -rf /tmp/vdt-demo-ud
+    DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-diagnostics" DEMO_FILE=definitions/fct_club_spend.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
     (cd "$work/football" && dataform run --actions fct_player_transfers) > "$work/terminal-dataform.txt" 2>&1
     (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select football.fct_player_transfers --target dev --profiles-dir .) > "$work/terminal-dbt.txt" 2>&1
     bq query --use_legacy_sql=false --project_id={{gcp_project}} --location=europe-west2 --format=json --max_rows=100 \

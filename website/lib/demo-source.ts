@@ -13,8 +13,19 @@ export interface SourceToken {
   kind: TokenKind;
 }
 
+/** What BigQuery's dry run said of a line of the file, as the editor shows it there */
+export interface SourceProblem {
+  /** 1-based, in the source file */
+  line: number;
+  /** The text of that line the error is about */
+  text: string;
+  message: string;
+}
+
 export interface DemoSource {
-  backend: "dataform" | "dbt";
+  /** Which recorded states the panel beside it shows (public/demo/states) */
+  backend: "dataform" | "dbt" | "diagnostics";
+  problem?: SourceProblem;
   /** As the editor tab names it */
   fileName: string;
   /** Relative to the Project root */
@@ -59,11 +70,34 @@ function tokenise(code: string): SourceToken[][] {
   return lines;
 }
 
-function source(backend: DemoSource["backend"], relativePath: string): DemoSource {
-  const code = fs.readFileSync(path.join(process.cwd(), "demo", backend, relativePath), "utf8");
+function source(backend: DemoSource["backend"], project: "dataform" | "dbt", relativePath: string): DemoSource {
+  const code = fs.readFileSync(path.join(process.cwd(), "demo", project, relativePath), "utf8");
   return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code) };
 }
 
 export function demoSources(): DemoSource[] {
-  return [source("dataform", "definitions/fct_player_transfers.sqlx"), source("dbt", "models/fct_player_transfers.sql")];
+  return [source("dataform", "dataform", "definitions/fct_player_transfers.sqlx"), source("dbt", "dbt", "models/fct_player_transfers.sql")];
+}
+
+/**
+ * The file with an error, and the error as the recorded dry run gave it. BigQuery places it in the compiled SQL;
+ * the extension moves it to the line of the file it came from, which here is the line that holds the same text.
+ */
+export function diagnosticsSource(): DemoSource {
+  const file = source("diagnostics", "dataform", "definitions/fct_club_spend.sqlx");
+  const state = JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "demo", "states", "diagnostics.json"), "utf8"));
+  const results: Array<{ sql?: string; error?: { message: string; line: number; column: number } }> = state.initial
+    .filter((message: { slice: string }) => message.slice === "bigquery")
+    .pop().value.results;
+  const failed = results.find((result) => result.error);
+  if (!failed?.error || !failed.sql) {
+    throw new Error("The recorded dry run of fct_club_spend.sqlx has no error: record the demo again (just website-demo-capture)");
+  }
+  // What stands at the error's place in the compiled SQL, up to the end of its name
+  const text = /^\w+/.exec(failed.sql.split("\n")[failed.error.line - 1].slice(failed.error.column - 1))?.[0] ?? "";
+  const line = file.lines.findIndex((tokens) => tokens.some((token) => token.text === text)) + 1;
+  if (!text || !line) {
+    throw new Error(`The error of the recorded dry run is not on a line of fct_club_spend.sqlx: ${failed.error.message}`);
+  }
+  return { ...file, problem: { line, text, message: failed.error.message.replace(/ at \[\d+:\d+\]$/, "") } };
 }
