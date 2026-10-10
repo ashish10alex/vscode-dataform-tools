@@ -798,6 +798,11 @@
                     "default": null,
                     "markdownDescription": "GCP location to use for BigQuery queries. E.g. US, EU, us-central1, europe-west1. Usually you will not need to set this explicity as the location is picked up dynamically by BigQuery client."
                 },
+                "vscode-dataform-tools.trackCliRunJobs": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "List the BigQuery jobs of a `dataform run` sent to the terminal, with their cost, next to the API runs. Each run is given `--job-prefix vscode-<id>`, so the IDs of its jobs start with `dataform-vscode-<id>-`, and your jobs are listed for the ones that have it (needs `bigquery.jobs.list`). Turn off to send the command without the prefix."
+                },
                 "vscode-dataform-tools.serviceAccountJsonPath": {
                     "type": "string",
                     "default": null,

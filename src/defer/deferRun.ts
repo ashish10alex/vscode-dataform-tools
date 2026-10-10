@@ -1,3 +1,4 @@
+import { runPrepared } from '../runFeedback';
 import * as vscode from 'vscode';
 import { logger } from '../logger';
 import { LastRunRequest, Target } from '../types';
@@ -147,7 +148,7 @@ async function confirmApiRunner(deferred: DeferralEntry[]): Promise<boolean> {
  * dispatched: the user cancelled, a run with dependencies was started instead, or the proxy views failed.
  */
 export async function beginRun(request: RunRequest): Promise<boolean> {
-    const record = (deferToProd: boolean) => recordLastRun({ ...request, deferToProd }).then(() => true);
+    const record = (deferToProd: boolean) => recordLastRun({ ...request, deferToProd }).then(() => { runPrepared(); return true; });
     const workspaceFolder = request.workspaceFolder;
     if (!(deferOverride ?? isDeferEnabled(workspaceFolder))) {
         return (await confirmLeftoverProxies(request)) ? record(false) : false;

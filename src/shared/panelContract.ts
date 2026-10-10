@@ -1,3 +1,4 @@
+import type { PendingRun } from './runStages';
 import type { BackendPart, CompileError } from '../backend/backend';
 import type { DryRunResult } from '../bigquery/dryRunService';
 import type { BackendName } from '../project/detection';
@@ -226,6 +227,10 @@ export interface DataformBlock extends Slice {
     leftoverProxies: string[] | null;
 
     workflowUrls?: WorkflowUrlEntry[];
+    /** Why the BigQuery jobs of CLI runs are not listed, when the Dataform CLI can't prefix their IDs */
+    cliRunHint?: string;
+    /** A run that was invoked and is not among `workflowUrls` yet. Null when there is none */
+    pendingRun?: PendingRun | null;
     /** The last run through the CLI or the Dataform API, for repeating */
     lastRun: LastRunView | null;
     /** What a run through the Dataform API leaves out, since it runs the branch as pushed */
@@ -442,7 +447,7 @@ export type DataformPanelMessage =
     | { command: 'dataform.loadWorkflowJobStats'; workflowInvocationId: string }
     | { command: 'dataform.exportWorkflowActionsCsv'; workflowInvocationId: string }
     | { command: 'dataform.openExecutedSql'; workflowInvocationId: string; action: string }
-    | { command: 'dataform.openBigQueryJob'; workflowInvocationId: string; action: string }
+    | { command: 'dataform.openBigQueryJob'; workflowInvocationId: string; action: string; jobId?: string }
     | { command: 'dataform.showDependencyInspector' }
     | { command: 'dataform.showColumnLineage' }
     | { command: 'dataform.loadLineage' }

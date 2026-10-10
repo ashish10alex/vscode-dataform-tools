@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { compiledJson } from './project';
-import { getDataformActionCmdFromActionList, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCommandInTerminal, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
+import { getDataformActionCmdFromActionList, getFileNameFromDocument, getQueryMetaForCurrentFile, getVSCodeDocument, getWorkspaceFolder, runCompilation, showLoadingProgress, getCachedDataformRepositoryLocation, ensureFreshCompilation } from "./utils";
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "./dataformApiUtils";
 import { ExecutionMode, LastRunRequest } from './types';
@@ -8,11 +8,17 @@ import { GitService } from './gitClient';
 import { confirmRemoteRun, resolveExecutionMode } from './utils/remoteCompiler';
 import { getPropertyGraphsForFile } from './shared/propertyGraph';
 import { beginRun } from './defer/deferRun';
+import { runDataformRunInTerminal } from './cliRunJobs';
+import { withRunFeedback } from './runFeedback';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
 
 /** Runs the active file, or `relativeFilePathOverride` (workspace-relative) when rerunning a previous execution. */
-export async function runCurrentFile(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
+export function runCurrentFile(...args: Parameters<typeof runCurrentFileNow>): ReturnType<typeof runCurrentFileNow> {
+    return withRunFeedback(args[4], () => runCurrentFileNow(...args));
+}
+
+async function runCurrentFileNow(context: vscode.ExtensionContext, includDependencies: boolean, includeDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode, relativeFilePathOverride?: string): Promise<{ workflowInvocationUrlGCP: string|undefined; errorWorkflowInvocation: string|undefined; } | undefined> {
     executionMode = resolveExecutionMode(executionMode);
 
     let relativeFilePath = relativeFilePathOverride;
@@ -83,7 +89,8 @@ export async function runCurrentFile(context: vscode.ExtensionContext, includDep
         // create the dataform run command for the list of actions from actionsList
         dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includDependencies, includeDependents, fullRefresh);
         if (!(await beginRun(lastRunRequest))) { return; }
-        runCommandInTerminal(dataformActionCmd);
+        const targets = [...currFileMetadata.tables.filter((table: any) => table.type !== 'test'), ...propertyGraphs].map(({ target }) => ({ database: target.database, schema: target.schema, name: target.name }));
+        await runDataformRunInTerminal(workspaceFolder, dataformActionCmd, { targets, includeDependencies: includDependencies, includeDependents, fullRefresh });
         return;
     } else if (executionMode === "api" || executionMode === "api_workspace"){
         const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');

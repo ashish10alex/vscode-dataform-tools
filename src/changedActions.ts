@@ -1,3 +1,4 @@
+import { withRunFeedback } from './runFeedback';
 import * as vscode from 'vscode';
 import { compiledJson } from './project';
 import fs from 'fs';
@@ -393,7 +394,11 @@ export async function dispatchChangedActions(
  * Compiles the project, works out the changed actions and runs them (only those in `files` when given).
  * Returns the result so the caller can refresh its view, or undefined when it could not be worked out.
  */
-export async function runChangedActions(
+export function runChangedActions(...args: Parameters<typeof runChangedActionsNow>): ReturnType<typeof runChangedActionsNow> {
+    return withRunFeedback(args[5], () => runChangedActionsNow(...args));
+}
+
+async function runChangedActionsNow(
     context: vscode.ExtensionContext,
     workspaceFolder: string,
     includeDependencies: boolean,

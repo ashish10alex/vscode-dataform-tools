@@ -1,3 +1,4 @@
+import type { RunStages } from './shared/runStages';
 import { TextDocument } from "vscode";
 import { protos } from '@google-cloud/dataform';
 import type { ActionTypeCounts } from './shared/actionTypes';
@@ -558,8 +559,18 @@ export interface WorkflowUrlEntry {
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
-    executionMode?: 'api' | 'api_workspace';
+    /** `cli` is a `dataform run` sent to the terminal: it has no `url`, `workspace` or `repositoryName` */
+    executionMode?: 'api' | 'api_workspace' | 'cli';
+    /** The invocation's ID. For a CLI run, an ID of the extension's own: the run is no workflow invocation */
     workflowInvocationId?: string;
+    /** CLI run: what the IDs of its BigQuery jobs start with. `actions` then has a row for each job, not each action */
+    jobPrefix?: string;
+    /** CLI run: why its jobs are not listed, or not all of them */
+    jobsNote?: string;
+    /** When each stage between the run's invocation and its first job was reached; absent on older entries */
+    stages?: RunStages;
+    /** CLI run: the window was closed or reloaded while it ran, so how it ended is told by its jobs alone */
+    interrupted?: boolean;
     projectId?: string;
     location?: string;
     repositoryName?: string;

@@ -7,6 +7,8 @@ import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation
 import type { DataformTools } from "@ashishalex/dataform-tools";
 import { loadDataformTools } from "./lazySdk";
 import { countActionTypes } from './shared/actionTypes';
+import { MAX_RUN_HISTORY } from './shared/cliRunJobs';
+import { takeRunStages } from './runFeedback';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
 import { resolveDataformOptions } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
@@ -38,13 +40,14 @@ export async function sendWorkflowInvocationNotification(
             location: location,
             repositoryName: repositoryName,
             state: 'RUNNING',
+            stages: takeRunStages(Date.now()),
             includedTags: invocationConfig?.includedTags,
             includedTargets: invocationConfig?.includedTargets,
             includedTargetTypes: invocationConfig?.includedTargets ? countActionTypes(invocationConfig.includedTargets, compiledJson()) : undefined,
         });
 
-        if (storedUrls.length > 20) {
-            storedUrls.splice(0, storedUrls.length - 20);
+        if (storedUrls.length > MAX_RUN_HISTORY) {
+            storedUrls.splice(0, storedUrls.length - MAX_RUN_HISTORY);
         }
 
         await context.workspaceState.update('dataform_workflow_urls', storedUrls);
