@@ -28,7 +28,7 @@ type DemoMessage =
   | { source: "vdt-demo"; backend?: Backend; type: "note"; command: string };
 
 /** What a click does in the editor, for the clicks the demo has no answer to */
-const NOTES: Record<string, string> = {
+export const NOTES: Record<string, string> = {
   showDependencyGraph: "Opens the dependency graph of the project",
   "dataform.showDependencyInspector": "Opens the dependency inspector",
   "dataform.showColumnLineage": "Shows what a change to the columns breaks downstream",
@@ -67,11 +67,16 @@ const NOTES: Record<string, string> = {
   "results.downloadDataAsCsv": "Saves the rows as CSV",
   "results.queryLimit": "Runs the query again with another row limit",
   "results.runBigQueryJob": "Runs the query again",
+  "inspector.saveFiltersToWorkspace": "Saves these filters to a file of the project, for the team",
+  "inspector.loadFiltersFromWorkspace": "Loads filters saved in the project",
+  "inspector.openExternal": "Opens the job in the Google Cloud console",
 };
 
-const NOTE_AS_IS: Record<string, string> = {
+export const NOTE_AS_IS: Record<string, string> = {
   copyToClipboard: "Copied to the clipboard.",
   "demo.running": "This run is still going.",
+  "inspector.otherFilter": "The demo has rows for one filter only. In the editor, any filter runs.",
+  "inspector.otherModel": "The demo has the dependencies of one model. In the editor, pick any.",
 };
 
 const TOKEN_CLASS: Record<TokenKind, string> = {
@@ -88,7 +93,7 @@ const EDITOR = "bg-white text-black dark:bg-[#1e1e1e] dark:text-[#d4d4d4]";
 // The frame is as tall as the panel's compiled query needs, so the panel does not scroll. These are what the
 // panels need beside the source file; a panel that needs more says so once it has loaded (see `height` below).
 // One height for the two files of the hero, so that the frame stays as it is when the other file's tab is chosen.
-const FRAME_HEIGHT: Record<Backend, number> = { dataform: 874, dbt: 874, diagnostics: 640 };
+const FRAME_HEIGHT: Record<Backend, number> = { dataform: 724, dbt: 724, diagnostics: 600 };
 /** A tab of the panel with a long list, the Project tab say, scrolls rather than stretch the page */
 const TALLEST = 1060;
 // Scrolls as an editor does, without a bar

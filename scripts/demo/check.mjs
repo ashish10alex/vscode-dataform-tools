@@ -15,7 +15,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const root = path.join(repo, 'website', 'public');
 const posters = !process.argv.includes('--no-posters');
 // The panel's part of the hero's frame on a wide screen (website/components/landing/live-demo.tsx)
-const PANEL = { width: 652, height: 874 };
+const PANEL = { width: 652, height: 724 };
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
 // The page the panels are checked in: as the website does, it holds them in iframes and hears what they tell
@@ -49,8 +49,8 @@ const browser = await chromium.launch();
 const failures = [];
 let checks = 0;
 
-async function open(pageName, backend, theme) {
-    const context = await browser.newContext({ viewport: PANEL, deviceScaleFactor: 2, colorScheme: theme });
+async function open(pageName, backend, theme, viewport = PANEL) {
+    const context = await browser.newContext({ viewport, deviceScaleFactor: 2, colorScheme: theme });
     const page = await context.newPage();
     const errors = [];
     page.on('console', (message) => message.type() === 'error' && errors.push(message.text()));
@@ -79,7 +79,8 @@ for (const backend of ['dataform', 'dbt']) {
         const { context, page, frame, errors, told } = await open('panel', backend, theme);
         await check(`${backend} ${theme}: the panel renders`, async () => {
             await run(frame).waitFor({ timeout: 15_000 });
-            await frame.getByText('268.88 MiB').first().waitFor({ timeout: 5000 });
+            // What the dry run said the query reads
+            await frame.getByText(/\d+\.\d+ MiB \$/).first().waitFor({ timeout: 5000 });
             await frame.getByText('fct_player_transfers').first().waitFor();
             await page.waitForFunction(() => window.told.some((message) => message.type === 'rendered'), null, { timeout: 5000 });
             const [{ height }] = await told('rendered');
@@ -100,7 +101,7 @@ for (const backend of ['dataform', 'dbt']) {
             await check(`${backend}: Run ends`, async () => {
                 await run(frame).click();
                 await page.waitForFunction(() => window.told.some((message) => message.type === 'terminal'), null, { timeout: 3000 });
-                await frame.getByText(backend === 'dbt' ? 'Sent to terminal' : '269.00 MiB billed').first().waitFor({ timeout: 20_000 });
+                await frame.getByText(backend === 'dbt' ? 'Sent to terminal' : /MiB billed/).first().waitFor({ timeout: 20_000 });
             });
             await check(`${backend}: Preview Data asks for the results`, async () => {
                 await button(frame, 'Preview Data').click();
@@ -164,6 +165,37 @@ for (const theme of ['dark', 'light']) {
         await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(root, 'demo', `poster-diagnostics-${theme}.png`) });
     }
+    await context.close();
+}
+
+// The dependency inspector, at the width and height its frame has on a wide screen (inspector-demo.tsx)
+const INSPECTOR = { width: 1104, height: 824 };
+for (const theme of ['dark', 'light']) {
+    const { context, page, frame, errors, told } = await open('inspector', 'inspector', theme, INSPECTOR);
+    await check(`inspector ${theme}: the graph of the model and its dependencies renders`, async () => {
+        await page.waitForFunction(() => window.told.some((message) => message.type === 'rendered'), null, { timeout: 15_000 });
+        await frame.locator('.react-flow__node').nth(7).waitFor({ timeout: 5000 });
+        const [{ height }] = await told('rendered');
+        if (height > INSPECTOR.height) {
+            throw new Error(`the inspector needs ${height}px to show its graph: the frame of the website is not that tall (FRAME_HEIGHT in inspector-demo.tsx)`);
+        }
+    });
+    if (posters) {
+        await page.waitForTimeout(600);
+        await page.screenshot({ path: path.join(root, 'demo', `poster-inspector-${theme}.png`) });
+    }
+    if (theme === 'dark') {
+        await check('inspector: Run All fills in the rows of each table', async () => {
+            await button(frame, 'Run All').click();
+            await frame.getByText('Done · 18 rows').first().waitFor({ timeout: 15_000 });
+            await frame.getByText('Done · 1 row').first().waitFor({ timeout: 15_000 });
+        });
+    }
+    await check(`inspector ${theme}: no console error`, async () => {
+        if (errors.length) {
+            throw new Error(errors.join(' | '));
+        }
+    });
     await context.close();
 }
 

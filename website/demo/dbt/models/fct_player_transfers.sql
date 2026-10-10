@@ -1,12 +1,8 @@
 {{ config(materialized="table") }}
 
-WITH transfers AS (
-  SELECT * FROM {{ source("football_data", "TRANSFERS") }}
-)
-
-, signings AS (
+WITH signings AS (
   SELECT *
-  FROM transfers
+  FROM {{ ref("int_signings") }}
   WHERE to_club_id = {{ var("manchester_united_club_id") }}
 )
 

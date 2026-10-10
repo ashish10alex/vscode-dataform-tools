@@ -97,6 +97,14 @@ body.vscode-dark {
   --vscode-symbolIcon-stringForeground: #cccccc;
   --vscode-symbolIcon-typeParameterForeground: #cccccc;
   --vscode-symbolIcon-variableForeground: #75beff;
+  --vscode-checkbox-background: #3c3c3c;
+  --vscode-checkbox-border: #6b6b6b;
+  --vscode-editorIndentGuide-background: #404040;
+  --vscode-panel-border: rgba(128, 128, 128, 0.35);
+  --vscode-progressBar-background: #0e70c0;
+  --vscode-textBlockQuote-background: rgba(127, 127, 127, 0.1);
+  --vscode-textBlockQuote-border: rgba(0, 122, 204, 0.5);
+  --vscode-toolbar-activeBackground: rgba(99, 102, 103, 0.31);
 }
 
 body.vscode-light {
@@ -175,6 +183,14 @@ body.vscode-light {
   --vscode-symbolIcon-stringForeground: #616161;
   --vscode-symbolIcon-typeParameterForeground: #616161;
   --vscode-symbolIcon-variableForeground: #007acc;
+  --vscode-checkbox-background: #ffffff;
+  --vscode-checkbox-border: #919191;
+  --vscode-editorIndentGuide-background: #d3d3d3;
+  --vscode-panel-border: rgba(128, 128, 128, 0.35);
+  --vscode-progressBar-background: #0e70c0;
+  --vscode-textBlockQuote-background: rgba(127, 127, 127, 0.1);
+  --vscode-textBlockQuote-border: rgba(0, 122, 204, 0.5);
+  --vscode-toolbar-activeBackground: rgba(166, 166, 166, 0.31);
 }
 
 /* The demo's one hint: the Run button is ringed once, when the panel has taken the screenshot's place */

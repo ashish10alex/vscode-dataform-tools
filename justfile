@@ -106,7 +106,14 @@ website-demo-capture gcp_project:
     for project in football football-dbt; do
         (cd "$work/$project" && git init -q -b main && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "demo")
     done
+    # The staging and intermediate views must be in BigQuery before a dry run can read them
+    (cd "$work/football" && dataform run --actions fct_player_transfers --include-deps)
+    (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select +fct_player_transfers --target dev --profiles-dir .)
+    # The dependency inspector is recorded with a filter on the player of the model's latest row
+    player=$(bq query --use_legacy_sql=false --project_id={{gcp_project}} --location=europe-west2 --format=csv --quiet \
+        'SELECT player_id FROM analytics.fct_player_transfers ORDER BY transfer_date DESC LIMIT 1' | tail -1)
     npm run compile
+    DEMO_INSPECTOR_FILTER="player_id = $player" \
     DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-dataform" DEMO_FILE=definitions/fct_player_transfers.sqlx \
         VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
     rm -rf /tmp/vdt-demo-ud

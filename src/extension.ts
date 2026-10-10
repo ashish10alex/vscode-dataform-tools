@@ -42,7 +42,7 @@ import { registerDeferEditorHints } from './defer/deferEditorHints';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
-import { createDependencyInspectorPanel } from './views/dependency-inspector-panel';
+import { createDependencyInspectorPanel, inspectorForTests } from './views/dependency-inspector-panel';
 import { ColumnLineagePanel } from './views/columnLineagePanel';
 import { GraphSampleSource, focusFromEditor, wordAtCursor } from './columnLineage/graphSampleSource';
 import { SqlxDocumentSymbolProvider } from './documentSymbols';
@@ -530,6 +530,8 @@ export async function activate(context: vscode.ExtensionContext) {
             // As if Run, a Run Tag or Repeat had been clicked in a dbt Project's panel. Resolves to false when the panel shows no dbt file
             dbtRunMessage: (message: DbtRunMessage) => CompiledQueryPanel.centerPanel?.onDbtRunMessage(message),
         },
+        // What the last dependency inspector opened was sent, and a way to send it what its page would (src/demoCapture)
+        __inspector: inspectorForTests,
         // What the tests of a dbt workspace read (src/dbtWorkspace)
         __projects: { list: () => projects.projects.map(({ root, backend }) => ({ root, backend })), active: () => projects.active?.root,
             /** For tests: a setting as the extension reads it for the Project at `root` */
