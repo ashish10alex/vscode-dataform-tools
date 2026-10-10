@@ -73,7 +73,9 @@ export function SummaryRow({ label, tone = "calm", summary, actions, openRequest
   const off = tone === "off";
   const canOpen = !!children && !off;
   const open = canOpen && (chosen ?? problem);
-  const color = TONE_COLOR[tone];
+  // A value worth knowing colours the closed row, so it is seen without opening it. Open, its chip says it, and the
+  // whole section in the warning colour would be loud for what is a setting and no failure
+  const color = tone === "warning" && open ? undefined : TONE_COLOR[tone];
 
   return (
     <div
