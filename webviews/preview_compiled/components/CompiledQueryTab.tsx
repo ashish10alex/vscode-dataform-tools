@@ -14,12 +14,13 @@ import { workflowDurationMs, useTick } from "./WorkflowActionsTable";
 import { LineageColumns } from "./LineageColumns";
 import { ROW_BUTTON, ROW_LABEL, ROW_PRIMARY_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
 import { RunChangedButton } from "./RunChangedButton";
-import { RunBackend, RunSplitButton } from "./RunSplitButton";
+import { RunBackend, RunBackendSwitch } from "./RunBackendSwitch";
 import { ApiRunGitChip } from "./ApiRunGitChip";
 import { ModifierSwitch } from "./ModifierSwitch";
 import { DeferralBanner, deferralSummary, SWITCH_TITLE as DEFER_SWITCH_TITLE } from "./DeferralBanner";
 import {
   Play,
+  Tag,
   Network,
   GitCompareArrows,
   ListTree,
@@ -56,6 +57,9 @@ import { describeApiRunGitState } from "../../../src/shared/apiRunGitState";
 import { runProgress } from "../../../src/shared/cliRunJobs";
 import { runStage } from "../../../src/shared/runStages";
 import { formatDuration } from "../../../src/shared/jobTiming";
+
+// The colour of the Full refresh chip while it is on
+const FULL_REFRESH_COLOR = "var(--vscode-charts-orange, #d18616)";
 
 /**
  * A stat line ending in UNKNOWN_ACCURACY_STAT means BigQuery could not estimate the bytes.
@@ -174,14 +178,22 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
   const isRemoteMode = state.dataform.compilationInfo?.mode === "api";
-  const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
+  // The Project's, kept by the host. It flips at once on click instead of waiting for the host to say it back
+  const [preferredBackend, setPreferredBackendHere] = useState<RunBackend>(state.dataform.runBackend ?? "cli");
+  useEffect(() => setPreferredBackendHere(state.dataform.runBackend ?? "cli"), [state.dataform.runBackend]);
+  const setPreferredBackend = (backend: RunBackend) => {
+    setPreferredBackendHere(backend);
+    vscode.postMessage({ command: "dataform.setRunBackend", backend });
+  };
   const runBackend: RunBackend = isRemoteMode ? "api" : preferredBackend;
   const hasRunnableActions = !!view.actionTypes?.some(t => t !== 'test');
   const hasTags = (state.project?.tags?.length ?? 0) > 0;
   const showTestRun = !!view.testQuery && !isRemoteMode;
   const hasRunControls = hasRunnableActions || hasTags || (!!state.dataform.changedActions && state.dataform.changedActions.status !== "unavailable");
   // Run and Run Tag both go through the backend the selector is set to
-  const runsViaApi = isRemoteMode || ((hasRunnableActions || hasTags) && runBackend === "api");
+  const hasChangedActions = !!state.dataform.changedActions && state.dataform.changedActions.status !== "unavailable";
+  // Run, Run Tag and Run Changed all go through the backend the switch is set to
+  const runsViaApi = isRemoteMode || ((hasRunnableActions || hasTags || hasChangedActions) && runBackend === "api");
 
   const handleRunTag = () => {
     if (selectedTagsForRun.length === 0) { return; }
@@ -752,31 +764,21 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       <Play className="w-3 h-3" /> Run Tests
                     </button>
                   )}
-                  <RunChangedButton
-                    compact
-                    changedActions={state.dataform.changedActions}
-                    isRemoteMode={isRemoteMode}
-                    disabled={runningModel || compiling}
-                    includeDependencies={includeDependencies}
-                    includeDependents={includeDependents}
-                    fullRefresh={fullRefresh}
-                    onApiRunDispatched={() => setSubmittingSince(Date.now())}
-                  />
-                  {(hasRunnableActions || hasTags) && (
+                  {(hasRunnableActions || hasTags || hasChangedActions) && (
+                    <RunBackendSwitch backend={runBackend} isRemoteMode={isRemoteMode} disabled={compiling} onChange={setPreferredBackend} />
+                  )}
+                  {hasTags && (
                     <div ref={tagPopoverRef} className="relative">
-                      <RunSplitButton
-                        compact
-                        warning={fullRefresh}
-                        backend={runBackend}
-                        isRemoteMode={isRemoteMode}
-                        hasTags={hasTags}
-                        tagsOnly={!hasRunnableActions}
-                        running={runningModel}
+                      <button
+                        onClick={() => setTagPopoverOpen((open) => !open)}
                         disabled={compiling}
-                        onRun={handleRun}
-                        onBackendChange={setPreferredBackend}
-                        onRunTag={() => setTagPopoverOpen(true)}
-                      />
+                        aria-haspopup="dialog"
+                        aria-expanded={tagPopoverOpen}
+                        title={`Pick tag(s) to run via the Dataform ${runBackend === "api" ? "API" : "CLI"}`}
+                        className={hasRunnableActions ? ROW_BUTTON : ROW_PRIMARY_BUTTON}
+                      >
+                        <Tag className="w-3 h-3" /> {hasRunnableActions ? <span className="sr-only">Run Tag…</span> : "Run Tag…"}
+                      </button>
                       {tagPopoverOpen && (
                         <div
                           role="dialog"
@@ -816,6 +818,29 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         </div>
                       )}
                     </div>
+                  )}
+                  <RunChangedButton
+                    compact
+                    via={runBackend}
+                    changedActions={state.dataform.changedActions}
+                    isRemoteMode={isRemoteMode}
+                    disabled={runningModel || compiling}
+                    includeDependencies={includeDependencies}
+                    includeDependents={includeDependents}
+                    fullRefresh={fullRefresh}
+                    onApiRunDispatched={() => setSubmittingSince(Date.now())}
+                  />
+                  {hasRunnableActions && (
+                    <button
+                      onClick={() => handleRun(runBackend)}
+                      disabled={compiling || runningModel}
+                      // Full refresh rings the button in the colour of its chip: the button keeps its own colours, which are readable in every theme
+                      style={fullRefresh ? { boxShadow: `0 0 0 1px var(--vscode-editor-background), 0 0 0 3px ${FULL_REFRESH_COLOR}` } : undefined}
+                      title={`Run this file's actions via the Dataform ${runBackend === "api" ? "API" : "CLI"}${[includeDependencies && ", with dependencies", includeDependents && ", with dependents", fullRefresh && ", full refresh"].filter(Boolean).join("")}`}
+                      className={ROW_PRIMARY_BUTTON}
+                    >
+                      {runningModel ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Run
+                    </button>
                   )}
                 </div>
                 {runsViaApi && describeApiRunGitState(state.dataform.apiRunGitState) && (

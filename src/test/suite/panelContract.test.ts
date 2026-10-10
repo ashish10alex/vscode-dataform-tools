@@ -42,7 +42,7 @@ suite('panel contract', () => {
             'showLogs': true, 'openExternal': true, 'projectInfoShown': true, 'projectInfoHidden': true, 'refreshProjectInfo': true, 'followInfoLink': true,
             'dataform.updateCompilerOptions': true, 'dataform.switchCompilationMode': true, 'dataform.compileRemotely': true,
             'dataform.startSnooze': true, 'dataform.stopSnooze': true, 'dataform.runTests': true, 'dataform.runApi': true,
-            'dataform.runTagsApi': true, 'dataform.runWithOptions': true, 'dataform.toggleDeferToProd': true,
+            'dataform.runTagsApi': true, 'dataform.runWithOptions': true, 'dataform.setRunBackend': true, 'dataform.toggleDeferToProd': true,
             'dataform.deferToProdActions': true, 'dataform.openDeferToProdSettings': true, 'dataform.retryDeferral': true,
             'dataform.removeProxyViews': true, 'dataform.computeChangedActions': true, 'dataform.runChangedActions': true,
             'dataform.estimateTagCost': true, 'dataform.exportTagCostCsv': true, 'dataform.loadWorkflowUrls': true,
@@ -55,7 +55,7 @@ suite('panel contract', () => {
         };
         const names = Object.keys(commands);
         assert.strictEqual(names.filter((name) => !name.includes('.')).length, 19);
-        assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 31);
+        assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 32);
         assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 6);
     });
 

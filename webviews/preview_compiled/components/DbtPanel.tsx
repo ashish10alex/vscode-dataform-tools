@@ -144,9 +144,8 @@ const TOOLBAR_SECONDARY = `${TOOLBAR_BUTTON_BASE} px-3 bg-[var(--vscode-button-s
 const SELECTOR_BACKGROUND = "color-mix(in srgb, var(--vscode-button-background) 78%, black)";
 
 /**
- * The Run button of a dbt file, shaped as Dataform's (RunSplitButton.tsx): the left half runs the file's actions,
- * the right half names what the run goes to and opens a menu. For Dataform that is the CLI or the API; for dbt it is
- * the dbt target, and the menu has the run by tag.
+ * The Run button of a dbt file, in two halves: the left half runs the file's actions, the right half names the dbt
+ * target the run goes to and opens a menu, which has the run by tag.
  */
 function DbtRunButton({ target, disabled, title, hasTags, onRun, onRunTag }: { target?: string; disabled: boolean; title: string; hasTags: boolean; onRun: () => void; onRunTag: () => void }) {
   const [open, setOpen] = useState(false);

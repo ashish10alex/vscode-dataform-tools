@@ -47,6 +47,8 @@ interface RunChangedButtonProps {
   onApiRunDispatched?: () => void;
   /** As small as a button of a summary row, and second to the Run button beside it */
   compact?: boolean;
+  /** Dataform only. Where the run goes, when that is chosen outside: there is then one button to run, not one for each way */
+  via?: "cli" | "api";
 }
 
 /** The project is nearly always the same, so only the dataset (muted) and name are shown. */
@@ -174,6 +176,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   fullRefresh,
   onApiRunDispatched,
   compact = false,
+  via,
 }) => {
   const dbt = backend === "dbt";
   const [open, setOpen] = useState(false);
@@ -399,7 +402,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               >
                 Cancel
               </button>
-              {(dbt || !isRemoteMode) && (
+              {(dbt || (!isRemoteMode && via !== "api")) && (
                 <button
                   onClick={() => run(false)}
                   disabled={!canRun}
@@ -409,7 +412,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
                   <Play className="w-3.5 h-3.5 mr-1.5" /> {dbt ? runLabel : `${runLabel} (CLI)`}
                 </button>
               )}
-              {!dbt && (
+              {!dbt && (isRemoteMode || via !== "cli") && (
                 <button
                   onClick={() => run(true)}
                   disabled={!canRun}

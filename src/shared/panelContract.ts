@@ -235,6 +235,8 @@ export interface DataformBlock extends Slice {
     lastRun: LastRunView | null;
     /** What a run through the Dataform API leaves out, since it runs the branch as pushed */
     apiRunGitState?: ApiRunGitState;
+    /** Where Run, Run Tag and Run Changed go, as last chosen for the Project. Unset before a choice was made: the CLI */
+    runBackend?: 'cli' | 'api';
     changedActions?: ChangedActionsView;
 
     propertyGraphs: PropertyGraph[] | null;
@@ -431,6 +433,7 @@ export type DataformPanelMessage =
     | ({ command: 'dataform.runApi'; actions: Target[]; workspace: boolean } & RunScope)
     | ({ command: 'dataform.runTagsApi'; tags: string[] } & RunScope)
     | { command: 'dataform.runWithOptions'; workspace: boolean }
+    | { command: 'dataform.setRunBackend'; backend: 'cli' | 'api' }
     | { command: 'dataform.toggleDeferToProd'; on: boolean }
     | { command: 'dataform.deferToProdActions' }
     | { command: 'dataform.openDeferToProdSettings' }
