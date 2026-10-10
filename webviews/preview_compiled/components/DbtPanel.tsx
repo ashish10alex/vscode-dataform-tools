@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
-import { Check, ChevronDown, Copy, Eye, Loader2, Network, Play, RotateCcw } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Copy, Eye, Loader2, Network, Play, RotateCcw } from "lucide-react";
 import { HeaderTab, PanelHeader, ReportIssueLink } from "./PanelHeader";
 import { ProjectInfoTab, useProjectInfoRequest } from "./ProjectInfoTab";
 import { ProjectLabel } from "./ProjectLabel";
@@ -332,6 +332,42 @@ function DbtTargetAction({ state, view, action, separated }: { state: PanelSlice
   );
 }
 
+/**
+ * The tests among the file's actions, as one line of the Target row that opens to each of them: a model with a few
+ * tests would otherwise have the SQL start far down. A test whose dry run failed opens the line by itself; a line
+ * the user opened or closed stays as they left it.
+ */
+function FoldedTests({ state, view, tests, separated, others }: { state: PanelSlices; view: DbtView; tests: PanelAction[]; separated: boolean; others: boolean }) {
+  // null: follows the problem. Otherwise what the user chose
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const dryRuns = view.outdated ? [] : tests.map((test) => dbtDryRunOf(state, test));
+  const failed = dryRuns.filter((dryRun) => dryRun.result?.error).length;
+  const running = dryRuns.some((dryRun) => dryRun.running);
+  const open = chosen ?? failed > 0;
+  const unitTests = tests.filter((test) => test.kind === "unit test").length;
+  return (
+    <div data-dbt="tests" className={clsx(separated && "!mt-2.5 pt-2.5 border-t border-[var(--vscode-widget-border)]")}>
+      <button
+        type="button"
+        aria-expanded={open}
+        title={open ? "Hide the tests" : "Show each test, with what its dry run said"}
+        onClick={() => setChosen(!open)}
+        className="flex items-center gap-1.5 w-full min-h-[22px] p-0 border-0 bg-transparent text-left text-[var(--vscode-foreground)] cursor-pointer hover:opacity-80 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]"
+      >
+        {open ? <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />}
+        <span>
+          {/* Beside the file's own test, which is in full above */}
+          {others ? counted(tests.length, "other test", "other tests") : counted(tests.length, "test", "tests")}
+          {unitTests > 0 && unitTests < tests.length && <span className={MUTED}> · {counted(unitTests, "unit test", "unit tests")} among them</span>}
+        </span>
+        {failed > 0 && <RowChip tone="error">{failed} failed the dry run</RowChip>}
+        {running && <RowChip tone="busy"><Loader2 className="w-2.5 h-2.5 animate-spin" /> dry run…</RowChip>}
+      </button>
+      {open && tests.map((test) => <DbtTargetAction key={test.id} state={state} view={view} action={test} separated />)}
+    </div>
+  );
+}
+
 /** What the Target row says of a file with no SQL to show: what the thing is, and a few details */
 function TargetCard({ card }: { card: DbtCard }) {
   return (
@@ -568,14 +604,22 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
 
   const lastRun = state.run?.lastRun;
 
+  // ---- Target: the tests are one line that opens. The one test of a file that defines nothing else is what the
+  // file is for, so it is in full
+  const own = view.actions.filter((action) => action.fileName === view.file);
+  const subject = own.length === 1 && isTestKind(own[0]) ? own[0] : undefined;
+  const folded = view.actions.filter((action) => isTestKind(action) && action !== subject);
+  const inFull = view.actions.filter((action) => !folded.includes(action));
+
   return (
     <div className="pb-20">
       {/* The panel's padding is taken back: the rows run from edge to edge */}
       <div className="-mx-4 -mt-4">
         <TargetRow>
-          {view.actions.map((action, index) => (
+          {inFull.map((action, index) => (
             <DbtTargetAction key={action.id} state={state} view={view} action={action} separated={index > 0} />
           ))}
+          {folded.length > 0 && <FoldedTests state={state} view={view} tests={folded} separated={inFull.length > 0} others={!!subject} />}
           {view.card && <TargetCard card={view.card} />}
         </TargetRow>
 
