@@ -114,12 +114,27 @@ function DataformPanel({ state }: { state: PanelSlices }) {
 
   const isConfigFile = fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json';
 
-  // While a compile runs no error is on show, so only what the file has to show keeps the skeleton away
-  const showSkeleton = problem.compiling && !view.tableOrViewQuery && !view.testQuery && !view.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !view.declarations;
-
   // Property graphs have no output schema, no bytes-scanned estimate and no compiled query,
   // so the panel collapses to a single tab for them.
   const isPropertyGraphFile = (state.dataform.propertyGraphs?.length ?? 0) > 0;
+
+  // A compile that failed is told by the Compile row of the compiled query, whose other rows keep their place
+  const compileFailedInRows = problem.type === CompilationErrorType.COMPILATION_ERROR && !isPropertyGraphFile;
+  const hasCompiledQuery = !!(
+    isPropertyGraphFile ||
+    view.tableOrViewQuery ||
+    view.operationsQuery ||
+    view.assertionQuery ||
+    view.incrementalQuery ||
+    view.testQuery ||
+    view.expectedOutputQuery ||
+    view.declarations ||
+    view.models?.some((m: any) => m.type === 'notebook')
+  );
+  const showCompiledQuery = !isConfigFile && !view.isHelperFile && activeTab === 'compilation' && (hasCompiledQuery || compileFailedInRows);
+
+  // While a compile runs no error is on show, so only what the file has to show keeps the skeleton away
+  const showSkeleton = problem.compiling && !(showCompiledQuery && compileFailedInRows) && !view.tableOrViewQuery && !view.testQuery && !view.expectedOutputQuery && !state.dataform.projectConfig && !state.dataform.packageJson && !view.declarations;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -228,7 +243,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
           const modeLabel = isApi ? 'API' : 'CLI';
           return (
             <div className="mb-4">
-              <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
+              {/* The compiled query says it is compiling in its Compile row, where nothing moves for it */}
+              {showCompiledQuery && !isPropertyGraphFile && !showSkeleton ? null : <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span>
                   {state.dataform.dataformCoreVersion
@@ -242,7 +258,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
                   {isApi ? <Cloud className="w-3.5 h-3.5" /> : <Terminal className="w-3.5 h-3.5" />}
                   {modeLabel}
                 </span>
-              </div>
+              </div>}
               {state.dataform.dataformCoreVersion && (
                 <div className="mt-4 border-l-4 border-[var(--vscode-inputValidation-warningBorder)] pl-4 py-3 mr-4 bg-[var(--vscode-inputValidation-warningBackground)] rounded-r-md shadow-sm">
                   <h4 className="flex items-center gap-2 m-0 text-sm font-semibold text-[var(--vscode-inputValidation-warningForeground)] mb-2">
@@ -264,7 +280,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
             <SkeletonLoader type={isConfigFile ? 'config' : 'default'} mode={state.dataform.compilationMode || state.dataform.compilationInfo?.mode} />
         )}
 
-{(problem.type === CompilationErrorType.COMPILATION_ERROR ||
+{!(showCompiledQuery && compileFailedInRows) && (problem.type === CompilationErrorType.COMPILATION_ERROR ||
           (!isPropertyGraphFile && (
             !view.models?.length ||
             problem.missingTools.length > 0
@@ -281,17 +297,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
             </div>
         )}
 
-        {!isConfigFile && !view.isHelperFile && activeTab === 'compilation' && (
-          isPropertyGraphFile ||
-          view.tableOrViewQuery ||
-          view.operationsQuery ||
-          view.assertionQuery ||
-          view.incrementalQuery ||
-          view.testQuery ||
-          view.expectedOutputQuery ||
-          view.declarations ||
-          view.models?.some((m: any) => m.type === 'notebook')
-        ) && <CompiledQueryTab state={state} />}
+        {showCompiledQuery && <CompiledQueryTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}

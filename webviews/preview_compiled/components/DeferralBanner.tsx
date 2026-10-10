@@ -82,6 +82,50 @@ const NOT_IN_DEV_TITLE = "Not built in dev, so it is read from prod, like dbt --
 const BUILT_IN_DEV_TITLE = "Built in dev, so it is read from dev, like dbt --defer. Upstream tables are only read from prod when they are not built in dev.";
 const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
 
+/** What a lookup of the upstream tables found, in a line */
+function lookupSummary(entries: DeferralEntryView[], builtInDev: { dev: string }[]): { text: string; noneInProd: boolean } {
+  const deferred = entries.filter((entry) => entry.status === "deferred");
+  // Every upstream table that has a prod name is missing there: the prod options likely point at the wrong place
+  const withProd = entries.filter((entry) => entry.prod);
+  const noneInProd = withProd.length > 0 && withProd.every((entry) => entry.status === "missingEverywhere");
+  const text = noneInProd
+    ? `none of the ${withProd.length} upstream table${withProd.length === 1 ? " was" : "s were"} found in prod`
+    : deferred.length === 0
+      ? builtInDev.length === 0
+        ? "no upstream table is read from prod"
+        : `nothing read from prod: ${entries.length > 0 ? `${builtInDev.length} upstream table${builtInDev.length === 1 ? " is" : "s are"}` : builtInDev.length === 1 ? "the upstream table is" : `all ${builtInDev.length} upstream tables are`} built in dev`
+      : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod${builtInDev.length > 0 ? `, ${builtInDev.length} built in dev read from dev` : ""}`;
+  return { text, noneInProd };
+}
+
+/**
+ * Defer to prod in a few words, for where it has one line: whether it is on, and what that does to the file shown.
+ * `attention` is anything the user should know of without opening the section. Undefined where the Project has no
+ * defer to prod.
+ */
+export function deferralSummary(deferral: DeferralView | null | undefined, deferToProd: DeferToProdState | undefined, leftoverProxies: string[] | null | undefined): { on: boolean; text: string; attention: boolean } | undefined {
+  if (!deferToProd) {
+    return undefined;
+  }
+  if (!deferToProd.enabled) {
+    const proxies = leftoverProxies?.length ?? 0;
+    return proxies > 0
+      ? { on: false, text: `${proxies} proxy view${proxies === 1 ? " reads" : "s read"} prod`, attention: true }
+      : { on: false, text: "defer to prod off", attention: false };
+  }
+  if (!deferToProd.available) {
+    return { on: true, text: "on but not applied", attention: true };
+  }
+  if (!deferral) {
+    return { on: true, text: "looking up upstream tables…", attention: false };
+  }
+  if (deferral.status === "error") {
+    return { on: true, text: "could not look up the upstream tables", attention: true };
+  }
+  const looked = lookupSummary(deferral.status === "ready" ? deferral.entries : [], deferral.status === "ready" ? deferral.builtInDev ?? [] : []);
+  return { on: true, text: looked.text, attention: looked.noneInProd };
+}
+
 /**
  * Defer to prod for the file shown: the switch, a one-line summary and, expanded, which upstream tables are read
  * from prod. Always shown for a query file, as a quiet dashed strip while defer to prod is off, so the switch sits
@@ -202,7 +246,6 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   }
 
   const entries = deferral?.status === "ready" ? deferral.entries : [];
-  const deferred = entries.filter((entry) => entry.status === "deferred");
   const warnings = entries.filter((entry) => entry.stale || entry.status !== "deferred").length;
   const builtInDev = deferral?.status === "ready" ? deferral.builtInDev ?? [] : [];
   const hasEntries = !pending && (entries.length > 0 || builtInDev.length > 0);
@@ -216,18 +259,11 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
   // Prod dataset of each dev dataset, so a table without a prod name is listed with the others of its dataset
   const prodDatasetOf = new Map<string, string>();
   entries.forEach((entry) => entry.prod && !prodDatasetOf.has(splitTableId(entry.dev).dataset) && prodDatasetOf.set(splitTableId(entry.dev).dataset, splitTableId(entry.prod).dataset));
-  // Every upstream table that has a prod name is missing there: the prod options likely point at the wrong place
-  const withProd = entries.filter((entry) => entry.prod);
-  const noneInProd = !pending && withProd.length > 0 && withProd.every((entry) => entry.status === "missingEverywhere");
+  const looked = lookupSummary(entries, builtInDev);
+  const noneInProd = !pending && looked.noneInProd;
   const summary = pending
     ? (slow ? "still looking up upstream tables, this is taking longer than usual" : "looking up upstream tables…")
-    : noneInProd
-      ? `none of the ${withProd.length} upstream table${withProd.length === 1 ? " was" : "s were"} found in prod`
-      : deferred.length === 0
-        ? builtInDev.length === 0
-          ? "no upstream table is read from prod"
-          : `nothing read from prod: ${entries.length > 0 ? `${builtInDev.length} upstream table${builtInDev.length === 1 ? " is" : "s are"}` : builtInDev.length === 1 ? "the upstream table is" : `all ${builtInDev.length} upstream tables are`} built in dev`
-        : `${deferred.length} upstream table${deferred.length === 1 ? "" : "s"} read from prod${builtInDev.length > 0 ? `, ${builtInDev.length} built in dev read from dev` : ""}`;
+    : looked.text;
 
   return (
     <div className="rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">

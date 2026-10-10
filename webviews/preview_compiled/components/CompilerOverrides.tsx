@@ -4,6 +4,8 @@ import { vscode } from "../utils/vscode";
 
 interface CompilerOverridesProps {
   initialCompilerOptions?: string;
+  /** Inside a section that opens and closes itself: the fields are always shown, under a plain heading */
+  embedded?: boolean;
 }
 
 /** The compiler options the four fields stand for, as one command-line string */
@@ -24,8 +26,38 @@ function generatedOptions(tablePrefix: string, schemaSuffix: string, databaseSuf
   return parts.join(" ");
 }
 
+/** The four fields of a command-line string of compiler options */
+function parseOptions(given: string): { tablePrefix: string; schemaSuffix: string; databaseSuffix: string; other: string[] } {
+  const parts = given.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+  const parsed = { tablePrefix: "", schemaSuffix: "", databaseSuffix: "", other: [] as string[] };
+  for (const part of parts) {
+    if (part.startsWith("--table-prefix=")) {
+      parsed.tablePrefix = part.split('=')[1].replace(/"/g, '');
+    } else if (part.startsWith("--schema-suffix=")) {
+      parsed.schemaSuffix = part.split('=')[1].replace(/"/g, '');
+    } else if (part.startsWith("--database-suffix=")) {
+      parsed.databaseSuffix = part.split('=')[1].replace(/"/g, '');
+    } else {
+      parsed.other.push(part);
+    }
+  }
+  return parsed;
+}
+
+/** The overrides that are set, each in a few words, e.g. ["prefix AA", "schema suffix dev"]. Empty when none is */
+export function overrideLabels(compilerOptions: string | undefined): string[] {
+  const { tablePrefix, schemaSuffix, databaseSuffix, other } = parseOptions(compilerOptions ?? "");
+  return [
+    tablePrefix && `prefix ${tablePrefix}`,
+    schemaSuffix && `schema suffix ${schemaSuffix}`,
+    databaseSuffix && `database suffix ${databaseSuffix}`,
+    other.length > 0 && other.join(" "),
+  ].filter((label): label is string => !!label);
+}
+
 export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
   initialCompilerOptions,
+  embedded,
 }) => {
   const [compilerOptions, setCompilerOptions] = useState("");
   const [isCompilerOptionsOpen, setIsCompilerOptionsOpen] = useState(false);
@@ -45,20 +77,7 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
     if (given === sent.current) {
       return;
     }
-    const parts = given.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-    let tp = "", ss = "", ds = "", other = [];
-
-    for (const part of parts) {
-      if (part.startsWith("--table-prefix=")) {
-        tp = part.split('=')[1].replace(/"/g, '');
-      } else if (part.startsWith("--schema-suffix=")) {
-        ss = part.split('=')[1].replace(/"/g, '');
-      } else if (part.startsWith("--database-suffix=")) {
-        ds = part.split('=')[1].replace(/"/g, '');
-      } else {
-        other.push(part);
-      }
-    }
+    const { tablePrefix: tp, schemaSuffix: ss, databaseSuffix: ds, other } = parseOptions(given);
     fromHost.current = generatedOptions(tp, ss, ds, other.join(" "));
     sent.current = null;
     setCompilerOptions(fromHost.current);
@@ -95,18 +114,18 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
   }, [compilerOptions]);
 
   return (
-    <div className="pb-4 border-b border-[var(--vscode-widget-border)]/40">
+    <div className={embedded ? undefined : "pb-4 border-b border-[var(--vscode-widget-border)]/40"}>
       <div
-        className="flex items-center py-2 cursor-pointer hover:opacity-80 transition-opacity justify-between"
-        onClick={() => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
+        className={embedded ? "flex items-center justify-between" : "flex items-center py-2 cursor-pointer hover:opacity-80 transition-opacity justify-between"}
+        onClick={embedded ? undefined : () => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
       >
         <div className="flex items-center">
-          {isCompilerOptionsOpen ? (
+          {embedded ? null : isCompilerOptionsOpen ? (
             <ChevronDown className="w-4 h-4 mr-2 text-zinc-400" />
           ) : (
             <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
           )}
-          <span className="font-semibold text-zinc-700 dark:text-zinc-200">Compiler Overrides</span>
+          <span className={embedded ? "text-xs font-medium text-[var(--vscode-descriptionForeground)]" : "font-semibold text-zinc-700 dark:text-zinc-200"}>Compiler Overrides</span>
         </div>
         <button
           onClick={(e) => {
@@ -119,8 +138,8 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
         </button>
       </div>
 
-      {isCompilerOptionsOpen && (
-        <div className="pt-3 space-y-3">
+      {(embedded || isCompilerOptionsOpen) && (
+        <div className={embedded ? "pt-2 space-y-3" : "pt-3 space-y-3"}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">
