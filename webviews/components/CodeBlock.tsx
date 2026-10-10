@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
 import { Copy, Check } from 'lucide-react';
 
@@ -10,6 +10,19 @@ interface CodeBlockProps {
   errorAnnotations?: Array<{ line: number; message: string }>;
 }
 
+/** VS Code names the kind of the colour theme in a class of the body, and changes it when the theme changes */
+const isLightTheme = () => document.body.classList.contains('vscode-light') || document.body.classList.contains('vscode-high-contrast-light');
+
+function useLightTheme(): boolean {
+  const [light, setLight] = useState(isLightTheme);
+  useEffect(() => {
+    const observer = new MutationObserver(() => setLight(isLightTheme()));
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+  return light;
+}
+
 export const CodeBlock: React.FC<CodeBlockProps> = ({
   code,
   language,
@@ -18,6 +31,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   errorAnnotations
 }) => {
   const [copied, setCopied] = useState(false);
+  const light = useLightTheme();
 
   // O(1) lookup for error messages
   const errorMessageMap = new Map((errorAnnotations ?? []).map(a => [a.line, a.message]));
@@ -54,7 +68,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
         {/* Code Rendering */}
         <Highlight
-          theme={themes.vsDark} // Falls back beautifully into standard VS Code colors
+          theme={light ? themes.vsLight : themes.vsDark} // The token colours of VS Code's own default themes
           code={code}
           language={language as any}
         >

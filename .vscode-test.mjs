@@ -35,6 +35,14 @@ export default defineConfig([
 		mocha: { timeout: 60 * 1000 },
 	},
 	{
+		// `just website-demo-capture`: opens a copy of a demo Project of the website, see src/demoCapture
+		label: 'demo',
+		files: 'out/src/demoCapture/**/*.capture.js',
+		workspaceFolder: process.env.DEMO_WORKSPACE,
+		launchArgs,
+		mocha: { timeout: 10 * 60 * 1000 },
+	},
+	{
 		// `just bench`: opens the generated bench project, see src/bench
 		label: 'bench',
 		files: 'out/src/bench/**/*.bench.js',

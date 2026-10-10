@@ -79,6 +79,15 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+          <a
+            href={site.googleRecommendationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mr-2 hidden items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground lg:inline-flex"
+          >
+            <span className="text-brand" aria-hidden>✦</span>
+            Recommended by Google&apos;s Dataform team
+          </a>
           <Button variant="ghost" size="icon" asChild>
             <a href={site.repoUrl} target="_blank" rel="noopener noreferrer">
               <Github className="h-[1.1rem] w-[1.1rem]" />
