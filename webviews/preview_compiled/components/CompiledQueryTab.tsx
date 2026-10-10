@@ -595,7 +595,8 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             const dryRunStat = key ? bq.stats[key] : undefined;
             const errorDisplay = dryRunErrorOf(model);
             return (
-              <div key={index} className="space-y-1.5 group">
+              // Each action is set apart, so it is plain which one an error is of
+              <div key={index} className={clsx("space-y-1.5 group", index > 0 && "!mt-2.5 pt-2.5 border-t border-[var(--vscode-widget-border)]")}>
                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
                   {typeBadge(model.type)}
                   {model.type === 'assertion' && target && describeBuiltInAssertion(target.name, model.query).map(builtIn => (
@@ -614,7 +615,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       <BigQueryTableLink
                         id={target}
                         showIcon={true}
-                        className="flex items-center min-w-0 font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] hover:underline transition-colors"
+                        className="flex items-center min-w-0 break-all font-mono text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-foreground)] hover:underline transition-colors"
                         fallbackClassName="flex items-center font-mono text-[var(--vscode-errorForeground)]"
                       />
                       {model.type === 'notebook' && model.fileName && (
