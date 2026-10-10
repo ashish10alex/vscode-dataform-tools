@@ -187,11 +187,11 @@ The extension works over Remote SSH, in dev containers and in WSL, for both Data
       <td>Preview query results in a table by running the file</td>
     </tr>
     <tr>
-      <td>Defer to production</td>
+      <td><a href="#defer_to_prod">Defer to production</a></td>
       <td>Develop without rebuilding upstream tables in dev. Like dbt's <code>--defer</code>, automatically resolves unbuilt dependencies against production tables (via <code>vscode-dataform-tools.prodCompilerOptions</code>) for dry runs, previews, and runs (via proxy views), with in-editor hints on <code>${ref()}</code></td>
     </tr>
     <tr>
-      <td>Run changed actions</td>
+      <td><a href="#run_changed">Run changed actions</a></td>
       <td>Run only the actions whose compiled SQL or materialization changed vs the default branch, like dbt's <code>state:modified</code>. Includes interactive file selection and daily-cached merge-base compiles</td>
     </tr>
     <tr>
@@ -203,7 +203,7 @@ The extension works over Remote SSH, in dev containers and in WSL, for both Data
       <td>Hover definition for tables, columns, column descriptions, types and common BigQuery functions</td>
     </tr>
     <tr>
-      <td><a href="#cost_estimator">Cost estimator</a> </td>
+      <td>Cost estimator</td>
       <td>Estimate the cost of running a Tag</td>
     </tr>
     <tr>
@@ -273,9 +273,17 @@ The hover of a table is the same in a Dataform and a dbt project: its name as a 
 
 ![table_hover](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/table_hover_dark.png#gh-dark-mode-only)
 
-### <a id="cost_estimator">Estimate cost of running a Tag</a>
+### <a id="defer_to_prod">Defer to production</a>
 
-![cost_estimator](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/tag_cost_estimator_dark.png#gh-dark-mode-only)
+Develop without rebuilding upstream tables in dev. Like dbt's `--defer`, automatically resolves unbuilt dependencies against production tables (via `vscode-dataform-tools.prodCompilerOptions`) for dry runs, previews, and runs (via proxy views), with in-editor hints on `${ref()}`.
+
+![defer_to_prod](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/defer_to_prod_dark.png#gh-dark-mode-only)
+
+### <a id="run_changed">Run Changed actions</a>
+
+Run only the actions whose compiled SQL or materialization changed vs the default branch, like dbt's `state:modified`. Includes interactive file selection and daily-cached merge-base compiles.
+
+![run_changed](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/run_changed_actions_dark.png#gh-dark-mode-only)
 
 ### <a id="definition">Go to definition</a>
 
@@ -297,8 +305,6 @@ Auto completion of declarations in `${ref("..")}` trigger when <kdb>$<kdb> chara
 ### <a id="dependency_inspector">Dependency Inspector</a>
 
 Interactive inspector to explore dependencies, apply a common filter across all nested dependencies and perform dry runs or run the queries in BigQuery.
-
-![dependency_inspector_one](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/dependency_inspector_one.png#gh-dark-mode-only)
 
 ![dependency_inspector_two](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/dependency_inspector_two.png#gh-dark-mode-only)
 

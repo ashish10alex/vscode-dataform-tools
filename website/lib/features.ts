@@ -48,7 +48,7 @@ export const themes: Record<FeatureTheme, { label: string; eyebrow: string; blur
 };
 
 export const features: Feature[] = [
-  // ── compile ────────────────────────────────────────────────
+  // ── compile ────────────────────────────────────────────────────────────────
   {
     id: "dbt",
     theme: "compile",
@@ -129,7 +129,7 @@ export const features: Feature[] = [
     media: { light: "/quick_fix.png", dark: "/quick_fix.png" },
   },
 
-  // ── graph ──────────────────────────────────────────────────
+  // ── graph ──────────────────────────────────────────────────────────────────
   {
     id: "column_lineage",
     theme: "graph",
@@ -158,7 +158,7 @@ export const features: Feature[] = [
     title: "Dependency inspector",
     summary:
       "Pick a model, apply a filter to it and every upstream dependency, then dry-run or run them all. Save filters as JSON to share with your team.",
-    media: { light: "/dependency_inspector_one.png", dark: "/dependency_inspector_one.png" },
+    media: { light: "/dependency_inspector_two.png", dark: "/dependency_inspector_two.png" },
   },
   {
     id: "graph_cli",
@@ -169,7 +169,7 @@ export const features: Feature[] = [
     mediaTodo: "Dependency graph opened in the browser from the CLI",
   },
 
-  // ── editing ────────────────────────────────────────────────
+  // ── editing ────────────────────────────────────────────────────────────────
   {
     id: "hover",
     theme: "editing",
@@ -231,13 +231,14 @@ export const features: Feature[] = [
     ],
   },
 
-  // ── run ────────────────────────────────────────────────────
+  // ── run ────────────────────────────────────────────────────────────────────
   {
     id: "defer_to_prod",
     theme: "run",
     title: "Defer to production",
     summary:
       "Develop in dev without rebuilding upstream tables. Like dbt's `--defer`, automatically resolves unbuilt dependencies against production tables/views in dry runs, previews, and runs (via proxy views), with inline `${ref()}` decorations.",
+    media: { light: "/defer_to_prod_dark.png", dark: "/defer_to_prod_dark.png" },
     links: [
       {
         label: "ADR: Defer via SQL Rewrite & Proxy Views",
@@ -251,6 +252,7 @@ export const features: Feature[] = [
     title: "Interactive run changed actions",
     summary:
       "Run only the actions whose compiled SQL or materialization changed vs default branch (`state:modified`), with interactive file selection and daily-cached merge-base compiles.",
+    media: { light: "/run_changed_actions_dark.png", dark: "/run_changed_actions_dark.png" },
   },
   {
     id: "cost_estimator",
@@ -258,7 +260,7 @@ export const features: Feature[] = [
     title: "Cost estimator",
     summary:
       "Estimate the cost of one or more tags, optionally including their dependencies and dependents, before you run anything.",
-    media: { light: "/tag_cost_estimator_light.png", dark: "/tag_cost_estimator_dark.png" },
+    mediaTodo: "Tag cost estimation summary",
   },
   {
     id: "filetagruns",
