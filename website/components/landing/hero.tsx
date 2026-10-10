@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, Github } from "lucide-react";
+import { ArrowRight, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LiveDemo } from "@/components/landing/live-demo";
 import { demoSources } from "@/lib/demo-source";
@@ -16,68 +16,43 @@ export function Hero() {
       <div className="bg-grid absolute inset-0 -z-10" aria-hidden />
       <div className="glow-brand absolute inset-0 -z-10" aria-hidden />
 
-      <div className="mx-auto max-w-6xl px-4 pb-4 pt-4 text-center sm:px-6 md:pt-5">
-        <div className="reveal flex flex-wrap items-center justify-center gap-2.5">
-          <a
-            href="/changelog"
-            className="group inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3.5 py-1 text-xs font-medium text-brand shadow-sm backdrop-blur transition-all hover:bg-brand/20 hover:border-brand/60"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-            <span>v2.0.0: dbt projects on BigQuery, next to Dataform</span>
-            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-          </a>
-
-          <a
-            href={site.googleRecommendationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-brand/40 hover:text-foreground"
-          >
-            <span className="text-brand" aria-hidden>✦</span>
-            Recommended by Google&apos;s Dataform team
-            <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
-          </a>
-
-          <Button asChild size="sm" className="h-7 rounded-full bg-brand px-3.5 text-xs text-brand-foreground hover:bg-brand/90">
-            <a href={site.marketplace.vscode} target="_blank" rel="noopener noreferrer">
-              Install for VS Code
-            </a>
-          </Button>
-          <Button asChild size="sm" variant="outline" className="h-7 rounded-full px-3.5 text-xs">
+      {/* A small headline and the buttons share the row that sits on the frame: the demo is what the page opens on */}
+      <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4 pb-3.5 pt-5 sm:px-6">
+        <div className="reveal">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+            See what your Dataform and dbt code will do — <span className="text-brand">before it runs.</span>
+          </h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Compiled SQL, dry-run cost, schema, preview and runs on BigQuery. This is the real panel: click around.
+          </p>
+        </div>
+        <div className="reveal flex items-center gap-2" style={{ "--reveal-delay": "80ms" } as React.CSSProperties}>
+          <Button asChild size="sm" variant="outline">
             <a href={site.repoUrl} target="_blank" rel="noopener noreferrer">
               <Github />
               GitHub
             </a>
           </Button>
+          <Button asChild size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90">
+            <a href={site.marketplace.vscode} target="_blank" rel="noopener noreferrer">
+              Install for VS Code
+            </a>
+          </Button>
         </div>
-
-        <h1
-          className="reveal mx-auto mt-3 max-w-6xl text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl"
-          style={{ "--reveal-delay": "80ms" } as React.CSSProperties}
-        >
-          See what your Dataform and dbt code will do —{" "}
-          <span className="text-brand">before it runs.</span>
-        </h1>
-
-        <p
-          className="reveal mx-auto mt-2 max-w-4xl text-balance text-sm text-muted-foreground sm:text-base"
-          style={{ "--reveal-delay": "160ms" } as React.CSSProperties}
-        >
-          Compiled SQL, dry-run cost, schema, preview and runs on BigQuery, in your editor. Try it below.
-        </p>
-
-
       </div>
 
       <div
         className="reveal mx-auto max-w-6xl px-4 sm:px-6"
-        style={{ "--reveal-delay": "380ms" } as React.CSSProperties}
+        style={{ "--reveal-delay": "160ms" } as React.CSSProperties}
       >
         <LiveDemo sources={demoSources()} />
         <p
           className="mt-3 text-center text-xs text-muted-foreground"
         >
-          Works in{" "}
+          <a href="/changelog" className="font-medium text-brand underline-offset-4 hover:underline">
+            v2.0.0: dbt projects on BigQuery, next to Dataform <ArrowRight className="inline h-3 w-3" />
+          </a>{" "}
+          · Works in{" "}
           {editors.map((editor, i) => (
             <span key={editor.name}>
               <a href={editor.href} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:text-foreground hover:underline">

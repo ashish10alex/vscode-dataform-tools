@@ -84,7 +84,7 @@ const TOKEN_CLASS: Record<TokenKind, string> = {
 
 const EDITOR = "bg-white text-black dark:bg-[#1e1e1e] dark:text-[#d4d4d4]";
 // As tall as the window leaves under the header and the headline, so that the whole frame is in view on arrival
-const FRAME_HEIGHT = "h-[clamp(420px,calc(100svh-16.5rem),760px)]";
+const FRAME_HEIGHT = "h-[clamp(420px,calc(100svh-14.5rem),760px)]";
 // Scrolls as an editor does, without a bar
 const NO_BAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
