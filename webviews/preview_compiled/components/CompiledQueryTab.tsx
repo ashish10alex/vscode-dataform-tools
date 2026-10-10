@@ -54,6 +54,11 @@ import { runProgress } from "../../../src/shared/cliRunJobs";
 import { runStage } from "../../../src/shared/runStages";
 import { formatDuration } from "../../../src/shared/jobTiming";
 
+// A part of the group of run buttons. Its corners are the group's, which rounds its ends
+const RUN_PART_BASE = "flex items-center gap-1 h-6 px-2 rounded-[inherit] border-0 text-xs whitespace-nowrap disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
+/** A run that is not the file's own: in the button colour, thinned, so it is an action and second to the main one */
+export const RUN_PART = `${RUN_PART_BASE} text-[var(--vscode-foreground)] bg-[color-mix(in_srgb,var(--vscode-button-background)_28%,transparent)] hover:bg-[color-mix(in_srgb,var(--vscode-button-background)_45%,transparent)]`;
+const RUN_MAIN_PART = `${RUN_PART_BASE} text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]`;
 // The colour of the Full refresh chip while it is on
 const FULL_REFRESH_COLOR = "var(--vscode-charts-orange, #d18616)";
 
@@ -754,26 +759,29 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   </div>
                 )}
                 <div className="relative flex items-center gap-1.5 ml-auto">
-                  {showTestRun && (
-                    <button onClick={handleRunTest} disabled={compiling} className={hasRunnableActions ? ROW_BUTTON : ROW_PRIMARY_BUTTON}>
-                      <Play className="w-3 h-3" /> Run Tests
-                    </button>
-                  )}
                   {(hasRunnableActions || hasTags || hasChangedActions) && (
                     <RunBackendSwitch backend={runBackend} isRemoteMode={isRemoteMode} disabled={compiling} onChange={setPreferredBackend} />
                   )}
+                  {/* Everything that starts a run is one group, each part with the arrow of a run and the name of what it
+                      runs: they are told from the settings beside them, which have neither */}
+                  <div role="group" aria-label="Run" className="inline-flex items-stretch gap-px [&>*:first-child]:rounded-l [&>*:last-child]:rounded-r">
+                  {showTestRun && (
+                    <button onClick={handleRunTest} disabled={compiling} title="Run the unit tests of this file" className={hasRunnableActions ? RUN_PART : RUN_MAIN_PART}>
+                      <Play className="w-3 h-3" /> Tests
+                    </button>
+                  )}
                   {hasTags && (
                     // The picker opens from the end of the row, not from under the button: it is as wide as a narrow panel
-                    <div ref={tagPopoverRef}>
+                    <div ref={tagPopoverRef} className="flex">
                       <button
                         onClick={() => { setTagFilter(""); setTagPopoverOpen((open) => !open); }}
                         disabled={compiling}
                         aria-haspopup="dialog"
                         aria-expanded={tagPopoverOpen}
                         title={`Pick tag(s) to run via the Dataform ${runBackend === "api" ? "API" : "CLI"}`}
-                        className={hasRunnableActions ? ROW_BUTTON : ROW_PRIMARY_BUTTON}
+                        className={hasRunnableActions || showTestRun ? RUN_PART : RUN_MAIN_PART}
                       >
-                        {hasRunnableActions ? "Tag" : "Run Tag…"}
+                        <Play className="w-3 h-3" /> Tag…
                       </button>
                       {tagPopoverOpen && (
                         <div
@@ -831,6 +839,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                   )}
                   <RunChangedButton
                     compact
+                    className={RUN_PART}
                     via={runBackend}
                     changedActions={state.dataform.changedActions}
                     isRemoteMode={isRemoteMode}
@@ -847,11 +856,12 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                       // Full refresh rings the button in the colour of its chip: the button keeps its own colours, which are readable in every theme
                       style={fullRefresh ? { boxShadow: `0 0 0 1px var(--vscode-editor-background), 0 0 0 3px ${FULL_REFRESH_COLOR}` } : undefined}
                       title={`Run this file's actions via the Dataform ${runBackend === "api" ? "API" : "CLI"}${[includeDependencies && ", with dependencies", includeDependents && ", with dependents", fullRefresh && ", full refresh"].filter(Boolean).join("")}`}
-                      className={ROW_PRIMARY_BUTTON}
+                      className={RUN_MAIN_PART}
                     >
-                      {runningModel ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Run
+                      {runningModel ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} File
                     </button>
                   )}
+                  </div>
                 </div>
                 {runsViaApi && describeApiRunGitState(state.dataform.apiRunGitState) && (
                   <div className="basis-full flex justify-end pb-0.5">
