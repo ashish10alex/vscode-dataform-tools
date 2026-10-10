@@ -319,7 +319,7 @@ export interface InfoRow {
     noteLink?: InfoLink;
 }
 
-export type InfoSectionName = 'project' | 'binaries' | 'settings' | 'google cloud' | 'git';
+export type InfoSectionName = 'project' | 'binaries' | 'google cloud' | 'git' | 'settings';
 
 export interface InfoSection {
     name: InfoSectionName;

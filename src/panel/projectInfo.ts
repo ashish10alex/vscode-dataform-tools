@@ -418,7 +418,7 @@ function gitSection(input: ProjectInfoInput): InfoSection {
 
 /** The `project info` slice: five sections, the same ones for both Backends */
 export function projectInfoSlice(input: ProjectInfoInput): ProjectInfoSlice {
-    return { root: input.root, sections: [projectSection(input), binariesSection(input), settingsSection(input), googleSection(input), gitSection(input)] };
+    return { root: input.root, sections: [projectSection(input), binariesSection(input), googleSection(input), gitSection(input), settingsSection(input)] };
 }
 
 /** Every link of a slice: what a click in the panel may ask the host to follow */
