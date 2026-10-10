@@ -5,7 +5,7 @@ import { CodeBlock } from "../../components/CodeBlock";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
 import { LastRunCard, formatAgo, useRerun } from "./LastRunCard";
-import { CompilationInfoBadge, useNow } from "./CompilationInfoBadge";
+import { CompilationInfoBadge, CompileModeToken, useNow } from "./CompilationInfoBadge";
 import { CompilationError } from "./CompilationError";
 import { CancelWorkflowButton } from "./CancelWorkflowButton";
 import { SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
@@ -16,7 +16,7 @@ import { RunChangedButton } from "./RunChangedButton";
 import { RunBackend, RunSplitButton } from "./RunSplitButton";
 import { ApiRunGitChip } from "./ApiRunGitChip";
 import { ModifierSwitch } from "./ModifierSwitch";
-import { DeferralBanner, deferralSummary } from "./DeferralBanner";
+import { DeferralBanner, deferralSummary, SWITCH_TITLE as DEFER_SWITCH_TITLE } from "./DeferralBanner";
 import {
   Play,
   Network,
@@ -206,6 +206,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const lastRun = state.dataform.lastRun;
   const { starting: rerunStarting, rerun } = useRerun(lastRun, handleRerunDispatched);
   const now = useNow(30_000);
+  // Follows the setting, but flips at once on click instead of waiting for the panel to redraw
+  const [deferOn, setDeferOn] = useState(!!state.dataform.deferToProd?.enabled);
+  useEffect(() => setDeferOn(!!state.dataform.deferToProd?.enabled), [state.dataform.deferToProd?.enabled]);
+  const toggleDefer = (checked: boolean) => {
+    setDeferOn(checked);
+    vscode.postMessage({ command: "dataform.toggleDeferToProd", on: checked });
+  };
   /** The runs that were seen going while the panel was open, by when they started */
   const seenGoing = useRef<Set<number>>(new Set());
   const openedAt = useRef(Date.now());
@@ -625,6 +632,13 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           label="Compile"
           tone={compileTone}
           summary={compileSummary}
+          // Open, the tokens under the line say how it compiled: the line names the file they are of
+          openSummary={compileFailed || compiling ? undefined : (
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="truncate font-mono text-xs text-[var(--vscode-descriptionForeground)]" title={fileName}>{fileName || " "}</span>
+              <ProjectLabel project={state.project} className="flex-shrink-0" />
+            </span>
+          )}
           actions={<>
             <button onClick={handleFormat} disabled={formatting || compiling} className={ROW_BUTTON} title="Format the file">
               <Wand2 className="w-3 h-3" /> Format
@@ -634,20 +648,18 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
             </button>
           </>}
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] bg-[var(--vscode-editor-background)] border border-[var(--vscode-widget-border)] px-2 py-0.5 rounded">
-              {fileName || " "}
-            </span>
-            <ProjectLabel project={state.project} />
-          </div>
           {compileFailed ? (
             // It has the compile info, the switch of Compilation Mode and the compiler overrides of its own
             <CompilationError state={state} />
           ) : (
             <>
-              <CompilationInfoBadge info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
-              <DeferralBanner deferral={state.dataform.deferral} deferToProd={state.dataform.deferToProd} leftoverProxies={state.dataform.leftoverProxies} />
-              <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} embedded />
+              {/* Every setting is a token of one line that wraps: what is set has the warning colour, what is not is an outline */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <CompileModeToken info={state.dataform.compilationInfo} mode={state.dataform.compilationMode} recompiling={compiling} />
+                {state.dataform.deferToProd && <ModifierSwitch chip label="Defer to prod" checked={deferOn} onChange={toggleDefer} title={DEFER_SWITCH_TITLE} />}
+                <CompilerOverrides initialCompilerOptions={state.dataform.compilerOptions} tokens />
+              </div>
+              <DeferralBanner bare on={deferOn} deferral={state.dataform.deferral} deferToProd={state.dataform.deferToProd} leftoverProxies={state.dataform.leftoverProxies} />
             </>
           )}
         </SummaryRow>

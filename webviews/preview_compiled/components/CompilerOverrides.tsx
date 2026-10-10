@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import clsx from "clsx";
 import { vscode } from "../utils/vscode";
+import { ROW_TOKEN, ROW_TOKEN_SET } from "./SummaryRow";
 
 interface CompilerOverridesProps {
   initialCompilerOptions?: string;
-  /** Inside a section that opens and closes itself: the fields are always shown, under a plain heading */
-  embedded?: boolean;
+  /**
+   * Each override as a token of a line that wraps, in place of the form: one that is set shows its value, one that
+   * is not is an outline to click and type in. For where the form's four empty fields would crowd what is beside them.
+   */
+  tokens?: boolean;
 }
 
 /** The compiler options the four fields stand for, as one command-line string */
@@ -57,7 +62,7 @@ export function overrideLabels(compilerOptions: string | undefined): string[] {
 
 export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
   initialCompilerOptions,
-  embedded,
+  tokens,
 }) => {
   const [compilerOptions, setCompilerOptions] = useState("");
   const [isCompilerOptionsOpen, setIsCompilerOptionsOpen] = useState(false);
@@ -113,19 +118,72 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
     return () => clearTimeout(timer);
   }, [compilerOptions]);
 
+  /** The override being typed in, of the tokens */
+  const [editing, setEditing] = useState<string | null>(null);
+
+  if (tokens) {
+    const fields = [
+      { key: "prefix", label: "prefix", value: tablePrefix, set: setTablePrefix, placeholder: "AA", flag: "--table-prefix", help: "Table prefix: prefixes all table names (e.g. AA_table)" },
+      { key: "schema", label: "schema suffix", value: schemaSuffix, set: setSchemaSuffix, placeholder: "dev", flag: "--schema-suffix", help: "Schema suffix: suffixes dataset names (e.g. dataset_dev)" },
+      { key: "database", label: "database suffix", value: databaseSuffix, set: setDatabaseSuffix, placeholder: "dev", flag: "--database-suffix", help: "Database suffix: suffixes the project ID (e.g. project_dev)" },
+      { key: "other", label: "option", value: otherOptions, set: setOtherOptions, placeholder: "--vars=key=value", flag: "", help: "Other options: additional CLI flags (e.g. --vars=key=value)" },
+    ];
+    return (
+      <>
+        {fields.map((field) => editing === field.key ? (
+          <span key={field.key} className={clsx(ROW_TOKEN, "border-[var(--vscode-focusBorder)]")} title={field.help}>
+            <span className="text-[var(--vscode-descriptionForeground)]">{field.label}</span>
+            <input
+              autoFocus
+              type="text"
+              value={field.value}
+              onChange={(e) => field.set(e.target.value)}
+              onBlur={() => setEditing(null)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { setEditing(null); } }}
+              placeholder={field.placeholder}
+              aria-label={field.help}
+              size={Math.max(8, field.value.length + 1)}
+              className="bg-transparent border-0 outline-none p-0 font-mono text-xs text-[var(--vscode-input-foreground,var(--vscode-foreground))] placeholder:text-[var(--vscode-input-placeholderForeground)]"
+            />
+          </span>
+        ) : field.value ? (
+          <span key={field.key} className={ROW_TOKEN} style={ROW_TOKEN_SET} title={`${field.help}\n${field.flag ? `${field.flag}="${field.value}"` : field.value}`}>
+            <button type="button" onClick={() => setEditing(field.key)} className="flex items-center gap-1.5 bg-transparent border-0 p-0 text-inherit">
+              <span className="opacity-75">{field.label}</span>
+              <span className="font-mono">{field.value}</span>
+            </button>
+            <button type="button" onClick={() => field.set("")} aria-label={`Remove the ${field.label}`} title={`Remove the ${field.label}`} className="bg-transparent border-0 p-0 px-0.5 text-inherit opacity-60 hover:opacity-100">×</button>
+          </span>
+        ) : (
+          <button key={field.key} type="button" onClick={() => setEditing(field.key)} title={field.help} className={clsx(ROW_TOKEN, "border-dashed text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]")}>
+            + {field.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => vscode.postMessage({ command: 'openExternal', url: 'https://dataformtools.com/blog/compiler-options' })}
+          title="What the compiler overrides do"
+          className="ml-0.5 text-xs text-[var(--vscode-textLink-foreground)] hover:underline flex items-center bg-transparent border-0 p-0"
+        >
+          Docs <ExternalLink className="w-3 h-3 ml-1" />
+        </button>
+      </>
+    );
+  }
+
   return (
-    <div className={embedded ? undefined : "pb-4 border-b border-[var(--vscode-widget-border)]/40"}>
+    <div className="pb-4 border-b border-[var(--vscode-widget-border)]/40">
       <div
-        className={embedded ? "flex items-center justify-between" : "flex items-center py-2 cursor-pointer hover:opacity-80 transition-opacity justify-between"}
-        onClick={embedded ? undefined : () => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
+        className="flex items-center py-2 cursor-pointer hover:opacity-80 transition-opacity justify-between"
+        onClick={() => setIsCompilerOptionsOpen(!isCompilerOptionsOpen)}
       >
         <div className="flex items-center">
-          {embedded ? null : isCompilerOptionsOpen ? (
+          {isCompilerOptionsOpen ? (
             <ChevronDown className="w-4 h-4 mr-2 text-zinc-400" />
           ) : (
             <ChevronRight className="w-4 h-4 mr-2 text-zinc-400" />
           )}
-          <span className={embedded ? "text-xs font-medium text-[var(--vscode-descriptionForeground)]" : "font-semibold text-zinc-700 dark:text-zinc-200"}>Compiler Overrides</span>
+          <span className="font-semibold text-zinc-700 dark:text-zinc-200">Compiler Overrides</span>
         </div>
         <button
           onClick={(e) => {
@@ -138,8 +196,8 @@ export const CompilerOverrides: React.FC<CompilerOverridesProps> = ({
         </button>
       </div>
 
-      {(embedded || isCompilerOptionsOpen) && (
-        <div className={embedded ? "pt-2 space-y-3" : "pt-3 space-y-3"}>
+      {isCompilerOptionsOpen && (
+        <div className="pt-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-[var(--vscode-descriptionForeground)] mb-1">

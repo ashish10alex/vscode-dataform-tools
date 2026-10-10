@@ -18,6 +18,15 @@ const TONE_COLOR: Record<RowTone, string | undefined> = {
 export const ROW_BUTTON = "flex items-center gap-1 h-6 px-2 rounded text-xs whitespace-nowrap bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
 export const ROW_PRIMARY_BUTTON = "flex items-center gap-1 h-6 px-2 rounded text-xs whitespace-nowrap bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
 
+/** A setting in an open row: a value to click on, in a line of them that wraps */
+export const ROW_TOKEN = "inline-flex items-center gap-1.5 h-6 px-2 rounded border border-[var(--vscode-widget-border)] bg-transparent text-xs whitespace-nowrap flex-shrink-0 max-w-full text-[var(--vscode-foreground)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]";
+/** How a token of a setting that is not the default looks: in the colour of the chip the closed row has for it */
+export const ROW_TOKEN_SET = {
+  color: "var(--vscode-foreground)",
+  borderColor: "color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 55%, transparent)",
+  background: "color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 12%, transparent)",
+};
+
 /** The name of a row, in the column the names of all the rows are in */
 export const ROW_LABEL = "w-[62px] flex-shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]";
 
@@ -40,6 +49,8 @@ interface SummaryRowProps {
   tone?: RowTone;
   /** One line: what the row holds now. It is cut short where the panel is narrow */
   summary: ReactNode;
+  /** What the line says while the row is open, where the summary would only repeat what is shown under it */
+  openSummary?: ReactNode;
   /** The row's main buttons, which work without opening it */
   actions?: ReactNode;
   /** Opens the row when it changes, e.g. when something elsewhere in the panel asks for its details */
@@ -54,7 +65,7 @@ interface SummaryRowProps {
  * A section of the compiled query, as one line that says what it holds and opens to all of it. A row with a problem
  * opens by itself and closes when the problem is gone; a row the user opened or closed stays as they left it.
  */
-export function SummaryRow({ label, tone = "calm", summary, actions, openRequest, wide, children }: SummaryRowProps) {
+export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openRequest, wide, children }: SummaryRowProps) {
   const problem = tone === "error";
   // null: follows the problem. Otherwise what the user chose
   const [chosen, setChosen] = useState<boolean | null>(null);
@@ -96,7 +107,7 @@ export function SummaryRow({ label, tone = "calm", summary, actions, openRequest
           className="flex items-center gap-2 flex-1 min-w-0 h-[30px] text-left bg-transparent border-0 enabled:cursor-pointer enabled:hover:opacity-80 focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]"
         >
           <span className={ROW_LABEL} style={color ? { color } : undefined}>{label}</span>
-          <span className="flex-1 min-w-0 truncate text-[var(--vscode-foreground)]">{summary}</span>
+          <span className="flex-1 min-w-0 truncate text-[var(--vscode-foreground)]">{open && openSummary !== undefined ? openSummary : summary}</span>
         </button>
         {actions && <div className="flex items-center gap-1.5 flex-shrink-0">{actions}</div>}
       </div>

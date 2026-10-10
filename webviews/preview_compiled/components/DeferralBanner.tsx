@@ -75,12 +75,12 @@ const STATUS_NOTE: Record<DeferralEntryView["status"], string | undefined> = {
 
 const SECONDARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)]";
 const PRIMARY_BUTTON = "flex items-center gap-1 px-2 py-0.5 rounded text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]";
-const WARNING_BOX = "rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs";
+const WARNING_BOX_CLASS = "rounded-lg border border-[var(--vscode-editorWarning-foreground)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs";
 /** The prod compile takes a few seconds; past this the lookup has most likely failed without saying so */
 const SLOW_LOOKUP_MS = 30_000;
 const NOT_IN_DEV_TITLE = "Not built in dev, so it is read from prod, like dbt --defer.";
 const BUILT_IN_DEV_TITLE = "Built in dev, so it is read from dev, like dbt --defer. Upstream tables are only read from prod when they are not built in dev.";
-const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
+export const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
 
 /** What a lookup of the upstream tables found, in a line */
 function lookupSummary(entries: DeferralEntryView[], builtInDev: { dev: string }[]): { text: string; noneInProd: boolean } {
@@ -131,12 +131,22 @@ export function deferralSummary(deferral: DeferralView | null | undefined, defer
  * from prod. Always shown for a query file, as a quiet dashed strip while defer to prod is off, so the switch sits
  * next to what it changes.
  */
-export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { deferral?: DeferralView | null; deferToProd?: DeferToProdState; leftoverProxies?: string[] | null }) {
+export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, on: onGiven }: {
+  deferral?: DeferralView | null;
+  deferToProd?: DeferToProdState;
+  leftoverProxies?: string[] | null;
+  /** Under a switch of its own: only what defer to prod does and needs is shown, with no switch and no box, and nothing while it is off */
+  bare?: boolean;
+  /** Whether that switch is on, which it is at the click, before the panel redraws */
+  on?: boolean;
+}) {
   // Collapsed to the summary by default, like the other sections of the panel; kept across recompiles
   const [expanded, setExpanded] = useState(false);
   // Follows the setting, but flips at once on click instead of waiting for the panel to redraw
-  const [on, setOn] = useState(!!deferToProd?.enabled);
+  const [onHere, setOn] = useState(!!deferToProd?.enabled);
   useEffect(() => setOn(!!deferToProd?.enabled), [deferToProd?.enabled]);
+  const on = onGiven ?? onHere;
+  const WARNING_BOX = bare ? "text-xs" : WARNING_BOX_CLASS;
   // Set by Retry until the panel redraws with the new lookup
   const [retrying, setRetrying] = useState(false);
   useEffect(() => setRetrying(false), [deferral]);
@@ -167,7 +177,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
     setAttempt((count) => count + 1);
     vscode.postMessage({ command: "dataform.retryDeferral" });
   };
-  const deferSwitch = <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
+  const deferSwitch = bare ? null : <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
   const setProdOptionsButton = (label: string, primary: boolean) => (
     <button onClick={() => vscode.postMessage({ command: "dataform.openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
       <Settings2 className="w-3 h-3" /> {label}
@@ -204,6 +214,10 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
         ))}
       </div>
     );
+  }
+
+  if (!on && bare) {
+    return null;
   }
 
   if (!on) {
@@ -266,7 +280,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies }: { def
     : looked.text;
 
   return (
-    <div className="rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5">
+    <div className={bare ? "text-xs space-y-1.5" : "rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)] px-3 py-2 text-xs space-y-1.5"}>
       <div className="flex flex-wrap items-center gap-2 text-[var(--vscode-foreground)]">
         {deferSwitch}
         <button
