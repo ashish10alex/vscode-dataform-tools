@@ -1,0 +1,9 @@
+name: football
+version: "1.0.0"
+profile: football
+model-paths: ["models"]
+vars:
+  manchester_united_club_id: 985
+models:
+  football:
+    +materialized: table

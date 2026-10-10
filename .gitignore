@@ -16,3 +16,5 @@ src/assets/nodeMetadata.ts
 packages/dataform-graph-cli/webview-dist/
 # `just bench` output
 bench-results/
+# Strings the live demo of the website must never hold, beyond those scripts/demo/build-states.mjs knows of
+scripts/demo/deny.local.json

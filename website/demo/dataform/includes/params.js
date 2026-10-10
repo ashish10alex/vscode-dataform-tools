@@ -1,0 +1,3 @@
+const MANCHESTER_UNITED_CLUB_ID = 985;
+
+module.exports = { MANCHESTER_UNITED_CLUB_ID };
