@@ -27,7 +27,6 @@ import {
   Loader2,
   Clock,
   AlertCircle,
-  Tag,
 } from "lucide-react";
 import clsx from "clsx";
 import { tableActions } from "../../../src/shared/columnLineage/tableActions";
@@ -176,20 +175,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     setTimeout(() => setRunningModel(false), api ? 3000 : 10000);
   };
 
-  const handleRunTagApi = () => {
-    if (selectedTagsForRun.length === 0) { return; }
-    setRunningModel(true);
-    setSubmittingSince(Date.now());
-    vscode.postMessage({
-      command: "dataform.runTagsApi",
-      tags: selectedTagsForRun,
-      includeDependencies,
-      includeDependents,
-      fullRefresh,
-    });
-    setTimeout(() => setRunningModel(false), 3000);
-  };
-
   // Remote mode compiles and runs through the Dataform API, so CLI-only actions are hidden
   const isRemoteMode = state.dataform.compilationInfo?.mode === "api";
   const [preferredBackend, setPreferredBackend] = useState<RunBackend>("cli");
@@ -198,8 +183,23 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const hasTags = (state.project?.tags?.length ?? 0) > 0;
   const showTestRun = !!view.testQuery && !isRemoteMode;
   const hasRunControls = hasRunnableActions || hasTags || (!!state.dataform.changedActions && state.dataform.changedActions.status !== "unavailable");
-  // Run Tag always goes through the API, whichever backend Run is set to
-  const runsViaApi = isRemoteMode || (hasRunnableActions ? runBackend === "api" || (hasTags && tagPopoverOpen) : hasTags);
+  // Run and Run Tag both go through the backend the selector is set to
+  const runsViaApi = isRemoteMode || ((hasRunnableActions || hasTags) && runBackend === "api");
+
+  const handleRunTag = () => {
+    if (selectedTagsForRun.length === 0) { return; }
+    const api = runBackend === "api";
+    setRunningModel(true);
+    if (api) { setSubmittingSince(Date.now()); }
+    vscode.postMessage({
+      command: api ? "dataform.runTagsApi" : "runTags",
+      tags: selectedTagsForRun,
+      includeDependencies,
+      includeDependents,
+      fullRefresh,
+    });
+    setTimeout(() => setRunningModel(false), api ? 3000 : 10000);
+  };
   const latestApiRun = useMemo(
     () => (state.dataform.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
     [state.dataform.workflowUrls]
@@ -240,7 +240,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     // menu is closed, otherwise react-select owns Enter to toggle the focused option.
     if (e.metaKey || e.ctrlKey || !tagMenuOpen) {
       e.preventDefault();
-      handleRunTagApi();
+      handleRunTag();
       setTagPopoverOpen(false);
     }
   };
@@ -686,29 +686,17 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
               )}
               {(hasRunnableActions || hasTags) && (
                   <div ref={tagPopoverRef} className="relative">
-                      {hasRunnableActions ? (
-                          <RunSplitButton
-                              backend={runBackend}
-                              isRemoteMode={isRemoteMode}
-                              hasTags={hasTags}
-                              running={runningModel}
-                              disabled={compiling}
-                              onRun={handleRun}
-                              onBackendChange={setPreferredBackend}
-                              onRunTag={() => setTagPopoverOpen(true)}
-                          />
-                      ) : (
-                          <button
-                              onClick={() => setTagPopoverOpen(o => !o)}
-                              disabled={runningModel || compiling}
-                              className={PRIMARY_BUTTON}
-                              title="Run by tag via Dataform API"
-                              aria-haspopup="dialog"
-                              aria-expanded={tagPopoverOpen}
-                          >
-                              <Tag className="w-4 h-4 mr-1.5" /> Run Tag…
-                          </button>
-                      )}
+                      <RunSplitButton
+                          backend={runBackend}
+                          isRemoteMode={isRemoteMode}
+                          hasTags={hasTags}
+                          tagsOnly={!hasRunnableActions}
+                          running={runningModel}
+                          disabled={compiling}
+                          onRun={handleRun}
+                          onBackendChange={setPreferredBackend}
+                          onRunTag={() => setTagPopoverOpen(true)}
+                      />
                       {tagPopoverOpen && (
                           <div
                               role="dialog"
@@ -716,7 +704,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                               onKeyDown={handleTagPopoverKeyDown}
                               className="absolute top-full left-0 mt-1 z-20 w-[min(320px,calc(100vw-2rem))] p-3 rounded-lg border border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)] shadow-lg"
                           >
-                              <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run via the Dataform API:</p>
+                              <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Select tag(s) to run via the Dataform {runBackend === "api" ? "API" : "CLI"}:</p>
                               <StyledMultiSelect
                                   options={tagOptions}
                                   value={selectedTagRunOptions}
@@ -737,7 +725,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                                       Cancel
                                   </button>
                                   <button
-                                      onClick={() => { handleRunTagApi(); setTagPopoverOpen(false); }}
+                                      onClick={() => { handleRunTag(); setTagPopoverOpen(false); }}
                                       disabled={selectedTagsForRun.length === 0}
                                       className="flex-1 justify-center px-3 py-1.5 text-xs bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded flex items-center disabled:opacity-50"
                                   >

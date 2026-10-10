@@ -9,6 +9,8 @@ interface RunSplitButtonProps {
   /** Remote mode runs through the Dataform API only, so the CLI option is hidden. */
   isRemoteMode: boolean;
   hasTags: boolean;
+  /** The file has no action to run, so the Run half opens the tag picker and the menu only switches backend. */
+  tagsOnly?: boolean;
   running: boolean;
   disabled: boolean;
   onRun: (backend: RunBackend) => void;
@@ -30,12 +32,14 @@ interface MenuItem {
 
 /**
  * The one primary action in the toolbar: the left half runs, the right half shows the backend it runs
- * with and opens a menu to switch backend or pick tags to run.
+ * with and opens a menu to switch backend or pick tags to run. Tags run with the backend that is set, as the
+ * file's actions do. On a file with no action to run, the left half picks tags instead.
  */
 export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
   backend,
   isRemoteMode,
   hasTags,
+  tagsOnly = false,
   running,
   disabled,
   onRun,
@@ -73,8 +77,8 @@ export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
   const items: MenuItem[] = [
     ...(!isRemoteMode ? [backendItem("cli", "Run via CLI", "Locally with the Dataform CLI")] : []),
     backendItem("api", "Run via API", "On GCP Dataform"),
-    ...(hasTags
-      ? [{ key: "tag", label: "Run Tag…", hint: "Pick tag(s) to run via the API", icon: <Tag className="w-3.5 h-3.5" />, onSelect: onRunTag }]
+    ...(hasTags && !tagsOnly
+      ? [{ key: "tag", label: "Run Tag…", hint: `Pick tag(s) to run via the ${BACKEND_SHORT_LABEL[backend]}`, icon: <Tag className="w-3.5 h-3.5" />, onSelect: onRunTag }]
       : []),
   ];
 
@@ -94,15 +98,18 @@ export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
   return (
     <div ref={wrapperRef} className="relative inline-flex">
       <button
-        onClick={() => onRun(backend)}
+        onClick={() => (tagsOnly ? onRunTag() : onRun(backend))}
         disabled={isDisabled}
         className={clsx(segment, "pl-3 pr-3 rounded-l text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]")}
-        title={backend === "api" ? "Run this file's actions via the Dataform API" : "Run this file's actions via the Dataform CLI"}
+        title={tagsOnly
+          ? `Pick tag(s) to run via the Dataform ${BACKEND_SHORT_LABEL[backend]}`
+          : `Run this file's actions via the Dataform ${BACKEND_SHORT_LABEL[backend]}`}
+        aria-haspopup={tagsOnly ? "dialog" : undefined}
       >
         {running
           ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-          : <Play className="w-4 h-4 mr-1.5" />}
-        Run
+          : tagsOnly ? <Tag className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
+        {tagsOnly ? "Run Tag…" : "Run"}
       </button>
       <button
         ref={selectorRef}
@@ -130,8 +137,9 @@ export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
           className="absolute top-full left-0 mt-1 z-20 min-w-[230px] py-1 rounded-md border border-[var(--vscode-widget-border)] bg-[var(--vscode-menu-background,var(--vscode-editor-background))] text-[var(--vscode-menu-foreground,var(--vscode-foreground))] shadow-lg"
         >
           {items.map((item, i) => (
+            <React.Fragment key={item.key}>
+            {item.key === "tag" && <div role="separator" className="my-1 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))]" />}
             <button
-              key={item.key}
               ref={el => { itemRefs.current[i] = el; }}
               role={item.key === "tag" ? "menuitem" : "menuitemradio"}
               aria-checked={item.key === "tag" ? undefined : item.key === backend}
@@ -144,6 +152,7 @@ export const RunSplitButton: React.FC<RunSplitButtonProps> = ({
                 <span className="opacity-70">{item.hint}</span>
               </span>
             </button>
+            </React.Fragment>
           ))}
         </div>
       )}
