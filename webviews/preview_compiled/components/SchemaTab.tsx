@@ -8,6 +8,7 @@ import type { ColumnMetadata } from '../../../src/types';
 import { buildColumnsConfig, formatAsUnquotedJson, pathKey } from '../../../src/utils/schemaTree';
 import { fileView } from '../utils/fileView';
 import { columnsOnShow } from '../utils/bigQueryView';
+import { ROW_BUTTON } from './SummaryRow';
 
 interface SchemaTabProps {
   state: PanelState;
@@ -50,8 +51,6 @@ const buildRows = (
       children: field.fields?.length ? buildRows(field.fields, editedDescriptions, pathParts) : undefined,
     };
   });
-
-const buttonClassName = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm justify-center";
 
 /** The Schema tab of a Dataform file: the columns of its first action, from the last dry runs that gave results */
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
@@ -184,40 +183,40 @@ export const SchemaTable: React.FC<SchemaTableProps> = ({ fields, exportName }) 
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-end gap-2 p-2 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
+      <div className="flex flex-wrap justify-end gap-1.5 px-2 py-1.5 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
         {hasNestedFields && (
           <>
-            <button onClick={() => setExpanded(true)} className={buttonClassName}>
-              <ChevronsUpDown className="w-3.5 h-3.5" />
+            <button onClick={() => setExpanded(true)} className={ROW_BUTTON}>
+              <ChevronsUpDown className="w-3 h-3" />
               Expand all
             </button>
-            <button onClick={() => setExpanded({})} className={buttonClassName}>
-              <ChevronsDownUp className="w-3.5 h-3.5" />
+            <button onClick={() => setExpanded({})} className={ROW_BUTTON}>
+              <ChevronsDownUp className="w-3 h-3" />
               Collapse all
             </button>
           </>
         )}
         <button
           onClick={handleCopyJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm w-28 justify-center"
+          className={ROW_BUTTON}
         >
           {isCopied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />
+              <Check className="w-3 h-3 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />
               Copied!
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" />
+              <Copy className="w-3 h-3" />
               Copy JSON
             </>
           )}
         </button>
         <button
           onClick={handleExportJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm w-28 justify-center"
+          className={ROW_BUTTON}
         >
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-3 h-3" />
           Export JSON
         </button>
       </div>
