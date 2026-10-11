@@ -4,6 +4,7 @@ import { ReleaseHighlight } from "@/components/landing/release-highlight";
 import { FeatureSpotlight } from "@/components/landing/feature-spotlight";
 import { RecentlyShipped } from "@/components/landing/recently-shipped";
 import { AboutAuthor } from "@/components/landing/about-author";
+import { InspectorDemo } from "@/components/landing/inspector-demo";
 import { LiveDemo } from "@/components/landing/live-demo";
 import { diagnosticsSource } from "@/lib/demo-source";
 
@@ -23,21 +24,9 @@ export default function Home() {
       <FeatureSpotlight
         theme="graph"
         index={2}
-        slides={[
-          {
-            label: "Dependency graph",
-            title: "Dependency graph",
-            media: { light: "/dependancy_tree_light.png", dark: "/dependancy_tree_dark.png" },
-            alt: "Interactive dependency graph with external sources highlighted",
-          },
-          {
-            label: "Dependency inspector",
-            title: "Dependency inspector",
-            media: { light: "/dependency_inspector_one.png", dark: "/dependency_inspector_one.png" },
-            alt: "Dependency inspector running a filtered query across a model and its upstream dependencies",
-          },
-        ]}
-        reverse
+        heading="Find where a row went missing"
+        blurb="The dependency inspector takes a model and everything it reads from, and runs one filter on all of them. The row counts on the graph show which step lost the row. Press Run All: this is the real inspector, on the model above."
+        demo={<InspectorDemo />}
       />
       <RecentlyShipped />
       <AboutAuthor />

@@ -4,12 +4,6 @@
 
 export type FeatureTheme = "compile" | "graph" | "editing" | "run";
 
-export interface FeatureMedia {
-  light?: string;
-  dark?: string;
-  video?: string;
-}
-
 export interface Feature {
   /** Also the anchor on /features, so keep existing ids stable. */
   id: string;

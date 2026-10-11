@@ -1,0 +1,13 @@
+config {
+  type: "view",
+  description: "Clubs, with the competition each plays in",
+  tags: ["staging"]
+}
+
+SELECT
+  club_id,
+  name AS club_name,
+  domestic_competition_id AS competition,
+  stadium_name,
+  stadium_seats
+FROM ${ref("CLUBS")}

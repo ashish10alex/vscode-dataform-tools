@@ -105,6 +105,15 @@ function preview(bigquery, sql) {
     };
 }
 
+/** A recording of a file that is to have no error has none: a failed request to BigQuery is not published as the product's state */
+function withoutErrors(name, bigquery) {
+    const failed = bigquery.results.find((result) => result.error);
+    if (failed) {
+        throw new Error(`${name} was recorded with a dry-run error: ${failed.error.message}. Record it again.`);
+    }
+    return bigquery;
+}
+
 function lastOf(timed, slice) {
     return timed.filter(({ message }) => message.slice === slice).pop()?.message.value;
 }
@@ -117,7 +126,7 @@ function dataform() {
     const initial = renamed(slicesOnly(read('out-dataform', 'compiled.json')), pairs);
     const info = renamed(slicesOnly(read('out-dataform', 'project-info.json')), pairs);
     const cli = renamed(slicesOnly(read('out-dataform', 'run.json')), pairs);
-    const bigquery = lastOf(initial, 'bigquery');
+    const bigquery = withoutErrors('The Dataform file', lastOf(initial, 'bigquery'));
     const compile = lastOf(initial, 'compile status').compile;
 
     // A run through the Dataform API is not recorded: it needs a Dataform repository on Google Cloud with the
@@ -183,7 +192,7 @@ function dbt() {
     const initial = renamed(slicesOnly(read('out-dbt', 'compiled.json')), pairs);
     const info = renamed(slicesOnly(read('out-dbt', 'project-info.json')), pairs);
     const run = renamed(slicesOnly(read('out-dbt', 'run.json')), pairs);
-    const bigquery = lastOf(initial, 'bigquery');
+    const bigquery = withoutErrors('The dbt file', lastOf(initial, 'bigquery'));
     const lastRun = lastOf(run, 'run status').lastRun;
     return {
         backend: 'dbt',
@@ -204,6 +213,11 @@ function diagnostics() {
     const workspace = path.join(captureDir, 'football');
     const pairs = renames(workspace, `${DEMO_HOME}/football`);
     const initial = renamed(slicesOnly(read('out-diagnostics', 'compiled.json')), pairs);
+    // The error must be BigQuery's word on the query, with its place: a failed request, say, is not what to show
+    const error = lastOf(initial, 'bigquery').results.find((result) => result.error)?.error;
+    if (!error || error.line === undefined) {
+        throw new Error(`The file with an error was recorded without a dry-run error at a line: ${JSON.stringify(error)}. Record it again.`);
+    }
     return {
         backend: 'diagnostics',
         compile: lastOf(initial, 'compile status').compile,
@@ -212,10 +226,33 @@ function diagnostics() {
     };
 }
 
+// ---- The dependency inspector of the Dataform file
+
+function inspector() {
+    const workspace = path.join(captureDir, 'football');
+    const recorded = renamed(read('out-dataform', 'inspector.json'), renames(workspace, `${DEMO_HOME}/football`));
+    // The filter names a column that some tables do not have: BigQuery says so, and the user leaves those out
+    const without = Object.entries(recorded.tables).filter(([, table]) => table.dryRun.value.error).map(([tableId]) => tableId);
+    const ran = Object.values(recorded.tables).filter((table) => !table.dryRun.value.error);
+    if (!ran.length || ran.some((table) => table.query.value.errorMessage || table.query.value.error || !table.query.value.results)) {
+        throw new Error('The dependency inspector was recorded with a query that failed where its dry run did not. Record it again.');
+    }
+    return {
+        backend: 'inspector',
+        ...recorded,
+        // What the inspector keeps of a model's filters between visits: the demo opens as if the user had been here
+        saved: {
+            globalFilter: recorded.filter,
+            applyToAll: true,
+            deps: Object.fromEntries(without.map((tableId) => [tableId, { enabled: false, filterCondition: recorded.filter }])),
+        },
+    };
+}
+
 // ---- Write, then check for leaks
 
 fs.mkdirSync(outDir, { recursive: true });
-for (const state of [dataform(), dbt(), diagnostics()]) {
+for (const state of [dataform(), dbt(), diagnostics(), inspector()]) {
     fs.writeFileSync(path.join(outDir, `${state.backend}.json`), JSON.stringify(state) + '\n');
 }
 

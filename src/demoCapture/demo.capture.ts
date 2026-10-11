@@ -29,6 +29,11 @@ interface PanelApi {
     dbtRunMessage(message: RunMessage): Promise<boolean> | undefined;
 }
 
+interface InspectorApi {
+    onDidPostMessage: vscode.Event<unknown>;
+    receive?(message: unknown): Promise<void>;
+}
+
 interface Timed { at: number; message: unknown }
 
 suite('capture for the website demo', function () {
@@ -39,6 +44,7 @@ suite('capture for the website demo', function () {
     let stepStart = Date.now();
     let subscription: vscode.Disposable | undefined;
     let panel: PanelApi;
+    let inspector: InspectorApi;
 
     function begin() {
         step = [];
@@ -73,7 +79,9 @@ suite('capture for the website demo', function () {
         fs.mkdirSync(OUT, { recursive: true });
         const extension = vscode.extensions.getExtension(EXTENSION_ID);
         assert.ok(extension, `${EXTENSION_ID} is not installed in the test host`);
-        panel = (await extension.activate())?.__panel;
+        const api = await extension.activate();
+        panel = api?.__panel;
+        inspector = api?.__inspector;
         subscription = panel.onDidPostMessage((message) => {
             slices = applyMessage(slices, message as Parameters<typeof applyMessage>[1]);
             step.push({ at: Date.now() - stepStart, message: JSON.parse(JSON.stringify(message)) });
@@ -101,6 +109,50 @@ suite('capture for the website demo', function () {
         await vscode.commands.executeCommand('vscode-dataform-tools.showProjectInfo');
         await until('project info', () => !!slices.projectInfo && slices.projectInfo.sections.every((section) => !section.looking), 3000);
         save('project-info');
+    });
+
+    // The dependency inspector of the file, with the filter the website's demo shows: every message its page is sent
+    // for the list of models, the dependencies, and a dry run and a run of each table
+    test('dependency inspector', async function () {
+        const filter = process.env.DEMO_INSPECTOR_FILTER;
+        if (COMPILE_ONLY || !filter || slices.project?.backend === 'dbt') {
+            this.skip();
+        }
+        const sent: Array<{ type: string; [key: string]: unknown }> = [];
+        const listening = inspector.onDidPostMessage((message) => sent.push(JSON.parse(JSON.stringify(message))));
+        const answered = async (ask: unknown, done: () => boolean) => {
+            const start = Date.now();
+            await inspector.receive!(ask);
+            for (let waited = 0; !done(); waited += 50) {
+                assert.ok(waited < 120_000, `The inspector did not answer ${JSON.stringify(ask)}`);
+                await sleep(50);
+            }
+            return Date.now() - start;
+        };
+        try {
+            await vscode.commands.executeCommand('vscode-dataform-tools.dependencyInspector');
+            for (let waited = 0; !inspector.receive; waited += 50) {
+                assert.ok(waited < 10_000, 'The inspector did not open');
+                await sleep(50);
+            }
+            const modelFullId = slices.file!.actions[0].id;
+            await answered({ command: 'getModels' }, () => sent.some((message) => message.type === 'models'));
+            await answered({ command: 'fetchDependencies', value: { modelFullId, depth: 3 } }, () => sent.some((message) => message.type === 'dependencies'));
+            const dependencies = sent.find((message) => message.type === 'dependencies') as unknown as { value: Array<{ fullId: string }> };
+            const tables: Record<string, unknown> = {};
+            for (const tableId of [modelFullId, ...dependencies.value.map((dependency) => dependency.fullId)]) {
+                const of = (type: string) => sent.filter((message) => message.type === type && (message.value as { tableId?: string; fullTableId?: string }).tableId === tableId).pop();
+                const dryRunMs = await answered({ command: 'dryRun', value: { tableId, filter } }, () => !!of('dryRunResult'));
+                const queryMs = await answered({ command: 'runQuery', value: { tableId, filter } }, () => !!of('queryResult'));
+                const schemaOf = () => sent.filter((message) => (message.type === 'schema' || message.type === 'schemaError') && (message.value as { fullTableId: string }).fullTableId === tableId).pop();
+                await answered({ command: 'getTableSchema', value: { fullTableId: tableId } }, () => !!schemaOf());
+                tables[tableId] = { dryRun: of('dryRunResult'), dryRunMs, query: of('queryResult'), queryMs, schema: schemaOf() };
+            }
+            fs.writeFileSync(path.join(OUT!, 'inspector.json'), JSON.stringify({ filter, modelFullId, models: sent.find((message) => message.type === 'models'), dependencies, tables }, null, 1));
+        } finally {
+            listening.dispose();
+            await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        }
     });
 
     test('run', async function () {

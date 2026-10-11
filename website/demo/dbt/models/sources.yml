@@ -8,6 +8,22 @@ sources:
       - name: CLUBS
 
 models:
+  - name: stg_transfers
+    description: Transfers, one row for each move of a player between two clubs
+    config:
+      tags: ["staging"]
+  - name: stg_players
+    description: Players, with the columns the marts use
+    config:
+      tags: ["staging"]
+  - name: stg_clubs
+    description: Clubs, with the competition each plays in
+    config:
+      tags: ["staging"]
+  - name: int_signings
+    description: Every transfer with the player's position and the buying club's competition
+    config:
+      tags: ["transfers"]
   - name: fct_player_transfers
     description: The most expensive Manchester United signing of each season
     config:
