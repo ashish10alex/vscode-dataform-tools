@@ -250,21 +250,21 @@ export function WorkflowURLsTab({ state, isPolling = false }: WorkflowURLsTabPro
                                 ) : <span className="w-5 flex-shrink-0" aria-hidden="true" />}
                             </div>
                             {isExpanded && canOpen && (
-                                <div className="flex flex-col gap-1.5 px-3 pb-3 pt-0.5 min-[520px]:pl-[54px]">
+                                <div className="flex flex-col gap-1.5 pb-3 pt-0.5">
                                     {manyTargets && (
-                                        <div className="text-xs text-[var(--vscode-descriptionForeground)]">
+                                        <div className="pl-[54px] pr-3 text-xs text-[var(--vscode-descriptionForeground)]">
                                             <IncludedTargetsList targets={item.includedTargets!} typeCounts={item.includedTargetTypes} />
                                         </div>
                                     )}
                                     {hasActions && (
                                         <>
-                                            {item.jobsNote && <div className="text-[11px] text-[var(--vscode-descriptionForeground)]">{item.jobsNote}</div>}
-                                            <RunStartSummary entry={item} />
+                                            {item.jobsNote && <div className="pl-[54px] pr-3 text-[11px] text-[var(--vscode-descriptionForeground)]">{item.jobsNote}</div>}
+                                            <RunStartSummary entry={item} className="pl-[54px] pr-3" />
                                             <WorkflowActionsTable entry={item} className="max-h-[28rem] overflow-auto" />
                                         </>
                                     )}
                                     {hasFailures && !hasActions && (
-                                        <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
+                                        <ul className="m-0 py-0 pl-[54px] pr-3 list-none flex flex-col gap-1.5">
                                             {item.failedActions!.map((fa, i) => (
                                                 <li key={i} className="text-xs">
                                                     <div className="font-mono break-all text-[var(--vscode-foreground)]">{fa.target}</div>
