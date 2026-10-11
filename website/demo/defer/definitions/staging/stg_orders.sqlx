@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  tags: ["staging"],
+  description: "One row per order.",
+  columns: {
+    status: "Where the order is: `placed`, `shipped`, `completed` or `returned`."
+  },
+  assertions: {
+    nonNull: ["order_id", "customer_id"],
+    rowConditions: ["status IN ('placed', 'shipped', 'completed', 'returned')"]
+  }
+}
+
+SELECT
+  id AS order_id,
+  user_id AS customer_id,
+  order_date,
+  status
+FROM ${ref("orders")}
+WHERE order_date >= "${constants.START_DATE}"

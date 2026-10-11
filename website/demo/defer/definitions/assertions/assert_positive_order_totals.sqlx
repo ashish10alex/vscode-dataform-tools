@@ -1,0 +1,8 @@
+config {
+  type: "assertion",
+  description: "No completed order has a negative total."
+}
+
+SELECT order_id, amount
+FROM ${ref("fct_orders")}
+WHERE status = "completed" AND amount < 0

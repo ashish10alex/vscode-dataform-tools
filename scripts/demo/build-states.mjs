@@ -2,9 +2,9 @@
 // Makes the states of the website's live demo (website/public/demo/states) of what `just website-demo-capture`
 // recorded, and checks that nothing of the machine or the Google Cloud project it was recorded on is left in them.
 //
-//   node scripts/demo/build-states.mjs <capture dir> <real GCP project>
+//   node scripts/demo/build-states.mjs <capture dir> <real GCP project> <real prod GCP project>
 //
-// The capture dir has out-dataform/, out-dbt/ and out-diagnostics/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
+// The capture dir has out-dataform/, out-dbt/, out-diagnostics/ and out-defer/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
 // and terminal-dataform.txt / terminal-dbt.txt (what a run prints). Strings that must never be published and that
 // this script cannot know of go in scripts/demo/deny.local.json, a JSON list that git ignores.
 import { execFileSync } from 'node:child_process';
@@ -13,9 +13,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const [captureDir, realProject] = process.argv.slice(2);
-if (!captureDir || !realProject) {
-    console.error('usage: build-states.mjs <capture dir> <real GCP project>');
+const [captureDir, realProject, prodProject] = process.argv.slice(2);
+if (!captureDir || !realProject || !prodProject) {
+    console.error('usage: build-states.mjs <capture dir> <real GCP project> <real prod GCP project>');
     process.exit(2);
 }
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -118,6 +118,21 @@ function lastOf(timed, slice) {
     return timed.filter(({ message }) => message.slice === slice).pop()?.message.value;
 }
 
+/** What the editor shows over the model's ref(), as the hover provider gave it: Markdown */
+function hover(dir, pairs) {
+    const { name, contents } = renamed(read(dir, 'hover.json'), pairs);
+    return { name, markdown: contents.join('\n\n') };
+}
+
+/** The Changed list of the Project with a model edited and a model added, not committed */
+function changed(dir, pairs) {
+    const view = renamed(read(dir, 'changed.json'), pairs);
+    if (view.status !== 'ready' || !view.changed?.length) {
+        throw new Error(`${dir}/changed.json lists no changed action: record the demo again`);
+    }
+    return view;
+}
+
 // ---- Dataform
 
 function dataform() {
@@ -171,8 +186,25 @@ function dataform() {
         gitState: { kind: 'tracking', branch: 'main', upstream: 'origin/main', uncommitted: [], unpushedCommits: 0, unpushedFiles: [], behind: 0 },
     };
     const sql = bigquery.results[0].sql;
+    // The same file with defer to prod on, in a copy of the Project whose dev tables are in datasets of their own
+    // (--schema-suffix=dev) and are not built: what it reads is read from the datasets without the suffix
+    const deferWorkspace = path.join(captureDir, 'football-defer');
+    const deferred = renamed(slicesOnly(read('out-defer', 'compiled.json')), [...renames(deferWorkspace, `${DEMO_HOME}/football`), ...pairs]);
+    withoutErrors('The Dataform file with defer to prod', lastOf(deferred, 'bigquery'));
+    const dataformBlock = {};
+    for (const { message } of deferred.filter(({ message }) => message.slice === 'dataform')) {
+        for (const field of message.touched ?? Object.keys(message.value)) {
+            dataformBlock[field] = message.value[field];
+        }
+    }
+    if (dataformBlock.deferral?.status !== 'ready' || !dataformBlock.deferral.entries.some((entry) => entry.status === 'deferred')) {
+        throw new Error('The recording with defer to prod on defers nothing: record the demo again');
+    }
     return {
         backend: 'dataform',
+        hover: hover('out-dataform', pairs),
+        changed: changed('out-dataform', pairs),
+        defer: { capturedAt: lastOf(deferred, 'compile status').compiledAt, initial: deferred.map(({ message }) => message), hints: read('out-defer', 'defer-hints.json') },
         compile,
         capturedAt: earliestTime(initial),
         initial: initial.map(({ message }) => message),
@@ -196,6 +228,8 @@ function dbt() {
     const lastRun = lastOf(run, 'run status').lastRun;
     return {
         backend: 'dbt',
+        hover: hover('out-dbt', pairs),
+        changed: changed('out-dbt', pairs),
         compile: lastOf(initial, 'compile status').compile,
         capturedAt: earliestTime(initial),
         initial: initial.map(({ message }) => message),
@@ -249,15 +283,41 @@ function inspector() {
     };
 }
 
+// ---- A file of a Project whose prod is another Google Cloud project, with defer to prod on, for the README's picture
+
+function defer() {
+    const workspace = path.join(captureDir, 'orders');
+    // This Project is shown with its own two Google Cloud projects, dev and prod, as they are named: the picture is
+    // of the example as its owner has it. The machine's paths and account are still renamed
+    const pairs = renames(workspace, `${DEMO_HOME}/orders`).filter(([from]) => from !== realProject);
+    const initial = renamed(slicesOnly(read('out-defer-refs', 'compiled.json')), pairs);
+    withoutErrors('The file with defer to prod on', lastOf(initial, 'bigquery'));
+    const hints = read('out-defer-refs', 'defer-hints.json');
+    for (const kind of ['prod', 'dev']) {
+        if (!hints.some((hint) => hint.kind === kind)) {
+            throw new Error(`The recording of defer to prod has no upstream table of the kind "${kind}": see what website-demo-capture says the two projects must have`);
+        }
+    }
+    return {
+        backend: 'defer',
+        compile: lastOf(initial, 'compile status').compile,
+        // When it was compiled, and not the earliest time in it: that is when the dev table was last built, which
+        // must stay as long ago as it was
+        capturedAt: lastOf(initial, 'compile status').compiledAt,
+        initial: initial.map(({ message }) => message),
+        hints,
+    };
+}
+
 // ---- Write, then check for leaks
 
 fs.mkdirSync(outDir, { recursive: true });
-for (const state of [dataform(), dbt(), diagnostics(), inspector()]) {
+for (const state of [dataform(), dbt(), diagnostics(), inspector(), defer()]) {
     fs.writeFileSync(path.join(outDir, `${state.backend}.json`), JSON.stringify(state) + '\n');
 }
 
 const localDeny = path.join(repo, 'scripts', 'demo', 'deny.local.json');
-const denied = [...new Set([realProject, home, user, os.hostname(), ...emails, ...emails.map((email) => email.split('@')[0]), path.resolve(captureDir), ...(fs.existsSync(localDeny) ? JSON.parse(fs.readFileSync(localDeny, 'utf8')) : [])])].filter((text) => text && text.length > 2);
+const denied = [...new Set([realProject, prodProject, home, user, os.hostname(), ...emails, ...emails.map((email) => email.split('@')[0]), path.resolve(captureDir), ...(fs.existsSync(localDeny) ? JSON.parse(fs.readFileSync(localDeny, 'utf8')) : [])])].filter((text) => text && text.length > 2);
 
 function filesUnder(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -266,11 +326,16 @@ function filesUnder(dir) {
     });
 }
 
+const SHOWN_AS_NAMED = [path.join(repo, 'website', 'public', 'demo', 'states', 'defer.json'), path.join(repo, 'website', 'demo', 'defer') + path.sep];
 const leaks = [];
 for (const dir of [path.join(repo, 'website', 'public', 'demo'), path.join(repo, 'website', 'demo')]) {
     for (const file of filesUnder(dir)) {
         const text = fs.readFileSync(file, 'latin1').toLowerCase();
         for (const word of denied) {
+            // The Project of the defer to prod picture is shown with its own project names
+            if (SHOWN_AS_NAMED.some((shown) => file.startsWith(shown)) && (word === realProject || word === prodProject)) {
+                continue;
+            }
             if (text.includes(word.toLowerCase())) {
                 leaks.push(`${path.relative(repo, file)}: holds a denied string of ${word.length} characters starting "${word.slice(0, 2)}…"`);
             }

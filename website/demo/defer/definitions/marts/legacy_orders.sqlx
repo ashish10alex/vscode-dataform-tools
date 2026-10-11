@@ -1,0 +1,7 @@
+config {
+  type: "table",
+  disabled: true,
+  description: "Kept for reference; disabled so it never runs."
+}
+
+SELECT * FROM ${ref("stg_orders")}

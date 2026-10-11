@@ -22,9 +22,32 @@ export interface SourceProblem {
   message: string;
 }
 
+/** What the editor shows when a ref() of the file is hovered, as the extension's hover provider gave it */
+export interface SourceHover {
+  /** The name in the ref(): the token that shows the card */
+  name: string;
+  /** The table, as `project.dataset.name` */
+  title: string;
+  /** "Kind", "Location", "Description" and the like, with their values */
+  facts: Array<[label: string, value: string]>;
+  columns: Array<{ name: string; type: string; description: string }>;
+}
+
+/** What the editor says beside a ref() with defer to prod on: where that table is read from */
+export interface SourceHint {
+  /** The name in the ref() */
+  name: string;
+  /** In the extension's words, e.g. "→ deferred to prod" */
+  label: string;
+  kind: "prod" | "warning" | "dev";
+}
+
 export interface DemoSource {
+  hover?: SourceHover;
   /** Which recorded states the panel beside it shows (public/demo/states) */
-  backend: "dataform" | "dbt" | "diagnostics";
+  backend: "dataform" | "dbt" | "diagnostics" | "defer";
+  /** What the editor says beside a ref() of the file with defer to prod on, from the start */
+  hints?: SourceHint[];
   problem?: SourceProblem;
   /** As the editor tab names it */
   fileName: string;
@@ -70,9 +93,42 @@ function tokenise(code: string): SourceToken[][] {
   return lines;
 }
 
-function source(backend: DemoSource["backend"], project: "dataform" | "dbt", relativePath: string): DemoSource {
+const recorded = (name: string) => JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "demo", "states", `${name}.json`), "utf8"));
+
+/**
+ * The hover as a card's parts. The provider gives Markdown for the editor to draw: a heading that links to the
+ * table, lines of `**Label:** value`, then a table of the columns. A line that is a command of the editor is left out.
+ */
+function hoverOf(backend: "dataform" | "dbt"): SourceHover | undefined {
+  const hover: { name: string; markdown: string } | undefined = recorded(backend).hover;
+  if (!hover) {
+    return undefined;
+  }
+  const lines = hover.markdown.split("\n").map((line) => line.trim());
+  const title = /^#+\s*\[([^\]]+)\]/.exec(lines.find((line) => line.startsWith("#")) ?? "")?.[1];
+  if (!title) {
+    throw new Error(`The recorded hover of ${backend} has no heading: ${hover.markdown.slice(0, 80)}`);
+  }
+  const facts = lines
+    .filter((line) => line.startsWith("**"))
+    .flatMap((line) => line.split(" · "))
+    .flatMap((part): Array<[string, string]> => {
+      const fact = /^\*\*([^:*]+):\*\*\s*(.+)$/.exec(part.trim());
+      return fact ? [[fact[1], fact[2]]] : [];
+    });
+  const columns = lines
+    .filter((line) => line.startsWith("|") && !/^\|\s*:?-/.test(line))
+    .slice(1)
+    .map((line) => {
+      const [name = "", type = "", description = ""] = line.split("|").slice(1, -1).map((cell) => cell.trim());
+      return { name, type, description };
+    });
+  return { name: hover.name, title, facts, columns };
+}
+
+function source(backend: DemoSource["backend"], project: "dataform" | "dbt" | "defer", relativePath: string): DemoSource {
   const code = fs.readFileSync(path.join(process.cwd(), "demo", project, relativePath), "utf8");
-  return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code) };
+  return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code), hover: project !== "defer" && (backend === "dataform" || backend === "dbt") ? hoverOf(project) : undefined };
 }
 
 export function demoSources(): DemoSource[] {
@@ -85,7 +141,7 @@ export function demoSources(): DemoSource[] {
  */
 export function diagnosticsSource(): DemoSource {
   const file = source("diagnostics", "dataform", "definitions/fct_club_spend.sqlx");
-  const state = JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "demo", "states", "diagnostics.json"), "utf8"));
+  const state = recorded("diagnostics");
   const results: Array<{ sql?: string; error?: { message: string; line: number; column: number } }> = state.initial
     .filter((message: { slice: string }) => message.slice === "bigquery")
     .pop().value.results;
@@ -100,4 +156,12 @@ export function diagnosticsSource(): DemoSource {
     throw new Error(`The error of the recorded dry run is not on a line of fct_club_spend.sqlx: ${failed.error.message}`);
   }
   return { ...file, problem: { line, text, message: failed.error.message.replace(/ at \[\d+:\d+\]$/, "") } };
+}
+
+/**
+ * A file of another Project (website/demo/defer), whose prod is a Google Cloud project of its own, with defer to prod
+ * on: one table it reads is read from prod and one is built in dev, and the editor says which beside each ref()
+ */
+export function deferSource(): DemoSource {
+  return { ...source("defer", "defer", "definitions/reports/revenue_report.sqlx"), hints: recorded("defer").hints };
 }

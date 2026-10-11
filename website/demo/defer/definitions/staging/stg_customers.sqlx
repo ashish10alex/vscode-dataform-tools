@@ -1,0 +1,20 @@
+config {
+  type: "view",
+  tags: ["staging"],
+  description: "One row per customer, cleaned up.",
+  columns: {
+    customer_id: "Primary key.",
+    email: "Lower-cased email address."
+  },
+  assertions: {
+    uniqueKey: ["customer_id"],
+    nonNull: ["customer_id", "email"]
+  }
+}
+
+SELECT
+  id AS customer_id,
+  LOWER(email) AS email,
+  country_code,
+  created_at
+FROM ${ref("customers")}

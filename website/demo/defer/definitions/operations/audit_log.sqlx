@@ -1,0 +1,12 @@
+config {
+  type: "operations",
+  hasOutput: true,
+  tags: ["daily"],
+  description: "Creates the audit log if need be and records this run.",
+  dependencies: ["fct_orders", "dim_customers"]
+}
+
+CREATE TABLE IF NOT EXISTS ${self()} (run_at TIMESTAMP, model STRING, row_count INT64);
+---
+INSERT INTO ${self()} (run_at, model, row_count)
+SELECT CURRENT_TIMESTAMP(), "fct_orders", COUNT(*) FROM ${ref("fct_orders")}

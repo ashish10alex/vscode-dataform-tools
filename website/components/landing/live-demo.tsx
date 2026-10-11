@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { CircleX, MousePointerClick, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/site";
-import type { DemoSource, TokenKind } from "@/lib/demo-source";
+import type { DemoSource, SourceHint, TokenKind } from "@/lib/demo-source";
 
 /*
  * The frame of the hero: a source file beside the compiled query panel, as in the editor. The panel is the
@@ -25,7 +25,8 @@ type DemoMessage =
   | { source: "vdt-demo"; backend?: Backend; type: "preview" | "results shown" }
   | { source: "vdt-demo"; backend?: Backend; type: "rendered" | "height"; height: number }
   | { source: "vdt-demo"; backend?: Backend; type: "terminal"; terminal: Terminal }
-  | { source: "vdt-demo"; backend?: Backend; type: "note"; command: string };
+  | { source: "vdt-demo"; backend?: Backend; type: "note"; command: string }
+  | { source: "vdt-demo"; backend?: Backend; type: "defer"; hints: SourceHint[] };
 
 /** What a click does in the editor, for the clicks the demo has no answer to */
 export const NOTES: Record<string, string> = {
@@ -93,13 +94,55 @@ const EDITOR = "bg-white text-black dark:bg-[#1e1e1e] dark:text-[#d4d4d4]";
 // The frame is as tall as the panel's compiled query needs, so the panel does not scroll. These are what the
 // panels need beside the source file; a panel that needs more says so once it has loaded (see `height` below).
 // One height for the two files of the hero, so that the frame stays as it is when the other file's tab is chosen.
-const FRAME_HEIGHT: Record<Backend, number> = { dataform: 724, dbt: 724, diagnostics: 600 };
+const FRAME_HEIGHT: Record<Backend, number> = { dataform: 724, dbt: 724, diagnostics: 600, defer: 724 };
 /** A tab of the panel with a long list, the Project tab say, scrolls rather than stretch the page */
 const TALLEST = 1060;
 // Scrolls as an editor does, without a bar
 const NO_BAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
-function Source({ source }: { source: DemoSource }) {
+/** The name a ref() or a source() token of a file reads: its last quoted word */
+const refName = (text: string) => (/\b(?:ref|source)\s*\(/.test(text) ? /["']([^"']+)["']\s*\)\s*\}*$/.exec(text)?.[1] : undefined);
+
+/** The card the editor shows over a ref(): drawn here, with what the extension's hover provider gave */
+function HoverCard({ hover }: { hover: NonNullable<DemoSource["hover"]> }) {
+  return (
+    <span
+      role="tooltip"
+      className="invisible absolute left-0 top-full z-20 block w-[min(21rem,calc(100vw-5rem))] whitespace-normal rounded border border-[#c8c8c8] bg-[#f3f3f3] p-3 font-sans text-[12px] leading-normal text-[#3b3b3b] opacity-0 shadow-lg transition-opacity group-hover/ref:visible group-hover/ref:opacity-100 group-focus/ref:visible group-focus/ref:opacity-100 dark:border-[#454545] dark:bg-[#252526] dark:text-[#cccccc]"
+    >
+      <span className="block break-all font-semibold text-[#006ab1] dark:text-[#3794ff]">{hover.title}</span>
+      <span className="mt-1.5 block space-y-0.5">
+        {hover.facts.map(([label, value]) => (
+          <span key={label} className="block">
+            <span className="font-semibold">{label}:</span> {value}
+          </span>
+        ))}
+      </span>
+      <span className="mt-2 block border-t border-[#c8c8c8] pt-2 dark:border-[#454545]">
+        <span className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-x-3 gap-y-0.5 font-mono text-[11px]">
+          <span className="font-sans font-semibold">Column</span>
+          <span className="font-sans font-semibold">Type</span>
+          {hover.columns.map((column) => (
+            <span key={column.name} className="contents">
+              <span className="truncate">{column.name}</span>
+              <span className="text-[#616161] dark:text-[#cccccc]/70">{column.type}</span>
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+// The editor draws a hint after its ref() in the editor's own font, with the colours the extension contributes
+// (package.json: dataformTools.deferredRef, deferredRefWarning and builtInDevRef) and no rounding
+const HINT_CLASS: Record<SourceHint["kind"], string> = {
+  prod: "bg-[#8A64001A] text-[#8A6400] dark:bg-[#E5C07B1F] dark:text-[#E5C07B]",
+  warning: "bg-[#B34D001A] text-[#B34D00] dark:bg-[#F0A15A1F] dark:text-[#F0A15A]",
+  dev: "bg-[#388A341A] text-[#388A34] dark:bg-[#89D1851F] dark:text-[#89D185]",
+};
+
+function Source({ source, hints = [] }: { source: DemoSource; hints?: SourceHint[] }) {
   const problem = source.problem;
   return (
     <div className={cn("flex h-full flex-col text-left", EDITOR)}>
@@ -115,14 +158,38 @@ function Source({ source }: { source: DemoSource }) {
               <span className="whitespace-pre">
                 {line.length === 0
                   ? " "
-                  : line.map((token, tokenIndex) => (
-                      <span
-                        key={tokenIndex}
-                        className={cn(TOKEN_CLASS[token.kind], failed && token.text === problem.text && "underline decoration-[#f14c4c] decoration-wavy underline-offset-[3px]")}
-                      >
-                        {token.text}
-                      </span>
-                    ))}
+                  : line.map((token, tokenIndex) => {
+                      const hint = token.kind === "template" ? hints.find((candidate) => candidate.name === refName(token.text)) : undefined;
+                      const drawn = source.hover && token.kind === "template" && refName(token.text) === source.hover.name ? (
+                        <span
+                          key={tokenIndex}
+                          tabIndex={0}
+                          data-demo-hover
+                          className={cn(TOKEN_CLASS[token.kind], "group/ref relative cursor-default underline decoration-dotted decoration-1 underline-offset-[3px] outline-none")}
+                        >
+                          {token.text}
+                          <HoverCard hover={source.hover} />
+                        </span>
+                      ) : (
+                        <span
+                          key={tokenIndex}
+                          className={cn(TOKEN_CLASS[token.kind], failed && token.text === problem.text && "underline decoration-[#f14c4c] decoration-wavy underline-offset-[3px]")}
+                        >
+                          {token.text}
+                        </span>
+                      );
+                      // With defer to prod on, the editor says after a ref() where that table is read from
+                      return hint ? (
+                        <Fragment key={tokenIndex}>
+                          {drawn}
+                          <span data-demo-pill className={cn("ml-[0.75em] font-semibold", HINT_CLASS[hint.kind])}>
+                            {` ${hint.label} `}
+                          </span>
+                        </Fragment>
+                      ) : (
+                        drawn
+                      );
+                    })}
                 {/* The message at the end of the line, as the Error Lens extension shows a diagnostic */}
                 {failed && <span className="pl-6 font-sans text-[11px] italic text-[#f14c4c]">{problem.message}</span>}
               </span>
@@ -184,9 +251,13 @@ interface LiveDemoProps {
   sources: DemoSource[];
   /** Rings the panel's Run button once it has loaded: for the hero, where the visitor is told the frame is live */
   pulse?: boolean;
+  /** For a picture of the frame: without the words that say it is live */
+  still?: boolean;
+  /** Without the source file: the panel alone, for a picture of something only the panel shows */
+  panelOnly?: boolean;
 }
 
-export function LiveDemo({ sources, pulse }: LiveDemoProps) {
+export function LiveDemo({ sources, pulse, still, panelOnly }: LiveDemoProps) {
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === "light" ? "light" : "dark";
   const [backend, setBackend] = useState<Backend>(sources[0].backend);
@@ -201,6 +272,8 @@ export function LiveDemo({ sources, pulse }: LiveDemoProps) {
   const [terminal, setTerminal] = useState<{ terminal: Terminal; run: number } | null>(null);
   const [previews, setPreviews] = useState(0);
   const [note, setNote] = useState<{ text: string; install: boolean; id: number } | null>(null);
+  /** The upstream tables of the file while defer to prod is on in the panel */
+  const [hints, setHints] = useState<SourceHint[]>([]);
   const panel = useRef<HTMLIFrameElement>(null);
   const results = useRef<HTMLIFrameElement>(null);
   /** The theme the iframes were opened with: a later change is told to them, which keeps what the visitor did */
@@ -280,6 +353,9 @@ export function LiveDemo({ sources, pulse }: LiveDemoProps) {
           setPreviews((count) => count + 1);
           setBottom("results");
           return;
+        case "defer":
+          setHints(message.hints);
+          return;
         case "note":
           setNote(
             NOTE_AS_IS[message.command]
@@ -301,6 +377,7 @@ export function LiveDemo({ sources, pulse }: LiveDemoProps) {
         setBottom(null);
         setTerminal(null);
         setNote(null);
+        setHints([]);
       }
       return next;
     });
@@ -338,14 +415,16 @@ export function LiveDemo({ sources, pulse }: LiveDemoProps) {
             </button>
           ))}
         </div>
-        <figcaption className="ml-auto hidden items-center gap-1.5 px-3.5 text-[11px] text-muted-foreground sm:flex">
+{!still && (
+          <figcaption className="ml-auto hidden items-center gap-1.5 px-3.5 text-[11px] text-muted-foreground sm:flex">
           <MousePointerClick className="h-3.5 w-3.5 text-brand" aria-hidden />
           Live demo · click around
         </figcaption>
+        )}
       </div>
 
       {/* Below the md breakpoint the two do not fit side by side: one is on show, the other a tap away */}
-      <div className="flex border-b text-[11px] md:hidden" role="tablist" aria-label="View">
+      <div className={cn("flex border-b text-[11px] md:hidden", panelOnly && "hidden")} role="tablist" aria-label="View">
         {(["panel", "source"] as const).map((view) => (
           <button
             key={view}
@@ -360,12 +439,12 @@ export function LiveDemo({ sources, pulse }: LiveDemoProps) {
         ))}
       </div>
 
-      <div className="relative grid transition-[height] duration-200 md:grid-cols-[minmax(0,9fr)_minmax(0,13fr)]" style={{ height: height ?? FRAME_HEIGHT[backend] }}>
-        <div className={cn("min-h-0 border-r", narrowView === "source" ? "block" : "hidden md:block")}>
-          <Source source={source} />
+      <div className={cn("relative grid transition-[height] duration-200", !panelOnly && "md:grid-cols-[minmax(0,9fr)_minmax(0,13fr)]")} style={{ height: height ?? FRAME_HEIGHT[backend] }}>
+        <div className={cn("min-h-0 border-r", panelOnly ? "hidden" : narrowView === "source" ? "block" : "hidden md:block")}>
+          <Source source={source} hints={source.hints ?? hints} />
         </div>
 
-        <div className={cn("relative min-h-0", EDITOR, narrowView === "panel" ? "block" : "hidden md:block")}>
+        <div className={cn("relative min-h-0", EDITOR, panelOnly || narrowView === "panel" ? "block" : "hidden md:block")}>
           {/* The screenshots are of the panel in this state; both are rendered, so the right one is there on first paint */}
           {(["light", "dark"] as const).map((shade) => (
             <img

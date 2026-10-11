@@ -1,0 +1,46 @@
+config {
+  type: "table",
+  tags: ["marts", "daily"],
+  description: "Customers with their order history.",
+  bigquery: {
+    partitionBy: "first_order_date",
+    clusterBy: ["customer_id"]
+  },
+  columns: {
+    customer_id: "Primary key.",
+    first_order_date: "Date of the customer's first order.",
+    lifetime_value: "Sum of successful payments, in dollars."
+  },
+  assertions: {
+    uniqueKey: ["customer_id"],
+    nonNull: ["customer_id"]
+  }
+}
+
+pre_operations {
+  DECLARE run_started TIMESTAMP DEFAULT CURRENT_TIMESTAMP();
+}
+
+WITH orders AS (
+  SELECT
+    o.customer_id,
+    MIN(o.order_date) AS first_order_date,
+    COUNT(*) AS order_count,
+    SUM(p.amount) AS lifetime_value
+  FROM ${ref("stg_orders")} AS o
+  LEFT JOIN ${ref("stg_payments")} AS p USING (order_id)
+  GROUP BY 1
+)
+SELECT
+  c.customer_id,
+  c.email,
+  c.country_code,
+  o.first_order_date,
+  COALESCE(o.order_count, 0) AS order_count,
+  COALESCE(o.lifetime_value, 0) AS lifetime_value
+FROM ${ref("stg_customers")} AS c
+LEFT JOIN orders AS o USING (customer_id)
+
+post_operations {
+  ALTER TABLE ${self()} SET OPTIONS (description = "Customers with their order history")
+}
