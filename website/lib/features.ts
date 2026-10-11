@@ -47,7 +47,7 @@ export const features: Feature[] = [
     title: "dbt projects on BigQuery",
     summary:
       "Open a dbt™ project and get the panel a Dataform file has, row for row: Target with the dry-run size and cost, Compile with the dbt target, Lineage, Run and Last run, then the compiled SQL, with the model's tests on one line. Schema, preview and `dbt build` runs work the same way. In the editor: go to definition, hover and completions for `ref()`, `source()` and column names, and BigQuery's dry-run errors. Works with dbt Core 1.8 or later and dbt v2.",
-    links: [{ label: "Set-up and what works", href: "https://github.com/ashish10alex/vscode-dataform-tools#dbt-projects" }],
+    links: [{ label: "Set-up and what works", href: "https://github.com/ashish10alex/vscode-dataform-tools/blob/main/docs/dbt.md" }],
   },
   {
     id: "compilation",
