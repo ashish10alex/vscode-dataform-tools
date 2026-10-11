@@ -134,10 +134,12 @@ function HoverCard({ hover }: { hover: NonNullable<DemoSource["hover"]> }) {
   );
 }
 
+// The editor draws a hint after its ref() in the editor's own font, with the colours the extension contributes
+// (package.json: dataformTools.deferredRef, deferredRefWarning and builtInDevRef) and no rounding
 const HINT_CLASS: Record<SourceHint["kind"], string> = {
-  prod: "bg-[#007acc]/15 text-[#006ab1] dark:bg-[#3794ff]/20 dark:text-[#3794ff]",
-  warning: "bg-[#bf8803]/15 text-[#855f00] dark:bg-[#cca700]/20 dark:text-[#cca700]",
-  dev: "bg-[#388a34]/15 text-[#2b6a28] dark:bg-[#89d185]/15 dark:text-[#89d185]",
+  prod: "bg-[#8A64001A] text-[#8A6400] dark:bg-[#E5C07B1F] dark:text-[#E5C07B]",
+  warning: "bg-[#B34D001A] text-[#B34D00] dark:bg-[#F0A15A1F] dark:text-[#F0A15A]",
+  dev: "bg-[#388A341A] text-[#388A34] dark:bg-[#89D1851F] dark:text-[#89D185]",
 };
 
 function Source({ source, hints = [] }: { source: DemoSource; hints?: SourceHint[] }) {
@@ -180,8 +182,8 @@ function Source({ source, hints = [] }: { source: DemoSource; hints?: SourceHint
                       return hint ? (
                         <Fragment key={tokenIndex}>
                           {drawn}
-                          <span data-demo-pill className={cn("mx-2 rounded px-1.5 py-px font-sans text-[11px] font-medium", HINT_CLASS[hint.kind])}>
-                            {hint.label}
+                          <span data-demo-pill className={cn("ml-[0.75em] font-semibold", HINT_CLASS[hint.kind])}>
+                            {` ${hint.label} `}
                           </span>
                         </Fragment>
                       ) : (
