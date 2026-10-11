@@ -1,6 +1,6 @@
 import path from 'path';
 import * as vscode from 'vscode';
-import { DbtGraph, DbtOptions, dbtDeferral } from '../backend/dbt';
+import { DbtDeferral, DbtGraph, DbtOptions, dbtDeferral } from '../backend/dbt';
 import { readManifest } from '../backend/dbt/manifest';
 import { isGitRepo, resolveChangeBase } from '../changedActions';
 import { logger } from '../logger';
@@ -117,6 +117,19 @@ export async function forgetDbtProdManifest(project: ProjectState, options: DbtO
 }
 
 /**
+ * Which tables the actions `shown` read were compiled to prod, as the Project's last compile left them. Undefined
+ * when that compile did not defer to the manifest it is said to have been made with.
+ */
+export function dbtDeferralOf(project: ProjectState, compiledWith: DbtDefer, shown: ActionId[]): DbtDeferral | undefined {
+    const last = project.dbtBackend?.lastResult;
+    const prod = prodGraphs.get(project.root);
+    if (!compiledWith || 'error' in compiledWith || !last?.dbt || prod?.stateDir !== compiledWith.stateDir) {
+        return undefined;
+    }
+    return dbtDeferral({ graph: last.graph, dbt: last.dbt }, prod.graph, shown);
+}
+
+/**
  * What the panel lists of defer to prod for the actions `shown`: which tables they read were compiled to prod, as
  * the last compile left them, or why nothing is deferred. Null when the last compile did not defer and nothing went
  * wrong: defer to prod is off, cannot be applied, or the compile that will defer has not ended.
@@ -128,12 +141,11 @@ export function dbtDeferralView(project: ProjectState, compiledWith: DbtDefer, s
     if ('error' in compiledWith) {
         return { status: 'error', message: compiledWith.error };
     }
-    const last = project.dbtBackend?.lastResult;
-    const prod = prodGraphs.get(project.root);
-    if (!last?.dbt || prod?.stateDir !== compiledWith.stateDir) {
+    const deferral = dbtDeferralOf(project, compiledWith, shown);
+    if (!deferral) {
         return null;
     }
-    const { deferred, builtInDev } = dbtDeferral({ graph: last.graph, dbt: last.dbt }, prod.graph, shown);
+    const { deferred, builtInDev } = deferral;
     return {
         status: 'ready',
         entries: deferred.map((entry) => ({ dev: targetId(entry.dev), prod: targetId(entry.prod), status: 'deferred' as const })),

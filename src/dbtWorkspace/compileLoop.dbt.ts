@@ -34,6 +34,7 @@ suite('the compile loop of a dbt Project', function () {
     const bigQuerySent: BigQuerySlice[] = [];
     let panel: PanelApi;
     let withoutPanel: ((on: boolean) => void) | undefined;
+    let refLabels: (document: vscode.TextDocument) => string[] | undefined;
     let standIn: string;
     const statuses: string[] = [];
     const settings = () => vscode.workspace.getConfiguration('vscode-dataform-tools');
@@ -69,6 +70,7 @@ suite('the compile loop of a dbt Project', function () {
         // This suite counts the runs of dbt that the panel asks for: none is to come from a file merely being shown
         exports?.__projects.setDbtWithoutPanel(false);
         withoutPanel = exports?.__projects.setDbtWithoutPanel;
+        refLabels = exports?.__projects.dbtRefLabels;
         subscription = panel.onDidPostMessage((message) => {
             const { slice, value } = message as { slice?: string; value?: unknown };
             if (slice === 'project') {
@@ -97,7 +99,10 @@ if (args[0] === '--version') { console.log('dbt 2.9.9'); return; }
 fs.appendFileSync(path.join(dir, 'ran.jsonl'), JSON.stringify(args) + '\\n');
 const target = args[args.indexOf('--target-path') + 1];
 fs.mkdirSync(target, { recursive: true });
-fs.copyFileSync(${JSON.stringify(path.join(manifests, 'dbt-v2.json'))}, path.join(target, 'manifest.json'));
+const manifest = fs.readFileSync(${JSON.stringify(path.join(manifests, 'dbt-v2.json'))}, 'utf8');
+// The dbt target "elsewhere" has every table in another GCP project, as a prod has
+const elsewhere = args[0] === 'parse' && args[args.indexOf('--target') + 1] === 'elsewhere';
+fs.writeFileSync(path.join(target, 'manifest.json'), elsewhere ? manifest.split(${JSON.stringify(P)}).join('acme-prod') : manifest);
 console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', msg: "Finished '" + args[0] + "' successfully for target 'dev'" } }));
 `, { mode: 0o755 });
         // In the user settings of the test host, so that nothing is written into the example Project
@@ -403,6 +408,44 @@ fs.writeFileSync(path.join(target, 'manifest.json'), JSON.stringify(manifest));
             await until('the compile without defer', () => slices.dbt?.deferToProd?.enabled === false && compiles().length > 0 && slices.compile?.status === 'compiled');
             assert.ok(!compiles().at(-1)!.includes('--defer'));
             assert.strictEqual(slices.dbt?.deferral, null);
+        } finally {
+            await settings().update('deferToProd', undefined, vscode.ConfigurationTarget.Global);
+            await settings().update('dbtProdTarget', undefined, vscode.ConfigurationTarget.Global);
+            await settings().update('defaultBranch', undefined, vscode.ConfigurationTarget.Global);
+        }
+    });
+
+    test('with defer to prod on, the refs of a file are labelled from its last compile, and keep their labels while another file is shown', async function () {
+        let head: string;
+        try {
+            head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: workspaceFolder, encoding: 'utf8' }).trim();
+        } catch {
+            // Not a checkout: there is no commit to parse a prod manifest of
+            this.skip();
+        }
+        await settings().update('dbtExecutablePath', standIn, vscode.ConfigurationTarget.Global);
+        const model = await show('models/marts/fct_orders.sql');
+        await until('the model, compiled', () => slices.file?.file === 'models/marts/fct_orders.sql' && slices.compile?.status === 'compiled');
+        assert.deepStrictEqual(refLabels(model), []);
+        try {
+            await settings().update('defaultBranch', head, vscode.ConfigurationTarget.Global);
+            // A prod that has every table in another GCP project: the model's SQL reads its two tables from the dbt target
+            await settings().update('dbtProdTarget', 'elsewhere', vscode.ConfigurationTarget.Global);
+            await settings().update('deferToProd', true, vscode.ConfigurationTarget.Global);
+            await until('the labels of the model', () => refLabels(model)?.length === 2);
+            assert.deepStrictEqual(refLabels(model), ['✓ dev · built in dev', '✓ dev · built in dev']);
+            assert.deepStrictEqual(slices.dbt?.deferral, { status: 'ready', entries: [], builtInDev: [{ dev: `${P}.xf_example.stg_orders` }, { dev: `${P}.xf_example.stg_payments` }] });
+
+            // Another file is shown and compiled: the model keeps what its own compile said
+            await show('models/staging/stg_orders.sql');
+            await until('the other file', () => slices.file?.file === 'models/staging/stg_orders.sql' && slices.compile?.status === 'compiled');
+            assert.strictEqual(refLabels(model)?.length, 2);
+            // A file of the Project that is no .sql file is not labelled at all
+            assert.strictEqual(refLabels(await vscode.workspace.openTextDocument(path.join(workspaceFolder!, 'dbt_project.yml'))), undefined);
+
+            // Switched off: the labels go at once, whether or not a compile follows
+            await settings().update('deferToProd', undefined, vscode.ConfigurationTarget.Global);
+            await until('no labels', () => refLabels(model)?.length === 0);
         } finally {
             await settings().update('deferToProd', undefined, vscode.ConfigurationTarget.Global);
             await settings().update('dbtProdTarget', undefined, vscode.ConfigurationTarget.Global);

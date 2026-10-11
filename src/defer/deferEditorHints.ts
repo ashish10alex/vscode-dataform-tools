@@ -21,7 +21,7 @@ import { extensionConfiguration } from '../project/settings';
 type RefHint = { label: (now: number) => string, kind: RefHintKind, hover: vscode.MarkdownString };
 type DocumentHints = { hints: Map<string, RefHint>, dependencies: { target: Target, canonicalTarget?: Target }[] };
 
-const deferredDecoration = vscode.window.createTextEditorDecorationType({
+export const deferredDecoration = vscode.window.createTextEditorDecorationType({
     after: {
         margin: "0 0 0 0.75em",
         color: new vscode.ThemeColor("dataformTools.deferredRef.foreground"),
@@ -37,7 +37,7 @@ const warningDecoration = vscode.window.createTextEditorDecorationType({
         fontWeight: "600",
     },
 });
-const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
+export const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
     after: {
         margin: "0 0 0 0.75em",
         color: new vscode.ThemeColor("dataformTools.builtInDevRef.foreground"),
@@ -46,7 +46,7 @@ const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
     },
 });
 
-function hintsEnabled(): boolean {
+export function hintsEnabled(): boolean {
     return extensionConfiguration().get<boolean>('deferToProdEditorHints') !== false;
 }
 

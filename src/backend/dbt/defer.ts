@@ -37,7 +37,8 @@ function relationOf(target: Target): string {
  * of an action on show names its table in prod, as built in dev when it names its table in the dbt target. One the
  * SQL names in neither place is not read, and is not listed: dbt counts a `ref()` in a branch of Jinja that was not
  * taken, or in a `-- depends_on:` comment, as read. What prod does not have (new on the branch), a source, and an
- * action whose SQL this compile left out are not listed either. An ephemeral model has no table: what it
+ * action whose SQL this compile left out are not listed either. Neither is an action that is itself on show, which
+ * the tests shown with a model read. An ephemeral model has no table: what it
  * reads counts as read by the action it is inlined into.
  */
 export function dbtDeferral(dev: DbtGraph, prod: DbtGraph, shown: ActionId[]): DbtDeferral {
@@ -49,7 +50,8 @@ export function dbtDeferral(dev: DbtGraph, prod: DbtGraph, shown: ActionId[]): D
         }
     }
     const result: DbtDeferral = { deferred: [], builtInDev: [] };
-    const listed = new Set<ActionId>();
+    // An action on show is not upstream of what is on show: a model's tests read it, and it is what is being built
+    const listed = new Set<ActionId>(shown);
     for (const id of shown) {
         const action = dev.graph.actions[id];
         if (!action?.sqlPresent || action.sections.length === 0) {
@@ -87,4 +89,19 @@ export function dbtDeferral(dev: DbtGraph, prod: DbtGraph, shown: ActionId[]): D
     result.deferred.sort((a, b) => byId(a.dev, b.dev));
     result.builtInDev.sort(byId);
     return result;
+}
+
+/** Where a compile with `--defer` read one upstream table from */
+export type DbtRefRead = { from: 'prod'; dev: Target; prod: Target } | { from: 'dev'; dev: Target };
+
+/** What a deferral says of each upstream table it lists, by the Action the table is of: what a `ref()` to it is labelled with */
+export function dbtRefReads(deferral: DbtDeferral): Record<ActionId, DbtRefRead> {
+    const reads: Record<ActionId, DbtRefRead> = {};
+    for (const { dev, prod } of deferral.deferred) {
+        reads[targetId(dev)] = { from: 'prod', dev, prod };
+    }
+    for (const dev of deferral.builtInDev) {
+        reads[targetId(dev)] = { from: 'dev', dev };
+    }
+    return reads;
 }

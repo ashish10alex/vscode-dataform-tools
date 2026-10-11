@@ -39,6 +39,7 @@ import type { DbtRunMessage } from './views/register-preview-compiled-panel';
 import { initDeferToProd } from './defer/deferStatusBar';
 import { initProdTargets } from './defer/prodTargets';
 import { registerDeferEditorHints } from './defer/deferEditorHints';
+import { dbtRefHintsOf, registerDbtDeferEditorHints } from './defer/dbtDeferEditorHints';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
@@ -150,6 +151,7 @@ export async function activate(context: vscode.ExtensionContext) {
         prewarmCliCompilation(dataformFolders[0], resolveDataformOptions(dataformFolders[0])).catch((error) => logger.error(`Failed to prepare the saved compilation: ${error}`));
     }
     registerDeferEditorHints(context);
+    registerDbtDeferEditorHints(context);
     registerExecutedSqlProvider(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
@@ -545,6 +547,8 @@ export async function activate(context: vscode.ExtensionContext) {
             setTableFetch, heldTableCount, setDbtDryRun,
             /** For tests: whether a dbt Project is parsed, and compiled on save, while the panel is closed */
             setDbtWithoutPanel,
+            /** For tests: the defer to prod labels after the `ref()`s of a document */
+            dbtRefLabels: (document: vscode.TextDocument) => dbtRefHintsOf(document)?.map((hint) => hint.label),
             forgetDbt: (root: string) => { const project = projects.find(root, 'dbt'); if (project) { forgetDbtCompile(project); } },
         },
     };

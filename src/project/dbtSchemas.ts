@@ -34,6 +34,9 @@ const fetchFromBigQuery: FetchTable = async ({ target }) => {
 };
 
 let fetchTable: FetchTable = fetchFromBigQuery;
+const heldNow = new vscode.EventEmitter<{ root: string; key: string; table: HeldTable }>();
+/** Fires when BigQuery has said what a table is: `key` is the Action's ID, or the table's id as written in a file */
+export const onDidHoldTable = heldNow.event;
 const held = new Map<string, Map<string, Promise<HeldTable>>>();
 
 function hold(root: string, key: string, table: { target: Target }): Promise<HeldTable> {
@@ -52,6 +55,7 @@ function hold(root: string, key: string, table: { target: Target }): Promise<Hel
             if (said.state === 'unknown' && tables.get(key) === answer) {
                 tables.delete(key);
             }
+            heldNow.fire({ root, key, table: said });
         });
     }
     return answer;
@@ -82,7 +86,7 @@ export function setTableFetch(fetch: FetchTable | undefined) {
 }
 
 export function initDbtSchemas(context: vscode.ExtensionContext) {
-    context.subscriptions.push(onDidChangeDbtCompile((root) => {
+    context.subscriptions.push(heldNow, onDidChangeDbtCompile((root) => {
         // The start of a parse or a compile: what the Project builds may be about to change
         if (dbtCompileState(root).compiling) {
             held.delete(root);

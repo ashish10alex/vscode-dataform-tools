@@ -67,6 +67,14 @@ suite('defer to prod in a dbt Project', () => {
         });
     });
 
+    test('a model on show is not listed for the tests shown with it, which read it', () => {
+        const dev = buildDbtGraph(devManifest(FCT_ORDERS, ['stg_orders']));
+        const tests = Object.values(dev.graph.actions).filter((action) => action.kind === 'test' && action.parent && action.parent.name === 'fct_orders').map((action) => action.id);
+        assert.ok(tests.length > 0);
+        const deferral = dbtDeferral(dev, buildDbtGraph(prodManifest()), [...shown, ...tests]);
+        assert.deepStrictEqual([deferral.deferred.map((entry) => entry.dev.name), deferral.builtInDev.map((entry) => entry.name)], [['stg_orders'], ['stg_payments']]);
+    });
+
     test('what an ephemeral model reads counts as read by the model it is inlined into', () => {
         // dim_customers reads the ephemeral int_customer_countries, which reads stg_customers and the seed
         const dev = buildDbtGraph(devManifest('model.xf_example.dim_customers', ['stg_customers']));

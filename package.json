@@ -594,7 +594,7 @@
                 "vscode-dataform-tools.deferToProdEditorHints": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "Show a coloured label after each `${ref(...)}` in .sqlx files that defer to prod reads from prod (`→ deferred to prod`) or from dev because it is built there (`✓ dev · built 12 min ago`), with a warning when prod may be out of date, nothing is built or a leftover proxy view reads prod. Hover the ref for the dev and prod tables and a link to the prod table. Colours: `dataformTools.deferredRef.*`, `dataformTools.builtInDevRef.*` in `workbench.colorCustomizations`."
+                    "markdownDescription": "Show a coloured label after each `${ref(...)}` in .sqlx files that defer to prod reads from prod (`→ deferred to prod`) or from dev because it is built there (`✓ dev · built 12 min ago`), with a warning when prod may be out of date, nothing is built or a leftover proxy view reads prod. Hover the ref for the dev and prod tables and a link to the prod table. Colours: `dataformTools.deferredRef.*`, `dataformTools.builtInDevRef.*` in `workbench.colorCustomizations`.\n\nIn a dbt project the same labels follow each `ref()` of a .sql file, from what dbt read when it last compiled the file: from prod, or from your dbt target. The age of a table in your dbt target is shown once a hover or a completion has asked BigQuery for it."
                 },
                 "vscode-dataform-tools.currencyFoDryRunCost": {
                     "type": "string",
