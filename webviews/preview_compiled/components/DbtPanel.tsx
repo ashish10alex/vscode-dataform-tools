@@ -24,6 +24,8 @@ import type { PanelSlices } from "../../../src/shared/panelState";
 import { SchemaTable } from "./SchemaTab";
 import { getUrlToNavigateToTableInBigQuery } from "../../utils/bigquery";
 import { vscode } from "../utils/vscode";
+import { DBT_SWITCH_TITLE, DeferralBanner } from "./DeferralBanner";
+import { ModifierSwitch } from "./ModifierSwitch";
 
 /*
  * The compiled-query panel of a dbt Project (decided in xf#52). What is drawn, and when, is worked out by `dbtView`
@@ -427,6 +429,7 @@ function CompileSummary({ view, block }: { view: DbtView; block: DbtBlock | unde
       {view.parsedOnly && <RowChip tone="warning" title="The Project has on-run hooks, so it was parsed and not compiled: the SQL is as written">parsed only</RowChip>}
       {view.otherWarehouse && <RowChip tone="warning" title={`The Project's profile targets ${view.otherWarehouse}. The extension supports BigQuery`}>not BigQuery</RowChip>}
       {target?.overridden && <RowChip tone="warning" title="Your own choice for this workspace. It overrides the dbtTarget setting">dbt target {target.name} · override</RowChip>}
+      {block?.deferToProd?.enabled && <RowChip tone="warning" title={block.deferToProd.available ? "Upstream tables that are not built in your dbt target are read from prod (dbt --defer)" : `On but not applied. ${block.deferToProd.reason ?? ""}`}>defer to prod</RowChip>}
       {view.errorsElsewhere.length > 0 && <RowChip tone="error" title="Compile errors in other files of the Project">{counted(view.errorsElsewhere.length, "error", "errors")} elsewhere</RowChip>}
       <span className="align-middle" title={`${status.kind === "compiled" ? "Compiled" : "Parsed"} at ${new Date(status.compiledAt).toLocaleString()}`}>
         {[engineLabel(block?.dbt) || "dbt", took, formatRelativeTime(status.compiledAt, now), target && !target.overridden && `dbt target ${target.name ?? "dbt's default"}`].filter(Boolean).join(" · ")}
@@ -441,7 +444,14 @@ function CompileRow({ state, view }: { state: PanelSlices; view: DbtView }) {
   const notice = state.settled?.status === "parsed only" ? state.settled.notice : undefined;
   const running = isRunning(view.status);
   const failed = !running && (view.status?.kind === "failed" || view.errors.length > 0);
-  const tone: RowTone = running ? "busy" : failed ? "error" : view.parsedOnly || block?.target.overridden || view.errorsElsewhere.length > 0 ? "warning" : "calm";
+  const tone: RowTone = running ? "busy" : failed ? "error" : view.parsedOnly || block?.target.overridden || block?.deferToProd?.enabled || view.errorsElsewhere.length > 0 ? "warning" : "calm";
+  // Follows the setting, but flips at the click, before the compile that follows has told the panel
+  const [deferOn, setDeferOn] = useState(!!block?.deferToProd?.enabled);
+  useEffect(() => setDeferOn(!!block?.deferToProd?.enabled), [block?.deferToProd?.enabled]);
+  const toggleDefer = (checked: boolean) => {
+    setDeferOn(checked);
+    vscode.postMessage({ command: "dbt.toggleDeferToProd", on: checked });
+  };
   const hasBody = !!block || view.parsedOnly || !!view.otherWarehouse || view.errors.length + view.errorsElsewhere.length > 0;
   return (
     <SummaryRow
@@ -466,8 +476,10 @@ function CompileRow({ state, view }: { state: PanelSlices; view: DbtView }) {
                 {" · "}
                 profiles dir <span className="font-mono text-[var(--vscode-foreground)]">{block.profilesDir ?? "dbt's default"}</span>
               </span>
+              {block.deferToProd && <ModifierSwitch chip label="Defer to prod" checked={deferOn} onChange={toggleDefer} title={DBT_SWITCH_TITLE} />}
             </div>
           )}
+          {block?.deferToProd && <DeferralBanner dbt bare on={deferOn} deferral={block.deferral} deferToProd={block.deferToProd} />}
           {view.parsedOnly && (
             <div data-dbt="parsed only" className="text-xs">
               <p className="m-0"><span className={clsx("font-semibold", WARNING)}>Parsed, not compiled.</span> {notice} So the SQL below is as written, and nothing is dry-run.</p>

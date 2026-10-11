@@ -42,7 +42,7 @@ A dash means not in a dbt project yet. Each name links to its description at [da
 | [Go to definition](https://dataformtools.com/features#definition) | ✅ | ✅ | From a `ref()` to its file. Dataform: also JavaScript variables and modules. dbt: also `source()` and macro calls |
 | [Completions](https://dataformtools.com/features#autocomplete) | ✅ | ✅ | Names inside `ref()` and `source()`, and the columns of the tables the file reads |
 | [Column search](https://dataformtools.com/features#column_search) | ✅ | ✅ | Pick a column of a table by name, type or description |
-| [Defer to production](https://dataformtools.com/features#defer_to_prod) | ✅ | — | Reads upstream tables that are not built in dev from production, like dbt's `--defer` |
+| [Defer to production](https://dataformtools.com/features#defer_to_prod) | ✅ | ✅ | Reads upstream tables that are not built in dev from production, like dbt's `--defer`. In a dbt project dbt does it, and `dbtProdTarget` names prod |
 | [Column lineage and impact](https://dataformtools.com/features#column_lineage) | ✅ | — | Columns dropped or retyped against prod, and who reads them downstream, from Dataplex |
 | [Dependency inspector](https://dataformtools.com/features#dependency_inspector) | ✅ | — | One filter across a model and its dependencies, then dry run or run each |
 | [Cost estimator](https://dataformtools.com/features#cost_estimator) | ✅ | — | What a tag will cost before you run it |

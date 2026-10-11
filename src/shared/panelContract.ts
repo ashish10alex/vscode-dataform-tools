@@ -298,6 +298,13 @@ export interface DbtBlock extends Slice {
     macros: string[];
     /** The "Run changed" state. Unset until it is known whether the Project is in a git repository */
     changedActions?: ChangedActionsView;
+    /** Whether defer to prod is on for the Project, and whether it can be applied: it needs a prod dbt target */
+    deferToProd?: DeferToProdState;
+    /**
+     * Which tables the actions on show read were compiled to prod (dbt's `--defer`), or why none was. Null when the
+     * compile on show did not defer: defer to prod is off, or the compile that defers has not ended
+     */
+    deferral?: DeferralView | null;
 }
 
 // ---- Project info
@@ -469,7 +476,13 @@ export type DbtPanelMessage =
     /** Ask dbt what changed since the merge-base with the default branch (`state:modified`) */
     | { command: 'dbt.computeChangedActions' }
     /** `dbt build` of what changed; with `files`, of the changes in those files only */
-    | ({ command: 'dbt.runChangedActions'; files?: string[] } & RunScope);
+    | ({ command: 'dbt.runChangedActions'; files?: string[] } & RunScope)
+    | { command: 'dbt.toggleDeferToProd'; on: boolean }
+    /** The menu of the status bar item: switch, parse the prod manifest again, settings */
+    | { command: 'dbt.deferToProdActions' }
+    | { command: 'dbt.openDeferToProdSettings' }
+    /** Parse the prod manifest again and compile */
+    | { command: 'dbt.retryDeferral' };
 
 export type PanelMessage = SharedPanelMessage | DataformPanelMessage | DbtPanelMessage;
 

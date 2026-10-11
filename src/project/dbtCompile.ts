@@ -6,6 +6,7 @@ import type { DbtCompileResult, DbtOptions } from '../backend/dbt';
 import { logger } from '../logger';
 import type { CompileState } from '../panel/slices';
 import { actionsInFile, isTestKind, siblingsOf } from '../shared/compiledGraph';
+import { DbtDefer, resolveDbtDefer } from './dbtDefer';
 import { dbtTool } from './dbtTool';
 import type { ProjectState } from './registry';
 import { extensionConfiguration } from './settings';
@@ -17,6 +18,7 @@ import { extensionConfiguration } from './settings';
  * - One compile per Project at a time, and the latest request wins: a newer one ends the dbt that is running.
  * - A save always compiles, and only the saved file's actions, so showing a file whose actions have no compiled SQL
  *   compiles again, for that file.
+ * - With defer to prod on, the compile of a file defers too (dbtDefer.ts), so its SQL reads what a run would read.
  * - dbt writes its artifacts and logs under the extension's storage for the workspace, one directory per Project,
  *   dbt binary and dbt target, never into the Project's own `target/`.
  */
@@ -33,13 +35,20 @@ let storageRoot: string | undefined;
 let workspaceState: vscode.Memento | undefined;
 const TARGET_OVERRIDES = 'dbtTargetOverrides';
 const states = new Map<string, CompileState>();
-/** By Project: what the last compile was run with. Another dbt, dbt target or variables make its result another Project's, in effect */
+/** By Project: what the last compile was run with. Another dbt, dbt target, variables or prod manifest make its result another Project's, in effect */
 const compiledWith = new Map<string, string>();
-const optionsKey = ({ binary, flavour, target, vars, profilesDir, compileWithHooks }: DbtOptions) => JSON.stringify([binary, flavour, target, vars, profilesDir, compileWithHooks]);
+const optionsKey = ({ binary, flavour, target, vars, profilesDir, compileWithHooks }: DbtOptions, defer: DbtDefer) => JSON.stringify([binary, flavour, target, vars, profilesDir, compileWithHooks, defer ?? null]);
+/** By Project: what the last compile deferred to, or why it did not though defer to prod is on */
+const deferredTo = new Map<string, DbtDefer>();
 const running = new Map<string, AbortController>();
 const changed = new vscode.EventEmitter<string>();
 /** Fires with a Project's root when how its compile stands changes: started, finished, or failed */
 export const onDidChangeDbtCompile = changed.event;
+
+/** What the Project's last compile deferred to: the prod manifest, or why none. Undefined when it did not defer because defer to prod was off or could not be applied */
+export function dbtCompileDefer(root: string): DbtDefer {
+    return deferredTo.get(root);
+}
 
 /** How the Project's compile stands, for the panel's compile status. Before any compile: in a Project, nothing compiled */
 export function dbtCompileState(root: string): CompileState {
@@ -124,13 +133,13 @@ export async function dbtOptions(root: string): Promise<DbtOptions | undefined> 
 
 /**
  * Whether showing `file` needs a compile: there is no result yet, the last one was made with other options (another
- * dbt, dbt target or variables), or an action of the file has a query that the last compile did not compile. The
+ * dbt, dbt target, variables or prod manifest to defer to), or an action of the file has a query that the last compile did not compile. The
  * tests shown with the file's actions count as the file's. A Project that was only parsed, for its on-run hooks or
  * its errors, is not compiled for a showing: nothing but a save changes what a compile of it gives.
  */
-function needsCompile(project: ProjectState, file: string | undefined, options: DbtOptions): boolean {
+function needsCompile(project: ProjectState, file: string | undefined, options: DbtOptions, defer: DbtDefer): boolean {
     const last = project.dbtBackend?.lastResult;
-    if (!last || compiledWith.get(project.root) !== optionsKey(options)) {
+    if (!last || compiledWith.get(project.root) !== optionsKey(options, defer)) {
         return true;
     }
     if (last.parsedOnly || !file) {
@@ -179,6 +188,7 @@ export function forgetDbtCompile(project: ProjectState) {
     running.delete(project.root);
     project.dbtBackend?.reset();
     compiledWith.delete(project.root);
+    deferredTo.delete(project.root);
     states.delete(project.root);
     changed.fire(project.root);
 }
@@ -209,11 +219,18 @@ async function compileIfNeeded(project: ProjectState, dbtBackend: NonNullable<Pr
         setState(root, { inProject: true, errors: [], unsupportedVersion: { tool: 'dbt', version: tool.probe.version, message: tool.probe.unsupported } });
         return;
     }
-    const options = await dbtOptions(root);
-    if (!options || !isLatest()) {
+    const settled = await dbtOptions(root);
+    if (!settled || !isLatest()) {
         return;
     }
-    if (reason !== 'save' && !needsCompile(project, file, options)) {
+    // The prod manifest is parsed here when it has not been for this commit. Where dbt chooses the dbt target, the
+    // last compile said which it is
+    const defer = await resolveDbtDefer(project, settled, settled.target ?? dbtBackend.lastResult?.target);
+    if (!isLatest()) {
+        return;
+    }
+    const options: DbtOptions = defer && 'stateDir' in defer ? { ...settled, defer } : settled;
+    if (reason !== 'save' && !needsCompile(project, file, options, defer)) {
         // What a tool that has since been found or fixed left behind is no longer true, and neither is a compile
         // that this request ended
         if (previous.missingTool || previous.unsupportedVersion || previous.compiling) {
@@ -232,7 +249,8 @@ async function compileIfNeeded(project: ProjectState, dbtBackend: NonNullable<Pr
             return;
         }
         project.compileNumber++;
-        compiledWith.set(root, optionsKey(options));
+        compiledWith.set(root, optionsKey(options, defer));
+        deferredTo.set(root, defer);
         logger.info(`dbt: ${result.commands.map((args) => args[0]).join(', then ')} of ${root} took ${Date.now() - startedAt} ms, ${result.errors.length} error(s)`);
         setState(root, {
             inProject: true,

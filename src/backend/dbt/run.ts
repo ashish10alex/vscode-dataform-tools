@@ -2,6 +2,7 @@ import path from 'path';
 import type { ActionId, RunOptions } from '../../shared/compiledGraph';
 import type { BackendRequest } from '../backend';
 import { shellJoin } from '../shellQuote';
+import { dbtDeferArguments } from './defer';
 import type { DbtName } from './graph';
 import type { DbtOptions } from './options';
 
@@ -12,7 +13,7 @@ import type { DbtOptions } from './options';
  * `logs/`, as a run typed into a terminal would. A port of xf's internal/backend/dbt/run.go.
  */
 
-type RunRequest = Pick<BackendRequest<Pick<DbtOptions, 'binary' | 'target' | 'vars' | 'profilesDir'>>, 'root' | 'options'> & { run: RunOptions };
+type RunRequest = Pick<BackendRequest<Pick<DbtOptions, 'binary' | 'target' | 'vars' | 'profilesDir' | 'defer'>>, 'root' | 'options'> & { run: RunOptions };
 
 /** The names dbt selects the actions by. Throws when one has no name dbt can select, or there are none */
 function namesOf(actions: ActionId[], names: Record<ActionId, DbtName>): string[] {
@@ -33,6 +34,9 @@ function namesOf(actions: ActionId[], names: Record<ActionId, DbtName>): string[
  * name: a path would not do, since `path:` of a YAML file also matches the models the file documents, and in dbt v2
  * misses the tests it declares. A `+` goes on both sides of an intersection, which for an action that differs gives
  * what it reads from, or what reads from it.
+ *
+ * With `options.defer` the run defers to prod. The prod manifest is given as `--defer-state`, so that `--state`
+ * stays the base a run of what changed compares with: that one is parsed with the user's own dbt target.
  */
 export function dbtRunArguments({ options, run }: Omit<RunRequest, 'root'>, names: Record<ActionId, DbtName>): string[] {
     const reach = (selector: string) => `${run.includeDependencies ? '+' : ''}${selector}${run.includeDependents ? '+' : ''}`;
@@ -49,6 +53,7 @@ export function dbtRunArguments({ options, run }: Omit<RunRequest, 'root'>, name
     if (run.changed) {
         args.push('--state', run.changed.base);
     }
+    args.push(...dbtDeferArguments(options.defer));
     if (run.fullRefresh) {
         args.push('--full-refresh');
     }

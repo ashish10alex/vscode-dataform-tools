@@ -1,6 +1,7 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
 import { ProjectState, activateProject, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
-import { CompileReason, compileDbtProject, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
+import { CompileReason, compileDbtProject, dbtCompileDefer, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
+import { dbtDeferToProdState, dbtDeferralView } from '../project/dbtDefer';
 import { dbtToolNow, lookForDbt, onDidChangeDbtTool } from '../project/dbtTool';
 import { dbtActionsToDryRun, dryRunDbtActions, previewDbtAction, tablesOfActions } from '../project/dbtBigQuery';
 import { savedWithoutPanel } from '../project/dbtWithoutPanel';
@@ -75,6 +76,10 @@ let recompileActiveDocument: (() => Promise<void>) | undefined;
 export async function refreshCompiledQueryPanel() {
     const panel = CompiledQueryPanel.centerPanel;
     if (!panel || panel.centerPanelDisposed) {
+        return;
+    }
+    // A dbt file is shown again, which compiles it when what it defers to is no longer what it was compiled with
+    if (panel.dbtOptionsChanged()) {
         return;
     }
     const document = getDocumentToRecompile();
@@ -332,9 +337,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     // And a run of it sent to the terminal, from the panel or from a command
     context.subscriptions.push(onDidRunDbt((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
     context.subscriptions.push(onDidChangeDbtChanges((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
-    // And the settings a dbt compile is made with: another dbt target, other variables or profiles are another result
+    // And the settings a dbt compile is made with: another dbt target, other variables or profiles are another result,
+    // and so is one that defers to prod
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
-        if (['dbtTarget', 'dbtVars', 'dbtProfilesDir'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
+        if (['dbtTarget', 'dbtVars', 'dbtProfilesDir', 'deferToProd', 'dbtProdTarget'].some((key) => event.affectsConfiguration(`vscode-dataform-tools.${key}`))) {
             CompiledQueryPanel.centerPanel?.dbtOptionsChanged();
         }
     }));
@@ -954,6 +960,8 @@ export class CompiledQueryPanel {
             shown: actionsNamed(shown),
             file,
             changedActions: dbtChangesView(project.root),
+            deferToProd: dbtDeferToProdState(project.root, settings.target ?? last?.target),
+            deferral: dbtDeferralView(project, dbtCompileDefer(project.root), shown.actions.map((action) => action.id)),
         }, project.compileNumber);
         return {
             project: projectSlice({ root: project.root, label: projectLabel(project.root) }, backend, last?.graph, project.compileNumber),
@@ -1093,6 +1101,19 @@ export class CompiledQueryPanel {
                 await runDbtChangedActions(project, { includeDependencies, includeDependents, fullRefresh, ...(Array.isArray(files) ? { files } : {}) }, dbtChangesResult(project.root));
                 return;
             }
+            case 'dbt.toggleDeferToProd':
+                // The change of the setting compiles again, and tells the panel
+                await vscode.commands.executeCommand('vscode-dataform-tools.toggleDeferToProd', message.on);
+                return;
+            case 'dbt.deferToProdActions':
+                await vscode.commands.executeCommand('vscode-dataform-tools.deferToProdActions');
+                return;
+            case 'dbt.openDeferToProdSettings':
+                await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.dbtProdTarget');
+                return;
+            case 'dbt.retryDeferral':
+                await vscode.commands.executeCommand('vscode-dataform-tools.refreshDeferToProd');
+                return;
             case 'dbt.setTarget':
                 // What changed was worked out with the other dbt target
                 forgetDbtChanges({ file: path.join(project.root, file) });
@@ -1733,6 +1754,10 @@ export class CompiledQueryPanel {
               case 'dbt.lookForDbtAgain':
               case 'dbt.computeChangedActions':
               case 'dbt.runChangedActions':
+              case 'dbt.toggleDeferToProd':
+              case 'dbt.deferToProdActions':
+              case 'dbt.openDeferToProdSettings':
+              case 'dbt.retryDeferral':
                 await panel.onDbtMessage(message);
                 return;
               default: {

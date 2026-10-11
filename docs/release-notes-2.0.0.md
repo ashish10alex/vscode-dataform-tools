@@ -16,6 +16,7 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
   * **Preview** of a compiled query; for a test, the rows that fail it.
   * **Run**: `dbt build` in a terminal for the file, with dependencies, with dependents, as a full refresh, or by tag. The button names the dbt target, and the first run against a dbt target that is not the profile's default asks first.
   * **Run Changed**: `dbt build --select state:modified` against the merge-base with the default branch, with the same button as Dataform's: the changed actions by file, why each changed (new, SQL, config, macro), and a tick per file. The extension parses the merge-base itself, so no production manifest is needed. Also the command "Run changed actions (vs default branch)".
+  * **Defer to prod**: the same switch as Dataform's. Set `dbtProdTarget`; the extension parses the merge-base with that dbt target and gives the manifest to compiles and runs as `--defer --defer-state`, so an upstream table that is not built in your dbt target is read from prod. The panel lists which were.
   * **dbt target control** in the panel, with a private choice per workspace; settings `dbtTarget`, `dbtVars`, `dbtProfilesDir`.
   * **Compile errors** in the panel with links, and marked in the editor where dbt gave a line.
   * **In the editor**: go to definition from a `ref()`, a `source()` and a macro call; hover on a `ref()`, a `source()` or a plain `project.dataset.table` id with the table's kind, location, description, partitioning, row count and columns, and on a column name with its type and description; "Search columns in a model" from the hover, the right-click menu and the command palette; completions for model, source and column names. The language of `.sql` files is not changed. These stand down beside the dbt extension of dbt Labs or Power User for dbt, unless `dbtEditorFeatures` is `on`.
@@ -41,6 +42,6 @@ The extension is now **Tools for Dataform and dbt**. It works in dbt™ projects
 
 ### Not in a dbt project yet
 
-The dependency graph, column lineage, defer to prod, runs through an API, the cost estimate of a tag, formatting, and hover and completions for macros.
+The dependency graph, column lineage, runs through an API, the cost estimate of a tag, formatting, and hover and completions for macros.
 
 dbt and dbt Core are trademarks of dbt Labs, LLC.

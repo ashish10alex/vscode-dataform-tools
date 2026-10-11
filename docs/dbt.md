@@ -20,6 +20,7 @@ A project in a sub-folder keeps the `vscode-dataform-tools.*` settings of its ow
 | Preview | Runs the compiled query and shows the rows. For a test, the rows that fail it. |
 | Run | `dbt build` in a terminal, for the file, with dependencies, with dependents, as a full refresh, or by tag. |
 | Run Changed | The actions that differ from the merge-base with the default branch, as dbt finds them (`state:modified`). The panel lists them by file with why each changed, and runs all of them or the files you tick. |
+| Defer to prod | With **Defer to prod** on, an upstream table that is not built in your dbt target is read from prod, as dbt's `--defer` does: in the compiled query, its dry run and preview, and in runs. The panel lists which tables were read from prod, and a label after each `ref()` says the same. Needs `dbtProdTarget`. |
 | dbt target | Shown in the panel. Pick another there; the choice is yours alone and is kept for the workspace. |
 | Compile errors | Shown in the panel with a link to the file, and marked in the editor where dbt gave a line. |
 | Dry-run errors | BigQuery's errors are marked in the editor too. See [In the editor](#in-the-editor). |
@@ -30,7 +31,7 @@ A project in a sub-folder keeps the `vscode-dataform-tools.*` settings of its ow
 | Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
 | Dependency graph | **Graph** in the panel, or *Show dependency graph*. Every model, seed, snapshot, source, test and exposure, centred on the file in the editor. Tests are hidden until you tick *Show tests*. Read from a parse of the project, so nothing needs compiling first. |
 
-Not in a dbt project yet: the dependency inspector, column lineage, defer to prod, running through an API, the cost estimate of a tag, the BigQuery jobs of a run, formatting, code actions, and hover and completions for macros.
+Not in a dbt project yet: the dependency inspector, column lineage, running through an API, the cost estimate of a tag, the BigQuery jobs of a run, formatting, code actions, and hover and completions for macros.
 
 ## In the editor
 
@@ -47,7 +48,9 @@ Go to definition, hover and completions work in the `.sql` files of a dbt projec
 * **dbt Core and dbt v2** compile the file you are looking at, with its tests, and never the whole project. A file you have not looked at since the last save is compiled when you open it.
 * **A dbt v2 project with `on-run-start` or `on-run-end` hooks is only parsed**, because dbt v2 runs those hooks against the warehouse on every compile. The panel then shows the SQL as written and offers to compile with hooks.
 * dbt writes its artifacts for these compiles into the extension's storage, not into your project's `target/`.
-* **Run Changed needs no manifest from you.** The extension takes the merge-base with `defaultBranch` out of git, parses it with your dbt, dbt target and variables, and keeps that manifest by commit in its own storage. It runs `dbt build --select state:modified --state <that manifest>`. The list is worked out when you open the button's popover, not in the background. It does not defer: an upstream table that is not built in your dbt target must be built first, which the `+Deps` switch does.
+* **Run Changed needs no manifest from you.** The extension takes the merge-base with `defaultBranch` out of git, parses it with your dbt, dbt target and variables, and keeps that manifest by commit in its own storage. It runs `dbt build --select state:modified --state <that manifest>`. The list is worked out when you open the button's popover, not in the background.
+* **Defer to prod needs no manifest from you either.** Set `dbtProdTarget` to the dbt target of your profile that builds prod, and turn **Defer to prod** on in the panel or the status bar. The extension parses the same merge-base with that dbt target, keeps that manifest by commit too, and gives it to every compile of a file and every run as `--defer --defer-state <that manifest>`. dbt then decides: an upstream table that is not selected and is not built in your dbt target is read from prod. Run Changed still compares with the manifest of your own dbt target (`--state`). The parse connects to nothing; you need read access to the prod tables when a query runs. dbt Core and dbt v2 both do this. `--favor-state` is not passed.
+* **A label after each `ref()` says where it was read from.** With defer to prod on, a `ref()` in a `.sql` file is followed by `→ deferred to prod` or `✓ dev · built in dev`, and a hover on it gives the two tables and a link to the one in prod. The labels come from the file's own last compile, so they are as old as its last save, and a file keeps them while you look at another. A `ref()` that dbt did not read (an ephemeral model, a model that is new on your branch, a branch of Jinja that was not taken) has no label. The age of a table in your dbt target (`built 12 min ago`) is shown once a hover or a completion has asked BigQuery for that table; no query is made for the labels. They show beside another dbt extension too. `vscode-dataform-tools.deferToProdEditorHints` turns them off.
 
 ## Where BigQuery jobs run
 
@@ -75,6 +78,7 @@ A folder that has `workflow_settings.yaml` or `dataform.json`, and also `dbt_pro
 | --- | --- |
 | `vscode-dataform-tools.dbtExecutablePath` | The dbt to use, when you do not want the one the extension finds. |
 | `vscode-dataform-tools.dbtTarget` | The dbt target for everyone who uses the workspace. Empty lets dbt choose. |
+| `vscode-dataform-tools.dbtProdTarget` | The dbt target that builds prod. Defer to prod reads from it. Empty, defer to prod is not applied. |
 | `vscode-dataform-tools.dbtVars` | dbt's `--vars`, for compiles and runs. |
 | `vscode-dataform-tools.dbtProfilesDir` | dbt's `--profiles-dir`, for compiles and runs. |
 | `vscode-dataform-tools.dbtCompileWithHooks` | Compile a dbt v2 project that has on-run hooks. The hooks then run on every save. |
