@@ -38,3 +38,6 @@
    * Check if you language mode when sqlx file is open is set to `sqlx`. VSCode sometimes sets it as a different flavour of sql. You can change that by opening the command pallet and searching for `change language mode`
    followed by `Configure language association for "sqlx"` and selecting `sqlx` from the list of available options. This should also resolve hover information not being visible as the all the language specific behaviors
    are tied to file being inferred as `sqlx` file.
+
+8. [Go to definition or the dependency graph misses a `${ref("dataset", "table")}`]()
+   * These features might not work consistently with `${ref("dataset", "table")}`, or with a `ref()` that is written over several lines. They work best with the `${ref('table_name')}` format.
