@@ -130,10 +130,10 @@ for (const backend of ['dataform', 'dbt']) {
                     await frame.locator('button[title="Show compile"]').click();
                 }
                 await button(frame, 'Defer to prod').click();
-                await page.waitForFunction(() => window.told.some((message) => message.type === 'defer' && message.entries.length > 0), null, { timeout: 5000 });
+                await page.waitForFunction(() => window.told.some((message) => message.type === 'defer' && message.hints.length > 0), null, { timeout: 5000 });
                 await frame.getByText('analytics_dev').first().waitFor({ timeout: 5000 });
                 await button(frame, 'Defer to prod').click();
-                await page.waitForFunction(() => window.told.filter((message) => message.type === 'defer').pop()?.entries.length === 0, null, { timeout: 5000 });
+                await page.waitForFunction(() => window.told.filter((message) => message.type === 'defer').pop()?.hints.length === 0, null, { timeout: 5000 });
             });
         }
         if (backend === 'dataform' && theme === 'dark') {
@@ -215,6 +215,23 @@ for (const theme of ['dark', 'light']) {
             throw new Error(errors.join(' | '));
         }
     });
+    await context.close();
+}
+
+// The file with defer to prod on, which the README has a picture of
+for (const theme of ['dark', 'light']) {
+    const { context, page, frame, errors } = await open('panel', 'defer', theme);
+    await check(`defer ${theme}: the panel tells what is read from prod`, async () => {
+        await frame.getByText('read from prod').first().waitFor({ timeout: 15_000 });
+        await page.waitForFunction(() => window.told.some((message) => message.type === 'rendered'), null, { timeout: 5000 });
+        if (errors.length) {
+            throw new Error(errors.join(' | '));
+        }
+    });
+    if (posters) {
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: path.join(root, 'demo', `poster-defer-${theme}.png`) });
+    }
     await context.close();
 }
 

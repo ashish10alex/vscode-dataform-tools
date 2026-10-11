@@ -33,10 +33,21 @@ export interface SourceHover {
   columns: Array<{ name: string; type: string; description: string }>;
 }
 
+/** What the editor says beside a ref() with defer to prod on: where that table is read from */
+export interface SourceHint {
+  /** The name in the ref() */
+  name: string;
+  /** In the extension's words, e.g. "→ deferred to prod" */
+  label: string;
+  kind: "prod" | "warning" | "dev";
+}
+
 export interface DemoSource {
   hover?: SourceHover;
   /** Which recorded states the panel beside it shows (public/demo/states) */
-  backend: "dataform" | "dbt" | "diagnostics";
+  backend: "dataform" | "dbt" | "diagnostics" | "defer";
+  /** What the editor says beside a ref() of the file with defer to prod on, from the start */
+  hints?: SourceHint[];
   problem?: SourceProblem;
   /** As the editor tab names it */
   fileName: string;
@@ -117,7 +128,7 @@ function hoverOf(backend: "dataform" | "dbt"): SourceHover | undefined {
 
 function source(backend: DemoSource["backend"], project: "dataform" | "dbt", relativePath: string): DemoSource {
   const code = fs.readFileSync(path.join(process.cwd(), "demo", project, relativePath), "utf8");
-  return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code), hover: backend === "diagnostics" ? undefined : hoverOf(project) };
+  return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code), hover: backend === "dataform" || backend === "dbt" ? hoverOf(project) : undefined };
 }
 
 export function demoSources(): DemoSource[] {
@@ -145,4 +156,9 @@ export function diagnosticsSource(): DemoSource {
     throw new Error(`The error of the recorded dry run is not on a line of fct_club_spend.sqlx: ${failed.error.message}`);
   }
   return { ...file, problem: { line, text, message: failed.error.message.replace(/ at \[\d+:\d+\]$/, "") } };
+}
+
+/** A file that reads three tables, each in another of defer to prod's states, with what the editor says of each */
+export function deferSource(): DemoSource {
+  return { ...source("defer", "dataform", "definitions/int_signings.sqlx"), hints: recorded("defer").hints };
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { CircleX, MousePointerClick, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/site";
-import type { DemoSource, TokenKind } from "@/lib/demo-source";
+import type { DemoSource, SourceHint, TokenKind } from "@/lib/demo-source";
 
 /*
  * The frame of the hero: a source file beside the compiled query panel, as in the editor. The panel is the
@@ -26,14 +26,7 @@ type DemoMessage =
   | { source: "vdt-demo"; backend?: Backend; type: "rendered" | "height"; height: number }
   | { source: "vdt-demo"; backend?: Backend; type: "terminal"; terminal: Terminal }
   | { source: "vdt-demo"; backend?: Backend; type: "note"; command: string }
-  | { source: "vdt-demo"; backend?: Backend; type: "defer"; entries: DeferEntry[] };
-
-/** An upstream table of the file with defer to prod on: where it would be in dev, and where it is read from */
-interface DeferEntry {
-  dev: string;
-  prod?: string;
-  status: string;
-}
+  | { source: "vdt-demo"; backend?: Backend; type: "defer"; hints: SourceHint[] };
 
 /** What a click does in the editor, for the clicks the demo has no answer to */
 export const NOTES: Record<string, string> = {
@@ -101,7 +94,7 @@ const EDITOR = "bg-white text-black dark:bg-[#1e1e1e] dark:text-[#d4d4d4]";
 // The frame is as tall as the panel's compiled query needs, so the panel does not scroll. These are what the
 // panels need beside the source file; a panel that needs more says so once it has loaded (see `height` below).
 // One height for the two files of the hero, so that the frame stays as it is when the other file's tab is chosen.
-const FRAME_HEIGHT: Record<Backend, number> = { dataform: 724, dbt: 724, diagnostics: 600 };
+const FRAME_HEIGHT: Record<Backend, number> = { dataform: 724, dbt: 724, diagnostics: 600, defer: 724 };
 /** A tab of the panel with a long list, the Project tab say, scrolls rather than stretch the page */
 const TALLEST = 1060;
 // Scrolls as an editor does, without a bar
@@ -141,7 +134,13 @@ function HoverCard({ hover }: { hover: NonNullable<DemoSource["hover"]> }) {
   );
 }
 
-function Source({ source, deferred = [] }: { source: DemoSource; deferred?: DeferEntry[] }) {
+const HINT_CLASS: Record<SourceHint["kind"], string> = {
+  prod: "bg-[#007acc]/15 text-[#006ab1] dark:bg-[#3794ff]/20 dark:text-[#3794ff]",
+  warning: "bg-[#bf8803]/15 text-[#855f00] dark:bg-[#cca700]/20 dark:text-[#cca700]",
+  dev: "bg-[#388a34]/15 text-[#2b6a28] dark:bg-[#89d185]/15 dark:text-[#89d185]",
+};
+
+function Source({ source, hints = [] }: { source: DemoSource; hints?: SourceHint[] }) {
   const problem = source.problem;
   return (
     <div className={cn("flex h-full flex-col text-left", EDITOR)}>
@@ -149,9 +148,6 @@ function Source({ source, deferred = [] }: { source: DemoSource; deferred?: Defe
         <div className="px-4 pb-2 font-sans text-[11px] text-[#616161] dark:text-[#cccccc]/70">{source.path}</div>
         {source.lines.map((line, index) => {
           const failed = problem?.line === index + 1;
-          // With defer to prod on, the editor says beside a ref() where that table is read from
-          const reads = line.flatMap((token) => (token.kind === "template" ? [refName(token.text)] : [])).find(Boolean);
-          const fromProd = deferred.find((entry) => entry.status === "deferred" && entry.dev.split(".").pop() === reads);
           return (
             <div key={index} className={cn("flex min-w-max pr-4", failed && "bg-[#f14c4c]/10")}>
               <span className={cn("w-11 shrink-0 select-none pr-4 text-right", failed ? "text-[#f14c4c]" : "text-[#237893] dark:text-[#858585]")} aria-hidden>
@@ -160,8 +156,9 @@ function Source({ source, deferred = [] }: { source: DemoSource; deferred?: Defe
               <span className="whitespace-pre">
                 {line.length === 0
                   ? " "
-                  : line.map((token, tokenIndex) =>
-                      source.hover && token.kind === "template" && refName(token.text) === source.hover.name ? (
+                  : line.map((token, tokenIndex) => {
+                      const hint = token.kind === "template" ? hints.find((candidate) => candidate.name === refName(token.text)) : undefined;
+                      const drawn = source.hover && token.kind === "template" && refName(token.text) === source.hover.name ? (
                         <span
                           key={tokenIndex}
                           tabIndex={0}
@@ -178,13 +175,19 @@ function Source({ source, deferred = [] }: { source: DemoSource; deferred?: Defe
                         >
                           {token.text}
                         </span>
-                      )
-                    )}
-                {fromProd && (
-                  <span data-demo-pill className="ml-3 rounded bg-[#007acc]/15 px-1.5 py-px font-sans text-[11px] text-[#006ab1] dark:bg-[#3794ff]/20 dark:text-[#3794ff]" title={`Read from ${fromProd.prod}`}>
-                    → prod <span className="opacity-70">(not built in dev)</span>
-                  </span>
-                )}
+                      );
+                      // With defer to prod on, the editor says after a ref() where that table is read from
+                      return hint ? (
+                        <Fragment key={tokenIndex}>
+                          {drawn}
+                          <span data-demo-pill className={cn("mx-2 rounded px-1.5 py-px font-sans text-[11px] font-medium", HINT_CLASS[hint.kind])}>
+                            {hint.label}
+                          </span>
+                        </Fragment>
+                      ) : (
+                        drawn
+                      );
+                    })}
                 {/* The message at the end of the line, as the Error Lens extension shows a diagnostic */}
                 {failed && <span className="pl-6 font-sans text-[11px] italic text-[#f14c4c]">{problem.message}</span>}
               </span>
@@ -248,9 +251,11 @@ interface LiveDemoProps {
   pulse?: boolean;
   /** For a picture of the frame: without the words that say it is live */
   still?: boolean;
+  /** Without the source file: the panel alone, for a picture of something only the panel shows */
+  panelOnly?: boolean;
 }
 
-export function LiveDemo({ sources, pulse, still }: LiveDemoProps) {
+export function LiveDemo({ sources, pulse, still, panelOnly }: LiveDemoProps) {
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === "light" ? "light" : "dark";
   const [backend, setBackend] = useState<Backend>(sources[0].backend);
@@ -266,7 +271,7 @@ export function LiveDemo({ sources, pulse, still }: LiveDemoProps) {
   const [previews, setPreviews] = useState(0);
   const [note, setNote] = useState<{ text: string; install: boolean; id: number } | null>(null);
   /** The upstream tables of the file while defer to prod is on in the panel */
-  const [deferred, setDeferred] = useState<DeferEntry[]>([]);
+  const [hints, setHints] = useState<SourceHint[]>([]);
   const panel = useRef<HTMLIFrameElement>(null);
   const results = useRef<HTMLIFrameElement>(null);
   /** The theme the iframes were opened with: a later change is told to them, which keeps what the visitor did */
@@ -347,7 +352,7 @@ export function LiveDemo({ sources, pulse, still }: LiveDemoProps) {
           setBottom("results");
           return;
         case "defer":
-          setDeferred(message.entries);
+          setHints(message.hints);
           return;
         case "note":
           setNote(
@@ -370,7 +375,7 @@ export function LiveDemo({ sources, pulse, still }: LiveDemoProps) {
         setBottom(null);
         setTerminal(null);
         setNote(null);
-        setDeferred([]);
+        setHints([]);
       }
       return next;
     });
@@ -417,7 +422,7 @@ export function LiveDemo({ sources, pulse, still }: LiveDemoProps) {
       </div>
 
       {/* Below the md breakpoint the two do not fit side by side: one is on show, the other a tap away */}
-      <div className="flex border-b text-[11px] md:hidden" role="tablist" aria-label="View">
+      <div className={cn("flex border-b text-[11px] md:hidden", panelOnly && "hidden")} role="tablist" aria-label="View">
         {(["panel", "source"] as const).map((view) => (
           <button
             key={view}
@@ -432,12 +437,12 @@ export function LiveDemo({ sources, pulse, still }: LiveDemoProps) {
         ))}
       </div>
 
-      <div className="relative grid transition-[height] duration-200 md:grid-cols-[minmax(0,9fr)_minmax(0,13fr)]" style={{ height: height ?? FRAME_HEIGHT[backend] }}>
-        <div className={cn("min-h-0 border-r", narrowView === "source" ? "block" : "hidden md:block")}>
-          <Source source={source} deferred={deferred} />
+      <div className={cn("relative grid transition-[height] duration-200", !panelOnly && "md:grid-cols-[minmax(0,9fr)_minmax(0,13fr)]")} style={{ height: height ?? FRAME_HEIGHT[backend] }}>
+        <div className={cn("min-h-0 border-r", panelOnly ? "hidden" : narrowView === "source" ? "block" : "hidden md:block")}>
+          <Source source={source} hints={source.hints ?? hints} />
         </div>
 
-        <div className={cn("relative min-h-0", EDITOR, narrowView === "panel" ? "block" : "hidden md:block")}>
+        <div className={cn("relative min-h-0", EDITOR, panelOnly || narrowView === "panel" ? "block" : "hidden md:block")}>
           {/* The screenshots are of the panel in this state; both are rendered, so the right one is there on first paint */}
           {(["light", "dark"] as const).map((shade) => (
             <img

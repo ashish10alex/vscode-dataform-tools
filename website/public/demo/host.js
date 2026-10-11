@@ -4,7 +4,7 @@
 (() => {
   const query = new URLSearchParams(location.search);
   // Which recorded states to show: a demo Project's, or those of the file with an error (website/demo)
-  const backend = ['dbt', 'diagnostics'].includes(query.get('backend')) ? query.get('backend') : 'dataform';
+  const backend = ['dbt', 'diagnostics', 'defer'].includes(query.get('backend')) ? query.get('backend') : 'dataform';
   const tell = (message) => window.parent !== window && window.parent.postMessage({ source: 'vdt-demo', backend, ...message }, location.origin);
   /** The panel listens for the host's messages on its own window */
   const send = (message) => window.postMessage(message, location.origin);
@@ -219,7 +219,7 @@
         for (const sent of message.on ? moved(state.defer.initial, Date.now() - 3000 - state.defer.capturedAt) : moved(state.initial, Date.now() - 6000 - state.capturedAt)) {
           send(sent);
         }
-        tell({ type: 'defer', entries: message.on ? state.defer.entries : [] });
+        tell({ type: 'defer', hints: message.on ? state.defer.hints : [] });
         return;
       case 'preview':
         // No rows were made up for the file with an error: its query does not run

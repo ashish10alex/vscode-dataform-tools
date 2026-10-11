@@ -52,19 +52,23 @@ const STILLS = [
         },
     },
     {
+        // A file that reads three tables, one in each of defer to prod's states
         name: 'defer_to_prod',
+        frame: 'defer',
         act: async ({ page, panel }) => {
-            // The switch is in the Compile row, which opens on a click
-            if (!(await button(panel, 'Defer to prod').isVisible())) {
-                await panel.locator('button[title="Show compile"]').click();
+            await panel.getByText('read from prod').first().waitFor();
+            // The Compile row opens to the switch and the count; the count opens to each table and where it is read from
+            await panel.locator('button[title="Show compile"]').click();
+            await panel.locator('button').filter({ hasText: /upstream tables? read from prod/ }).last().click();
+            if ((await page.locator('#still [data-demo-pill]').count()) !== 3) {
+                throw new Error('the source does not say where each of its three tables is read from');
             }
-            await button(panel, 'Defer to prod').click();
-            await page.locator('#still [data-demo-pill]').waitFor();
-            await panel.getByText('analytics_dev').first().waitFor();
         },
     },
     {
+        // What only the panel shows: without the source file
         name: 'run_changed',
+        panelOnly: true,
         act: async ({ panel }) => {
             await button(panel, 'Changed').click();
             await panel.getByText('fct_free_transfers').first().waitFor({ timeout: 10_000 });
@@ -103,7 +107,7 @@ for (const theme of ['dark', 'light']) {
     for (const still of STILLS) {
         const page = await context.newPage();
         try {
-            await page.goto(`${origin}/still?frame=${still.frame ?? 'hero'}`);
+            await page.goto(`${origin}/still?frame=${still.frame ?? 'hero'}${still.panelOnly ? '&panel=1' : ''}`);
             const panel = page.frameLocator('#still iframe[title*="compiled query panel"]');
             // The panel has taken the screenshot's place
             await page.locator('#still iframe[title*="compiled query panel"].opacity-100').waitFor({ timeout: 30_000 });

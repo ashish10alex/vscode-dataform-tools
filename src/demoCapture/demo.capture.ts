@@ -7,6 +7,7 @@ import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
 import type { PanelMessage } from '../shared/panelContract';
 import { PanelSlices, applyMessage, initialSlices } from '../shared/panelState';
 import { ENDED_RUN_STATES } from '../shared/cliRunJobs';
+import { builtInDevHint, deferralEntryHint } from '../defer/deferRules';
 
 /*
 Captures what the compiled query panel is sent for the website's live demo (website/demo): opens the demo Project
@@ -20,6 +21,8 @@ const OUT = process.env.DEMO_OUT;
 const FILE = process.env.DEMO_FILE;
 /** Set for a file that is only compiled and dry run: one with an error, for the diagnostics the website shows */
 const COMPILE_ONLY = process.env.DEMO_COMPILE_ONLY === '1';
+/** Set for a Project with defer to prod on: what the editor says beside each ref() is recorded too. "stale" waits for a table that is read from prod and changed on the branch */
+const DEFER = process.env.DEMO_DEFER;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type RunMessage = Extract<PanelMessage, { command: 'run' }>;
@@ -101,6 +104,21 @@ suite('capture for the website demo', function () {
         await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false });
         await vscode.commands.executeCommand('vscode-dataform-tools.showCompiledQueryWtDryRun');
         await until('compile and dry run', () => slices.compile?.status === 'compiled' && !!slices.bigquery && slices.bigquery.dryRunning.length === 0 && slices.bigquery.results.length > 0, 4000);
+        if (DEFER) {
+            const deferral = () => (slices.dataform.deferral?.status === 'ready' ? slices.dataform.deferral : undefined);
+            // That a table read from prod was changed on the branch is found after the deferral is first shown
+            await until('the deferral', () => !!deferral() && (DEFER !== 'stale' || deferral()!.entries.some((entry) => entry.stale)), 2000, 60_000);
+            const target = (id: string) => {
+                const [database, schema, name] = id.split('.');
+                return { database, schema, name };
+            };
+            // The words the editor puts beside each ref(), from the rules the extension's own hints use
+            const hints = [
+                ...deferral()!.entries.map((entry) => ({ name: target(entry.dev).name, ...deferralEntryHint({ ...entry, dev: target(entry.dev), prod: entry.prod ? target(entry.prod) : undefined }) })),
+                ...(deferral()!.builtInDev ?? []).map((entry) => ({ name: target(entry.dev).name, ...builtInDevHint({ ...entry, dev: target(entry.dev) }, Date.now()) })),
+            ].map(({ name, label, kind }) => ({ name, label, kind }));
+            fs.writeFileSync(path.join(OUT!, 'defer-hints.json'), JSON.stringify(hints, null, 1));
+        }
         save('compiled');
     });
 

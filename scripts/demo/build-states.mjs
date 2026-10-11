@@ -204,7 +204,7 @@ function dataform() {
         backend: 'dataform',
         hover: hover('out-dataform', pairs),
         changed: changed('out-dataform', pairs),
-        defer: { capturedAt: earliestTime(deferred), initial: deferred.map(({ message }) => message), entries: dataformBlock.deferral.entries },
+        defer: { capturedAt: earliestTime(deferred), initial: deferred.map(({ message }) => message), hints: read('out-defer', 'defer-hints.json') },
         compile,
         capturedAt: earliestTime(initial),
         initial: initial.map(({ message }) => message),
@@ -283,10 +283,31 @@ function inspector() {
     };
 }
 
+// ---- A file whose upstream tables are in each of defer to prod's states, for the README's picture
+
+function defer() {
+    const workspace = path.join(captureDir, 'football-defer');
+    const initial = renamed(slicesOnly(read('out-defer-refs', 'compiled.json')), renames(workspace, `${DEMO_HOME}/football`));
+    withoutErrors('The file with defer to prod on', lastOf(initial, 'bigquery'));
+    const hints = read('out-defer-refs', 'defer-hints.json');
+    for (const kind of ['prod', 'warning', 'dev']) {
+        if (!hints.some((hint) => hint.kind === kind)) {
+            throw new Error(`The recording of defer to prod has no upstream table of the kind "${kind}": record the demo again`);
+        }
+    }
+    return {
+        backend: 'defer',
+        compile: lastOf(initial, 'compile status').compile,
+        capturedAt: earliestTime(initial),
+        initial: initial.map(({ message }) => message),
+        hints,
+    };
+}
+
 // ---- Write, then check for leaks
 
 fs.mkdirSync(outDir, { recursive: true });
-for (const state of [dataform(), dbt(), diagnostics(), inspector()]) {
+for (const state of [dataform(), dbt(), diagnostics(), inspector(), defer()]) {
     fs.writeFileSync(path.join(outDir, `${state.backend}.json`), JSON.stringify(state) + '\n');
 }
 

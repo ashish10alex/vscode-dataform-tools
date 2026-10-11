@@ -290,15 +290,15 @@ The hover of a table is the same in a Dataform and a dbt project: its name as a 
 
 Develop without rebuilding upstream tables in dev. Like dbt's `--defer`, automatically resolves unbuilt dependencies against production tables (via `vscode-dataform-tools.prodCompilerOptions`) for dry runs, previews, and runs (via proxy views), with in-editor hints on `${ref()}`.
 
-![Defer to prod on: the upstream table that is not built in dev is read from prod, and the ref() says so](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_dark.png#gh-dark-mode-only)
-![Defer to prod on: the upstream table that is not built in dev is read from prod, and the ref() says so](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_light.png#gh-light-mode-only)
+![Defer to prod on: beside each ref(), whether that table is read from prod, was changed on the branch, or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_dark.png#gh-dark-mode-only)
+![Defer to prod on: beside each ref(), whether that table is read from prod, was changed on the branch, or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_light.png#gh-light-mode-only)
 
 ### <a id="run_changed">Run changed actions</a>
 
 Run only the actions whose compiled SQL or materialization changed vs the default branch, like dbt's `state:modified`. Includes interactive file selection and daily-cached merge-base compiles.
 
-![The Changed list: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_dark.png#gh-dark-mode-only)
-![The Changed list: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_light.png#gh-light-mode-only)
+![The Changed list in the compiled query panel: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_dark.png#gh-dark-mode-only)
+![The Changed list in the compiled query panel: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_light.png#gh-light-mode-only)
 
 ---
 
