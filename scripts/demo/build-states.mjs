@@ -4,7 +4,7 @@
 //
 //   node scripts/demo/build-states.mjs <capture dir> <real GCP project>
 //
-// The capture dir has out-dataform/, out-dbt/ and out-diagnostics/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
+// The capture dir has out-dataform/, out-dbt/, out-diagnostics/ and out-defer/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
 // and terminal-dataform.txt / terminal-dbt.txt (what a run prints). Strings that must never be published and that
 // this script cannot know of go in scripts/demo/deny.local.json, a JSON list that git ignores.
 import { execFileSync } from 'node:child_process';
@@ -118,6 +118,21 @@ function lastOf(timed, slice) {
     return timed.filter(({ message }) => message.slice === slice).pop()?.message.value;
 }
 
+/** What the editor shows over the model's ref(), as the hover provider gave it: Markdown */
+function hover(dir, pairs) {
+    const { name, contents } = renamed(read(dir, 'hover.json'), pairs);
+    return { name, markdown: contents.join('\n\n') };
+}
+
+/** The Changed list of the Project with a model edited and a model added, not committed */
+function changed(dir, pairs) {
+    const view = renamed(read(dir, 'changed.json'), pairs);
+    if (view.status !== 'ready' || !view.changed?.length) {
+        throw new Error(`${dir}/changed.json lists no changed action: record the demo again`);
+    }
+    return view;
+}
+
 // ---- Dataform
 
 function dataform() {
@@ -171,8 +186,25 @@ function dataform() {
         gitState: { kind: 'tracking', branch: 'main', upstream: 'origin/main', uncommitted: [], unpushedCommits: 0, unpushedFiles: [], behind: 0 },
     };
     const sql = bigquery.results[0].sql;
+    // The same file with defer to prod on, in a copy of the Project whose dev tables are in datasets of their own
+    // (--schema-suffix=dev) and are not built: what it reads is read from the datasets without the suffix
+    const deferWorkspace = path.join(captureDir, 'football-defer');
+    const deferred = renamed(slicesOnly(read('out-defer', 'compiled.json')), [...renames(deferWorkspace, `${DEMO_HOME}/football`), ...pairs]);
+    withoutErrors('The Dataform file with defer to prod', lastOf(deferred, 'bigquery'));
+    const dataformBlock = {};
+    for (const { message } of deferred.filter(({ message }) => message.slice === 'dataform')) {
+        for (const field of message.touched ?? Object.keys(message.value)) {
+            dataformBlock[field] = message.value[field];
+        }
+    }
+    if (dataformBlock.deferral?.status !== 'ready' || !dataformBlock.deferral.entries.some((entry) => entry.status === 'deferred')) {
+        throw new Error('The recording with defer to prod on defers nothing: record the demo again');
+    }
     return {
         backend: 'dataform',
+        hover: hover('out-dataform', pairs),
+        changed: changed('out-dataform', pairs),
+        defer: { capturedAt: earliestTime(deferred), initial: deferred.map(({ message }) => message), entries: dataformBlock.deferral.entries },
         compile,
         capturedAt: earliestTime(initial),
         initial: initial.map(({ message }) => message),
@@ -196,6 +228,8 @@ function dbt() {
     const lastRun = lastOf(run, 'run status').lastRun;
     return {
         backend: 'dbt',
+        hover: hover('out-dbt', pairs),
+        changed: changed('out-dbt', pairs),
         compile: lastOf(initial, 'compile status').compile,
         capturedAt: earliestTime(initial),
         initial: initial.map(({ message }) => message),

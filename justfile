@@ -83,15 +83,18 @@ record-panel:
     git status --short src/panelRecordings/recordings
 
 # Builds the webviews, copies their bundle to website/public/demo, then checks every state in a headless browser
-# and retakes the hero's screenshots. Needs `npx playwright install chromium` once. Commit what it changes.
+# and retakes the hero's screenshots, then builds the website and takes the README's pictures of the live demo
+# (media/images/demo_*.png). Needs `npx playwright install chromium` once. Commit what it changes.
 # Rebuild the website's live demo from the panel as it is in this checkout
 website-demo:
     npm run build:webviews
     node scripts/demo/copy-bundle.mjs
     node scripts/demo/check.mjs
+    npm --prefix website run build
+    node scripts/demo/stills.mjs
 
 # gcp_project must hold the tables of website/demo/data/seed.sql. Runs the model once with the Dataform CLI and
-# once with dbt. The states are renamed and checked for leaks (scripts/demo/build-states.mjs) before they reach website/.
+# once with dbt, and leaves nothing else behind. The states are renamed and checked for leaks (scripts/demo/build-states.mjs) before they reach website/.
 # Record the live demo's states again from the demo Projects (website/demo), against real BigQuery
 website-demo-capture gcp_project:
     #!/usr/bin/env bash
@@ -121,6 +124,15 @@ website-demo-capture gcp_project:
         VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
     rm -rf /tmp/vdt-demo-ud
     DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-diagnostics" DEMO_FILE=definitions/fct_club_spend.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    # Defer to prod is recorded in a copy of the Project whose dev tables are in datasets of their own, which are
+    # never built: what the file reads is then read from the datasets without the suffix. Nothing is written
+    rm -rf /tmp/vdt-demo-ud
+    cp -R "$work/football" "$work/football-defer"
+    mkdir -p "$work/football-defer/.vscode"
+    printf '{\n  "vscode-dataform-tools.compilerOptions": "--schema-suffix=dev",\n  "vscode-dataform-tools.deferToProd": true\n}\n' > "$work/football-defer/.vscode/settings.json"
+    (cd "$work/football-defer" && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "dev datasets")
+    DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football-defer" DEMO_OUT="$work/out-defer" DEMO_FILE=definitions/fct_player_transfers.sqlx \
         VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
     (cd "$work/football" && dataform run --actions fct_player_transfers) > "$work/terminal-dataform.txt" 2>&1
     (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select football.fct_player_transfers --target dev --profiles-dir .) > "$work/terminal-dbt.txt" 2>&1

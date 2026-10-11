@@ -117,6 +117,25 @@ for (const backend of ['dataform', 'dbt']) {
                 await page.waitForFunction(() => window.told.some((message) => message.type === 'note' && message.command === 'showDependencyGraph'), null, { timeout: 3000 });
             });
         }
+        if (theme === 'dark') {
+            await check(`${backend}: Changed lists what was recorded as changed`, async () => {
+                await button(frame, 'Changed').click();
+                await frame.getByText('fct_free_transfers').first().waitFor({ timeout: 10_000 });
+                await page.keyboard.press('Escape');
+            });
+        }
+        if (backend === 'dataform' && theme === 'light') {
+            await check('dataform: Defer to prod reads the upstream table from prod, and off again', async () => {
+                if (!(await button(frame, 'Defer to prod').isVisible())) {
+                    await frame.locator('button[title="Show compile"]').click();
+                }
+                await button(frame, 'Defer to prod').click();
+                await page.waitForFunction(() => window.told.some((message) => message.type === 'defer' && message.entries.length > 0), null, { timeout: 5000 });
+                await frame.getByText('analytics_dev').first().waitFor({ timeout: 5000 });
+                await button(frame, 'Defer to prod').click();
+                await page.waitForFunction(() => window.told.filter((message) => message.type === 'defer').pop()?.entries.length === 0, null, { timeout: 5000 });
+            });
+        }
         if (backend === 'dataform' && theme === 'dark') {
             await check('dataform: a run through the API ends', async () => {
                 await button(frame, 'API').click();

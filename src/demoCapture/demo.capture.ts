@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
@@ -27,6 +28,8 @@ interface PanelApi {
     onDidPostMessage: vscode.Event<unknown>;
     forgetSentSlices(): void;
     dbtRunMessage(message: RunMessage): Promise<boolean> | undefined;
+    dbtMessage(message: { command: 'dbt.computeChangedActions' }): Promise<void> | undefined;
+    computeChangedActions(): Promise<void> | undefined;
 }
 
 interface InspectorApi {
@@ -155,6 +158,27 @@ suite('capture for the website demo', function () {
         }
     });
 
+    // What the editor shows over the model's ref(), as the extension's hover provider gives it
+    test('hover', async function () {
+        if (COMPILE_ONLY) {
+            this.skip();
+        }
+        const document = await vscode.workspace.openTextDocument(path.join(workspaceFolder!, FILE!));
+        const token = /ref\(\s*["']([^"']+)["']\s*\)/.exec(document.getText());
+        assert.ok(token, `${FILE} has no ref()`);
+        const position = document.positionAt(token.index + token[0].indexOf(token[1]) + 1);
+        let contents: string[] = [];
+        for (let waited = 0; waited < 20_000 && contents.length === 0; waited += 500) {
+            const hovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', document.uri, position);
+            contents = (hovers ?? []).flatMap((hover) => hover.contents.map((content) => (typeof content === 'string' ? content : content.value))).filter(Boolean);
+            if (contents.length === 0) {
+                await sleep(500);
+            }
+        }
+        assert.ok(contents.length > 0, `No hover over ref("${token[1]}")`);
+        fs.writeFileSync(path.join(OUT!, 'hover.json'), JSON.stringify({ name: token[1], contents }, null, 1));
+    });
+
     test('run', async function () {
         if (COMPILE_ONLY) {
             this.skip();
@@ -172,5 +196,48 @@ suite('capture for the website demo', function () {
             }, 5000);
         }
         save('run');
+    });
+
+    // The Changed list, with a model edited and a model added that are not committed. It is the last step: the
+    // Project is put back as it was, and nothing after it sees the edits
+    test('changed actions', async function () {
+        if (COMPILE_ONLY) {
+            this.skip();
+        }
+        const dbt = slices.project?.backend === 'dbt';
+        const edited = path.join(workspaceFolder!, dbt ? 'models/int_signings.sql' : 'definitions/int_signings.sqlx');
+        const added = path.join(workspaceFolder!, dbt ? 'models/fct_free_transfers.sql' : 'definitions/fct_free_transfers.sqlx');
+        const before = fs.readFileSync(edited, 'utf8');
+        const ref = dbt ? '{{ ref("int_signings") }}' : '${ref("int_signings")}';
+        const header = dbt ? '{{ config(materialized="table") }}' : 'config {\n  type: "table",\n  description: "Signings that cost no fee",\n  tags: ["transfers"]\n}';
+        const git = (...args: string[]) => execFileSync('git', args, { cwd: workspaceFolder! });
+        try {
+            // On a branch of its own, as work on a change is: the list then says what the branch is compared with
+            git('checkout', '-q', '-b', 'feat/free-transfers');
+            fs.writeFileSync(added, `${header}\n\nSELECT *\nFROM ${ref}\nWHERE transfer_fee = 0\n`);
+            // The edit is saved in the editor, as a user's is: a save is what has the Project compiled again
+            const compiledBefore = slices.compile?.compile ?? 0;
+            const document = await vscode.workspace.openTextDocument(edited);
+            await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false });
+            const at = document.getText().indexOf('players.position,');
+            assert.ok(at >= 0, 'int_signings does not select players.position');
+            const edit = new vscode.WorkspaceEdit();
+            edit.insert(document.uri, document.positionAt(at), 'players.date_of_birth,\n  ');
+            await vscode.workspace.applyEdit(edit);
+            await document.save();
+            await until('the compile of the edit', () => slices.compile?.status === 'compiled' && slices.compile.compile > compiledBefore, 2000);
+            begin();
+            await (dbt ? panel.dbtMessage({ command: 'dbt.computeChangedActions' }) : panel.computeChangedActions());
+            const changed = () => (dbt ? slices.dbt?.changedActions : slices.dataform.changedActions);
+            await until('the changed actions', () => changed()?.status === 'ready' || changed()?.status === 'error', 2000);
+            assert.strictEqual(changed()?.status, 'ready', `Run Changed gave: ${changed()?.error}`);
+            assert.ok((changed()?.changed?.length ?? 0) >= 2, `Run Changed found: ${JSON.stringify(changed()?.changed)}`);
+            fs.writeFileSync(path.join(OUT!, 'changed.json'), JSON.stringify(changed(), null, 1));
+        } finally {
+            fs.writeFileSync(edited, before);
+            fs.rmSync(added, { force: true });
+            git('checkout', '-q', 'main');
+            git('branch', '-q', '-D', 'feat/free-transfers');
+        }
     });
 });

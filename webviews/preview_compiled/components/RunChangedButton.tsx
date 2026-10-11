@@ -209,7 +209,8 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
-  }, [open]);
+    // The button moves when its count or its spinner comes or goes, so the popover is placed again then
+  }, [open, changedActions?.status, changedActions?.changed?.length]);
 
   useEffect(() => {
     if (!open) { return; }

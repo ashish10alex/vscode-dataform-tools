@@ -529,6 +529,8 @@ export async function activate(context: vscode.ExtensionContext) {
             dbtMessage: (message: DbtPanelMessage) => CompiledQueryPanel.centerPanel?.onDbtMessage(message),
             // As if Run, a Run Tag or Repeat had been clicked in a dbt Project's panel. Resolves to false when the panel shows no dbt file
             dbtRunMessage: (message: DbtRunMessage) => CompiledQueryPanel.centerPanel?.onDbtRunMessage(message),
+            // As if the Changed list of a Dataform Project's panel had been opened
+            computeChangedActions: () => CompiledQueryPanel.centerPanel?.postChangedActions(true),
         },
         // What the last dependency inspector opened was sent, and a way to send it what its page would (src/demoCapture)
         __inspector: inspectorForTests,

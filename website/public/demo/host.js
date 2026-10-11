@@ -19,7 +19,7 @@
   const moved = (value, delta) => JSON.parse(JSON.stringify(value), (_key, item) => (typeof item === 'number' && item > 1.5e12 && item < 2.5e12 ? item + delta : item));
 
   // Clicks the panel answers itself, or that need no answer here
-  const SILENT = new Set(['projectInfoHidden', 'dataform.loadWorkflowUrls', 'dataform.loadWorkflowJobStats', 'dataform.computeChangedActions', 'dbt.computeChangedActions', 'dataform.stopSnooze']);
+  const SILENT = new Set(['projectInfoHidden', 'dataform.loadWorkflowUrls', 'dataform.loadWorkflowJobStats', 'dataform.stopSnooze']);
 
   let state;
   let panelReady = false;
@@ -150,6 +150,26 @@
     }
   }
 
+  /** The Changed list: what differs from the default branch, as it was recorded with two edits not committed */
+  function showChanged() {
+    if (!state.changed) {
+      tell({ type: 'note', command: 'dataform.runChangedActions' });
+      return;
+    }
+    const sendChanged = (changedActions) => {
+      if (backend === 'dbt') {
+        // A dbt Project's block is sent whole
+        const block = state.initial.filter((message) => message.slice === 'dbt').pop();
+        send({ ...block, value: { ...block.value, changedActions } });
+      } else {
+        send(dataformSlice(['changedActions'], { changedActions }));
+      }
+    };
+    sendChanged({ status: 'computing' });
+    // The real host compiles the default branch first, which takes about this long
+    later(1200, () => sendChanged(state.changed));
+  }
+
   function handle(message) {
     switch (message.command) {
       case 'ready':
@@ -185,6 +205,21 @@
         return;
       case 'dataform.refreshWorkflowStatuses':
         answerPoll();
+        return;
+      case 'dataform.computeChangedActions':
+      case 'dbt.computeChangedActions':
+        showChanged();
+        return;
+      case 'dataform.toggleDeferToProd':
+        if (!state.defer) {
+          tell({ type: 'note', command: message.command });
+          return;
+        }
+        // With defer on, the Project is the recorded one whose dev tables are not built
+        for (const sent of message.on ? moved(state.defer.initial, Date.now() - 3000 - state.defer.capturedAt) : moved(state.initial, Date.now() - 6000 - state.capturedAt)) {
+          send(sent);
+        }
+        tell({ type: 'defer', entries: message.on ? state.defer.entries : [] });
         return;
       case 'preview':
         // No rows were made up for the file with an error: its query does not run
