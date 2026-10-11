@@ -39,6 +39,12 @@ export class SliceSender {
         }
     }
 
+    /** The slice as it was last sent. Undefined when it never was */
+    last<Name extends SliceName>(slice: Name): SliceValue<Name> | undefined {
+        const serialised = this.sent.get(slice);
+        return serialised === undefined ? undefined : JSON.parse(serialised);
+    }
+
     /** Forgets what was sent: the panel was reloaded and has nothing */
     reset() {
         this.sent.clear();

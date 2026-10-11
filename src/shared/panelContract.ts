@@ -401,6 +401,8 @@ export type SharedPanelMessage =
      * may have found nobody listening, and the host does not send a slice twice of itself
      */
     | { command: 'ready' }
+    /** The panel's page could not load its script, or failed while it drew: the host writes the page again */
+    | { command: 'reloadPage' }
     /** Open the file that defines the action */
     | { command: 'openAction'; action: Target }
     /** Open a file of the Project, relative to its root with forward slashes, at a 1-based line where one is given */

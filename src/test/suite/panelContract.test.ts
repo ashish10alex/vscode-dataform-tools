@@ -37,7 +37,7 @@ suite('panel contract', () => {
     test("a Backend's own messages carry its name, and the shared ones carry none", () => {
         // Every one of the 44 messages the panel sends today has a place here, see the pull request of piece 4.1
         const commands: Record<PanelCommand, true> = {
-            'ready': true, 'openAction': true, 'openFile': true, 'preview': true, 'run': true, 'runTags': true, 'repeatLastRun': true, 'copyToClipboard': true,
+            'ready': true, 'reloadPage': true, 'openAction': true, 'openFile': true, 'preview': true, 'run': true, 'runTags': true, 'repeatLastRun': true, 'copyToClipboard': true,
             'exportSchema': true, 'selectProject': true, 'showDependencyGraph': true, 'formatFile': true, 'lintFile': true,
             'showLogs': true, 'openExternal': true, 'projectInfoShown': true, 'projectInfoHidden': true, 'refreshProjectInfo': true, 'followInfoLink': true,
             'dataform.updateCompilerOptions': true, 'dataform.switchCompilationMode': true, 'dataform.compileRemotely': true,
@@ -55,7 +55,7 @@ suite('panel contract', () => {
             'dbt.toggleDeferToProd': true, 'dbt.deferToProdActions': true, 'dbt.openDeferToProdSettings': true, 'dbt.retryDeferral': true,
         };
         const names = Object.keys(commands);
-        assert.strictEqual(names.filter((name) => !name.includes('.')).length, 19);
+        assert.strictEqual(names.filter((name) => !name.includes('.')).length, 20);
         assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 32);
         assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 10);
     });

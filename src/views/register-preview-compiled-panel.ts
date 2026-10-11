@@ -622,6 +622,24 @@ export class CompiledQueryPanel {
         }
     }
 
+    /**
+     * Writes the panel's page again, for a page that says it could not load its script or failed while it drew.
+     * It starts with what the panel was last sent, and asks for the rest when it listens (`ready`).
+     */
+    public reloadPage() {
+        if (this.centerPanelDisposed) {
+            return;
+        }
+        const project = this.slices.last('project');
+        // Its nonce is another one, so the page is never the same text as the one on show: the webview loads it
+        this.webviewPanel.webview.html = this.pageWith(this.webviewPanel.webview, {
+            dataform: this.dataformBlock,
+            ...(project ? { project } : {}),
+            dbt: this.slices.last('dbt'),
+            compile: this.slices.last('compile status'),
+        });
+    }
+
     /** Tells the panel of something that happened once, see `HostEvent` */
     public sendEvent(event: HostEvent) {
         this.postMessage(event);
@@ -1235,6 +1253,9 @@ export class CompiledQueryPanel {
             switch (message.command) {
               case 'ready':
                 panel.resendAll();
+                return;
+              case 'reloadPage':
+                panel.reloadPage();
                 return;
               case 'dataform.startSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
@@ -2262,10 +2283,23 @@ export class CompiledQueryPanel {
         </head>
         <body>
             <div id="root"></div>
+            <div id="load-problem" hidden style="padding: 16px; font-family: var(--vscode-font-family); color: var(--vscode-foreground);">
+                <p style="margin: 0 0 12px;">The Compiled Query panel could not be loaded.</p>
+                <button id="load-problem-reload" style="padding: 4px 12px; border: none; border-radius: 2px; cursor: pointer; color: var(--vscode-button-foreground); background: var(--vscode-button-background);">Reload panel</button>
+            </div>
             <script nonce="${nonce}">
                 window.initialState = ${JSON.stringify(initialState).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
             </script>
-            <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
+            <script nonce="${nonce}" type="module" src="${scriptUri}" id="panel-script"></script>
+            <script nonce="${nonce}">
+                // A script that does not load leaves the page empty for good: say so, and offer to load it again.
+                // The script never ran then, so the VS Code API is still there to take
+                document.getElementById('panel-script').addEventListener('error', () => {
+                    document.getElementById('load-problem').hidden = false;
+                    const api = acquireVsCodeApi();
+                    document.getElementById('load-problem-reload').addEventListener('click', () => api.postMessage({ command: 'reloadPage' }));
+                });
+            </script>
         </body>
         </html>
         `;
