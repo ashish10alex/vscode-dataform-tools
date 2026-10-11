@@ -35,6 +35,27 @@ suite('CostEstimatorTab', () => {
         assert.ok(!html.includes('Access Denied'));
     });
 
+    test('lists the actions under their datasets: a dataset with a failure first, then the one that costs the most', () => {
+        const row = (targetName: string, fields: object) => ({ targetName, schema: targetName.split('.')[1], type: 'table', statementType: 'SELECT', totalBytesProcessedAccuracy: 'PRECISE', ...fields });
+        const html = render({ rows: [
+            row('p.cheap.a', { totalGBProcessed: '1.000', costOfRunningModel: 0.01 }),
+            row('p.dear.small', { totalGBProcessed: '2.000', costOfRunningModel: 0.02 }),
+            row('p.dear.big', { totalGBProcessed: '40.000', costOfRunningModel: 0.25, totalBytesProcessedAccuracy: 'UPPER_BOUND' }),
+            row('p.dear.unsure', { bytesEstimateUnknown: true, totalBytesProcessedAccuracy: 'UNKNOWN' }),
+            row('p.broken.x', { error: 'Not found: Table p.raw.x' }),
+        ] });
+
+        const at = (text: string) => { const index = html.indexOf(text); assert.ok(index >= 0, `${text} is not shown`); return index; };
+        // The datasets, then the actions of the one that costs the most: the dearest first, the one with no estimate last
+        assert.ok(at('aria-label="p.broken"') < at('aria-label="p.dear"') && at('aria-label="p.dear"') < at('aria-label="p.cheap"'));
+        assert.ok(at('>big<') < at('>small<') && at('>small<') < at('>unsure<'));
+        assert.ok(html.includes('Not found: Table p.raw.x'));
+        assert.ok(html.includes('upper bound'));
+        // What has no estimate and what failed are counted, and are in no total
+        assert.ok(html.includes('1 failed') && html.includes('1 unknown'));
+        assert.ok(html.includes('5 actions · 43.00 GiB · $0.28'));
+    });
+
     test('shows no error box before an estimate has been asked for', () => {
         const html = render();
 
