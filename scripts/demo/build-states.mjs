@@ -287,8 +287,9 @@ function inspector() {
 
 function defer() {
     const workspace = path.join(captureDir, 'orders');
-    // This Project's dev and prod are two Google Cloud projects, which is what the picture is of: each has a name
-    const pairs = [[prodProject, 'acme-analytics-prod'], [realProject, 'acme-analytics-dev'], ...renames(workspace, `${DEMO_HOME}/orders`)];
+    // This Project is shown with its own two Google Cloud projects, dev and prod, as they are named: the picture is
+    // of the example as its owner has it. The machine's paths and account are still renamed
+    const pairs = renames(workspace, `${DEMO_HOME}/orders`).filter(([from]) => from !== realProject);
     const initial = renamed(slicesOnly(read('out-defer-refs', 'compiled.json')), pairs);
     withoutErrors('The file with defer to prod on', lastOf(initial, 'bigquery'));
     const hints = read('out-defer-refs', 'defer-hints.json');
@@ -325,11 +326,16 @@ function filesUnder(dir) {
     });
 }
 
+const SHOWN_AS_NAMED = [path.join(repo, 'website', 'public', 'demo', 'states', 'defer.json'), path.join(repo, 'website', 'demo', 'defer') + path.sep];
 const leaks = [];
 for (const dir of [path.join(repo, 'website', 'public', 'demo'), path.join(repo, 'website', 'demo')]) {
     for (const file of filesUnder(dir)) {
         const text = fs.readFileSync(file, 'latin1').toLowerCase();
         for (const word of denied) {
+            // The Project of the defer to prod picture is shown with its own project names
+            if (SHOWN_AS_NAMED.some((shown) => file.startsWith(shown)) && (word === realProject || word === prodProject)) {
+                continue;
+            }
             if (text.includes(word.toLowerCase())) {
                 leaks.push(`${path.relative(repo, file)}: holds a denied string of ${word.length} characters starting "${word.slice(0, 2)}…"`);
             }

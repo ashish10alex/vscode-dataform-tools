@@ -141,7 +141,7 @@ website-demo-capture gcp_project prod_project:
     # reads is built in dev and the other is read from prod
     rm -rf /tmp/vdt-demo-ud
     cp -R website/demo/defer "$work/orders"
-    sed -i '' "s/acme-analytics-dev/{{gcp_project}}/" "$work/orders/workflow_settings.yaml"
+    sed -i '' "s/^defaultProject: .*/defaultProject: {{gcp_project}}/" "$work/orders/workflow_settings.yaml"
     printf '{"projectId": "{{gcp_project}}", "location": "EU"}\n' > "$work/orders/.df-credentials.json"
     mkdir -p "$work/orders/.vscode"
     printf '{\n  "vscode-dataform-tools.compilerOptions": "--table-prefix=\\"AA\\"",\n  "vscode-dataform-tools.prodCompilerOptions": "--default-database={{prod_project}}",\n  "vscode-dataform-tools.deferToProd": true\n}\n' > "$work/orders/.vscode/settings.json"

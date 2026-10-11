@@ -1,4 +1,4 @@
-defaultProject: acme-analytics-dev
+defaultProject: alex-personal-dev-01
 defaultLocation: EU
 defaultDataset: xf_example
 defaultAssertionDataset: xf_example_assertions
