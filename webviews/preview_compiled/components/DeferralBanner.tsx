@@ -259,6 +259,8 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
           {logsButton}
         </div>
         <div className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-[var(--vscode-descriptionForeground)]">{deferral.message}</div>
+        {/* The failure is kept for the commit, and a profile outside the workspace changes without the extension seeing it */}
+        {dbt && <div className="text-[var(--vscode-descriptionForeground)]">It is not tried again on a save. After a change to your profile or the prod dbt target, press Retry.</div>}
       </div>
     );
   }

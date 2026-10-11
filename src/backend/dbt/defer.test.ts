@@ -56,6 +56,17 @@ suite('defer to prod in a dbt Project', () => {
         assert.deepStrictEqual(dbtDeferral(dev, buildDbtGraph(prodManifest(['model.xf_example.stg_orders'], ['model.xf_example.stg_payments'])), shown), { deferred: [], builtInDev: [] });
     });
 
+    test('a table dbt counts as read that the compiled SQL does not name is not listed', () => {
+        // As a ref() in a branch of Jinja that was not taken leaves it: among what the model depends on, and not in its SQL
+        const manifest = devManifest(FCT_ORDERS, ['stg_orders']);
+        const node = manifest.nodes![FCT_ORDERS] as { compiled_code?: string };
+        node.compiled_code = node.compiled_code!.split(`\`${P}\`.\`xf_example\`.\`stg_payments\``).join('(select 1 as order_id, 2 as amount)');
+        assert.deepStrictEqual(dbtDeferral(buildDbtGraph(manifest), buildDbtGraph(prodManifest()), shown), {
+            deferred: [{ dev: target(P, 'stg_orders'), prod: target(PROD, 'stg_orders') }],
+            builtInDev: [],
+        });
+    });
+
     test('what an ephemeral model reads counts as read by the model it is inlined into', () => {
         // dim_customers reads the ephemeral int_customer_countries, which reads stg_customers and the seed
         const dev = buildDbtGraph(devManifest('model.xf_example.dim_customers', ['stg_customers']));

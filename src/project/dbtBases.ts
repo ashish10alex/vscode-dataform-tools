@@ -96,7 +96,7 @@ async function parseBase(project: ProjectState, options: DbtOptions, base: Chang
     try {
         await extractSnapshot(root, base.mergeBaseSha, snapshotDir);
         if (!fs.existsSync(path.join(snapshotDir, 'dbt_project.yml'))) {
-            throw new Error(`${base.baseRef} @ ${base.mergeBaseSha.slice(0, 7)} has no dbt project here, so there is nothing to compare with.`);
+            throw new Error(`${base.baseRef} @ ${base.mergeBaseSha.slice(0, 7)} has no dbt project here.`);
         }
         const declaresPackages = ['packages.yml', 'dependencies.yml'].some((file) => fs.existsSync(path.join(snapshotDir, file)));
         const install = !(await sharePackages(root, snapshotDir)) && declaresPackages;

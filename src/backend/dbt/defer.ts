@@ -25,7 +25,7 @@ export interface DbtDeferral {
     builtInDev: Target[];
 }
 
-/** How BigQuery SQL that dbt compiled names a table */
+/** How BigQuery SQL that dbt compiled names a table. A Project that turns dbt's quoting off is not matched, and lists nothing */
 function relationOf(target: Target): string {
     return `\`${target.database}\`.\`${target.schema}\`.\`${target.name}\``;
 }
@@ -34,8 +34,10 @@ function relationOf(target: Target): string {
  * Which of the tables that the actions `shown` read were compiled to their table in prod. `dev` is the compile on
  * show and `prod` the manifest it deferred to; an action is the same in both when dbt calls it the same, since its
  * Target differs. A table is listed when prod has it somewhere else than the dbt target: as deferred when the SQL
- * of an action on show names its table in prod, else as built in dev. What prod does not have (new on the branch), a
- * source, and an action whose SQL this compile left out are not listed. An ephemeral model has no table: what it
+ * of an action on show names its table in prod, as built in dev when it names its table in the dbt target. One the
+ * SQL names in neither place is not read, and is not listed: dbt counts a `ref()` in a branch of Jinja that was not
+ * taken, or in a `-- depends_on:` comment, as read. What prod does not have (new on the branch), a source, and an
+ * action whose SQL this compile left out are not listed either. An ephemeral model has no table: what it
  * reads counts as read by the action it is inlined into.
  */
 export function dbtDeferral(dev: DbtGraph, prod: DbtGraph, shown: ActionId[]): DbtDeferral {
@@ -71,10 +73,12 @@ export function dbtDeferral(dev: DbtGraph, prod: DbtGraph, shown: ActionId[]): D
             if (!prodTarget || isExternalKind(upstream.kind) || !buildsTable(upstream) || targetId(prodTarget) === upstream.id || listed.has(upstream.id)) {
                 continue;
             }
-            listed.add(upstream.id);
+            // Not marked as listed when the SQL of this action names neither: another action on show may read it
             if (sql.includes(relationOf(prodTarget))) {
+                listed.add(upstream.id);
                 result.deferred.push({ dev: upstream.target, prod: prodTarget });
-            } else {
+            } else if (sql.includes(relationOf(upstream.target))) {
+                listed.add(upstream.id);
                 result.builtInDev.push(upstream.target);
             }
         }
