@@ -18,25 +18,90 @@ A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and 
 ![The compiled query of a Dataform model beside its file, with what a dry run says it will scan and cost](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_compiled_query_dataform_dark.png#gh-dark-mode-only)
 ![The compiled query of a Dataform model beside its file, with what a dry run says it will scan and cost](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_compiled_query_dataform_light.png#gh-light-mode-only)
 
-This is a picture. You can click through the real panel, with made-up data, at [dataformtools.com](https://dataformtools.com).
+![The compiled query of a dbt model beside its file: the same panel a Dataform file has](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_compiled_query_dbt_dark.png#gh-dark-mode-only)
+![The compiled query of a dbt model beside its file: the same panel a Dataform file has](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_compiled_query_dbt_light.png#gh-light-mode-only)
+
+These are pictures. You can click through the real panel, with made-up data, at [dataformtools.com](https://dataformtools.com).
+
+---
+
+## Features
+
+A dash means not in a dbt project yet. Each name links to its description at [dataformtools.com/features](https://dataformtools.com/features).
+
+| Feature | Dataform | dbt | What it does |
+| --- | :---: | :---: | --- |
+| [Compiled query and dry run](https://dataformtools.com/features#compilation) | ✅ | ✅ | Beside the file on save, with the size and cost of a dry run and the schema of the result |
+| [Errors in the editor](https://dataformtools.com/features#diagnostics) | ✅ | ✅ | Compile errors and BigQuery's dry-run errors, on the line you wrote |
+| [Preview query results](https://dataformtools.com/features#preview_query_results) | ✅ | ✅ | Runs the compiled query and shows its rows; for a dbt test, the rows that fail it |
+| [Run files and tags](https://dataformtools.com/features#filetagruns) | ✅ | ✅ | With dependencies, dependents or a full refresh. Dataform: the CLI or the Dataform API. dbt: `dbt build` |
+| [Run changed actions](https://dataformtools.com/features#run_changed_actions) | ✅ | ✅ | Runs only what differs from the default branch, like dbt's `state:modified`, with a tick per file |
+| [Tests](https://dataformtools.com/features#test_actions) | ✅ | ✅ | Dataform assertions and `test` actions; the dbt tests of a model, beside its compiled query |
+| [Dependency graph](https://dataformtools.com/features#depgraph) | ✅ | ✅ | The whole project as a graph, centred on the file in the editor |
+| [Hover](https://dataformtools.com/features#hover) | ✅ | ✅ | A table's kind, location, description, partition, row count and columns; a column's type and description |
+| [Go to definition](https://dataformtools.com/features#definition) | ✅ | ✅ | From a `ref()` to its file. Dataform: also JavaScript variables and modules. dbt: also `source()` and macro calls |
+| [Completions](https://dataformtools.com/features#autocomplete) | ✅ | ✅ | Names inside `ref()` and `source()`, and the columns of the tables the file reads |
+| [Column search](https://dataformtools.com/features#column_search) | ✅ | ✅ | Pick a column of a table by name, type or description |
+| [Defer to production](https://dataformtools.com/features#defer_to_prod) | ✅ | ✅ | Reads upstream tables that are not built in dev from production, like dbt's `--defer`. In a dbt project dbt does it, and `dbtProdTarget` names prod |
+| [Column lineage and impact](https://dataformtools.com/features#column_lineage) | ✅ | — | Columns dropped or retyped against prod, and who reads them downstream, from Dataplex |
+| [Dependency inspector](https://dataformtools.com/features#dependency_inspector) | ✅ | — | One filter across a model and its dependencies, then dry run or run each |
+| [Cost estimator](https://dataformtools.com/features#cost_estimator) | ✅ | — | What a tag will cost before you run it |
+| [BigQuery jobs of a run](https://dataformtools.com/features#workflow_invocations) | ✅ | — | Each job of an API or CLI run, live: state, duration, bytes billed and cost |
+| [Formatting](https://dataformtools.com/features#formatting) | ✅ | — | Formats `.sqlx` files with [sqlfluff](https://github.com/sqlfluff/sqlfluff) |
+| [Code actions](https://dataformtools.com/features#codeactions) | ✅ | — | Applies the fix a dry run suggests |
+| Config block IntelliSense | ✅ | — | Completion, hover and warnings for `config {}` options, by action type |
+
+The pictures below are taken from the [live demo](https://dataformtools.com) by `just website-demo`, of the extension's own panel.
+
+### Errors, before anything runs
+
+A dry run checks every save against BigQuery, and what it rejects is marked on the line you wrote, listed in Problems and told in the panel.
+
+![A model with a typo: the dry-run error on its line, in Problems and in the compiled query panel](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_errors_dark.png#gh-dark-mode-only)
+![A model with a typo: the dry-run error on its line, in Problems and in the compiled query panel](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_errors_light.png#gh-light-mode-only)
+
+### Run a file and preview its rows
+
+Run a file with the Dataform CLI, the Dataform API or `dbt build`, and preview the rows of its query.
+
+![The panel after a run, with its bytes billed, and the query results below](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_and_results_dark.png#gh-dark-mode-only)
+![The panel after a run, with its bytes billed, and the query results below](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_and_results_light.png#gh-light-mode-only)
+
+### Hover over a table
+
+The hover of a table is the same in a Dataform and a dbt project: its kind, location, description, partition, row count and columns.
+
+![The card shown over a ref(): the table, its kind, location, description and columns](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_hover_dark.png#gh-dark-mode-only)
+![The card shown over a ref(): the table, its kind, location, description and columns](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_hover_light.png#gh-light-mode-only)
+
+### Defer to production
+
+Each `${ref()}` says whether its table is read from production or is built in dev.
+
+![Defer to prod on, with prod in a Google Cloud project of its own: beside each ref(), whether that table is read from prod or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_dark.png#gh-dark-mode-only)
+![Defer to prod on, with prod in a Google Cloud project of its own: beside each ref(), whether that table is read from prod or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_light.png#gh-light-mode-only)
+
+### Run changed actions
+
+The panel lists the actions that differ from the default branch, and runs all of them or the files you tick.
+
+![The Changed list in the compiled query panel: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_dark.png#gh-dark-mode-only)
+![The Changed list in the compiled query panel: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_light.png#gh-light-mode-only)
 
 ---
 
 ## Installation
 
-These steps are for a Dataform project. For a dbt project, see [dbt projects](#dbt-projects).
-
 1. Install the extension from the [marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode).
-2. [Install Dataform cli](https://cloud.google.com/dataform/docs/use-dataform-cli)
 
-   ```bash
-   # requires nodejs & npm - https://nodejs.org/en/download
-   npm i -g @dataform/cli
-   ```
+2. Install the CLI of your tool. The extension uses the one you have and installs nothing.
 
-   Run `dataform compile` from the root of your Dataform project to ensure that you are able to use the cli.
+   | Dataform | dbt |
+   | --- | --- |
+   | `npm i -g @dataform/cli` | `pip install dbt-core dbt-bigquery` or `brew install dbt-labs/dbt/dbt` |
+   | Needs [Node.js](https://nodejs.org/en/download). See [Dataform CLI](https://cloud.google.com/dataform/docs/use-dataform-cli). | dbt Core 1.8 or later, or dbt v2. See [which dbt is used](docs/dbt.md#which-dbt-is-used). |
 
-3. [Install gcloud cli](https://cloud.google.com/sdk/docs/install) and run
+3. [Install gcloud cli](https://cloud.google.com/sdk/docs/install) and sign in for BigQuery:
 
    ```bash
    gcloud init
@@ -44,459 +109,37 @@ These steps are for a Dataform project. For a dbt project, see [dbt projects](#d
    gcloud config set project <project_id> #replace with your gcp project id
    ```
 
-4. [Install sqlfluff](https://github.com/sqlfluff/sqlfluff) (optional, for formatting)
+4. **Open the folder that has `workflow_settings.yaml`, `dataform.json` or `dbt_project.yml`, or a folder above it.** The project of a file is the nearest folder above it that has a settings file, up to the folder you opened. So a project inside a larger repository works with the repository open. The extension does not look above the folder you opened.
 
-   ```bash
-   # install python and run
-   pip install sqlfluff
-   ```
-
-5. **Open the folder that has `workflow_settings.yaml` or `dataform.json`, or a folder above it.** The project of a file is the nearest folder above it that has a settings file, up to the folder you opened. So a Dataform project inside a larger repository works with the repository open. The extension does not look above the folder you opened.
+5. Optional, to format `.sqlx` files: `pip install sqlfluff`.
 
 > [!NOTE]
 > Trouble installing or looking for a specific customization ? Please see [FAQ section](FAQ.md), if you are still stuck, please [raise an issue here](https://github.com/ashish10alex/vscode-dataform-tools/issues)
 
-* ️▶️ [Installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4)
-* ️▶️ [Installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc)
-* ️▶️ [Dataform workspace run using API demo and technical details](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj)
+Videos: [installation on Windows](https://www.youtube.com/watch?v=8AsSwzmzhV4), [installation and demo on Ubuntu](https://www.youtube.com/watch?v=nb_OFh6YgOc), [a Dataform workspace run using the API](https://youtu.be/7Tt7KdssW3I?si=MjHukF26Y19kBPkj).
 
----
+## Documentation
 
-## dbt projects
-
-From version 2.0.0 the extension works in a dbt project on BigQuery, beside Dataform. It uses the dbt you have installed: dbt Core 1.8 or later with the BigQuery adapter, or dbt v2. It installs nothing.
-
-![The compiled query of a dbt model beside its file: the same panel a Dataform file has](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_compiled_query_dbt_dark.png#gh-dark-mode-only)
-![The compiled query of a dbt model beside its file: the same panel a Dataform file has](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_compiled_query_dbt_light.png#gh-light-mode-only)
-
-### Set-up
-
-1. Install dbt, in one of these ways:
-
-   ```bash
-   pip install dbt-core dbt-bigquery
-   ```
-
-   ```bash
-   brew install dbt-labs/dbt/dbt
-   ```
-
-2. Sign in for BigQuery, as for Dataform:
-
-   ```bash
-   gcloud auth application-default login
-   ```
-
-3. **Open the folder that has `dbt_project.yml`, or a folder above it.** The project of a file is the nearest folder above it that has a settings file, up to the folder you opened. So a dbt project inside a larger repository works with the repository open. The extension does not look above the folder you opened. A project in a sub-folder keeps the `vscode-dataform-tools.*` settings of its own `.vscode/settings.json`; other settings in that file, such as the colour theme, apply only when the project's folder is opened or added to the workspace.
-
-The extension looks for dbt in this order and uses the first it finds: the `dbtExecutablePath` setting, `$DBT_BIN`, the project's `.venv` then `venv`, the environment the Python extension has selected, `PATH`, then common install directories. The panel's **Project** tab says which dbt is in use and how it was found.
-
-### What works
-
-| | In a dbt project |
-| --- | --- |
-| Compiled query | The model in the editor with the tests that read it, each in its own section. Hooks are shown as written. |
-| Dry run | Size and cost of each compiled query, and BigQuery's error at its line and column. |
-| Schema | The columns and types of the compiled query, with the descriptions from your YAML. |
-| Preview | Runs the compiled query and shows the rows. For a test, the rows that fail it. |
-| Run | `dbt build` in a terminal, for the file, with dependencies, with dependents, as a full refresh, or by tag. |
-| Run Changed | The actions that differ from the merge-base with the default branch, as dbt finds them (`state:modified`). The panel lists them by file with why each changed, and runs all of them or the files you tick. |
-| Defer to prod | With **Defer to prod** on, an upstream table that is not built in your dbt target is read from prod, as dbt's `--defer` does: in the compiled query, its dry run and preview, and in runs. The panel lists which tables were read from prod. Needs `dbtProdTarget`. |
-| dbt target | Shown in the panel. Pick another there; the choice is yours alone and is kept for the workspace. |
-| Compile errors | Shown in the panel with a link to the file, and marked in the editor where dbt gave a line. |
-| Dry-run errors | BigQuery's errors are marked in the editor too. See [In the editor](#in-the-editor). |
-| Go to definition | From a `ref()` to its model, seed or snapshot; from a `source()` to its table in the YAML file; from a macro call to its `{% macro %}` line. Also from a `ref()` or `source()` written in a YAML file. |
-| Hover | On a `ref()`, a `source()` or a plain `project.dataset.table` id: the same hover as in a Dataform project, with the table in BigQuery, its kind, location, description, partitioning, row count and columns, and a link to search its columns. On a column name: its type and description, in each table the file reads that has it. |
-| Search columns | *Search columns in a model*, from the hover, the right-click menu or the command palette: pick a column of the table under the cursor, or of a table the file reads, by name, type or description. |
-| Completions | Model, seed and snapshot names inside `ref('`; sources and their tables inside `source('`; column names after an alias and a dot, and of every table the file reads. |
-| Other files | A seed, a file of sources, a macro file and `dbt_project.yml` each show what they are. |
-| Dependency graph | **Graph** in the panel, or *Show dependency graph*. Every model, seed, snapshot, source, test and exposure, centred on the file in the editor. Tests are hidden until you tick *Show tests*. Read from a parse of the project, so nothing needs compiling first. |
-
-Not in a dbt project yet: the dependency inspector, column lineage, running through an API, the cost estimate of a tag, formatting, and hover and completions for macros.
-
-### In the editor
-
-Go to definition, hover and completions work in the `.sql` files of a dbt project as soon as one is open in the editor: the extension parses the project then, in the background, without the panel.
-
-* **The language of your `.sql` files is not changed.** The extension claims no language, grammar or file icon for `.sql`. It answers for the files under the folder that has `dbt_project.yml`, whatever SQL extension colours them.
-* **Beside another dbt extension these features stand down.** VS Code shows what every extension offers, so two dbt extensions would give each hover and suggestion twice. While the dbt extension of dbt Labs or Power User for dbt is installed and enabled, go to definition, hover and completions of this extension are off, and the output channel says so. Set `vscode-dataform-tools.dbtEditorFeatures` to `on` to have both, or to `off` to never have these.
-* **Schemas are read from BigQuery once per compile.** The first hover or completion that needs a table asks BigQuery for it. The answer is kept in memory until the project is next parsed or compiled, so a save reads it afresh.
-* **Dry-run errors.** BigQuery reports an error at a line of the compiled query. When that line is in your file unchanged, the error is marked there. When Jinja built the line, the error is marked on the first line of the file and says where it is in the compiled query; the panel shows it in place. An error in a generic test is marked on the line of the YAML file that declares the test.
-* **A save without the panel.** A save opens the panel unless `showCompiledQueryInVerticalSplitOnSave` is off. When the panel stays closed, a save still compiles the file and dry-runs its model and tests, so the errors are marked. Set `vscode-dataform-tools.dbtDryRunOnSave` to `false` to have such a save only parse the project. Without BigQuery credentials nothing is dry-run and nothing is marked.
-
-### How it compiles
-
-* **dbt Core and dbt v2** compile the file you are looking at, with its tests, and never the whole project. A file you have not looked at since the last save is compiled when you open it.
-* **A dbt v2 project with `on-run-start` or `on-run-end` hooks is only parsed**, because dbt v2 runs those hooks against the warehouse on every compile. The panel then shows the SQL as written and offers to compile with hooks.
-* dbt writes its artifacts for these compiles into the extension's storage, not into your project's `target/`.
-* **Run Changed needs no manifest from you.** The extension takes the merge-base with `defaultBranch` out of git, parses it with your dbt, dbt target and variables, and keeps that manifest by commit in its own storage. It runs `dbt build --select state:modified --state <that manifest>`. The list is worked out when you open the button's popover, not in the background.
-* **Defer to prod needs no manifest from you either.** Set `dbtProdTarget` to the dbt target of your profile that builds prod, and turn **Defer to prod** on in the panel or the status bar. The extension parses the same merge-base with that dbt target, keeps that manifest by commit too, and gives it to every compile of a file and every run as `--defer --defer-state <that manifest>`. dbt then decides: an upstream table that is not selected and is not built in your dbt target is read from prod. Run Changed still compares with the manifest of your own dbt target (`--state`). The parse connects to nothing; you need read access to the prod tables when a query runs. dbt Core and dbt v2 both do this. `--favor-state` is not passed, and the labels after a `ref()` are for Dataform files only.
-
-### Where BigQuery jobs run
-
-A dry run or a preview is a BigQuery job, and a job runs in a GCP project. There are two rules:
-
-* **In a dbt project**, a job runs in the project of the table it is for, and BigQuery picks the location.
-* **In a Dataform project**, a job runs in the default project of your credentials, as it always has.
-
-The settings `gcpProjectId` and `gcpLocation` override both.
-
-### A folder that is both a Dataform and a dbt project
-
-A folder that has `workflow_settings.yaml` or `dataform.json`, and also `dbt_project.yml`, is two projects. There, the file says which project it belongs to:
-
-| File | Project |
-|---|---|
-| `.sqlx` | Dataform |
-| `.sql`, `.csv`, `.py` | dbt |
-| YAML, `.js`, `.json` | The one that compiles an action from it. |
-| A file that neither claims | The `vscode-dataform-tools.backend` setting. Left empty, the extension asks once and remembers the answer for the workspace. |
-
-### Settings for dbt
-
-| Setting | What it is |
-| --- | --- |
-| `vscode-dataform-tools.dbtExecutablePath` | The dbt to use, when you do not want the one the extension finds. |
-| `vscode-dataform-tools.dbtTarget` | The dbt target for everyone who uses the workspace. Empty lets dbt choose. |
-| `vscode-dataform-tools.dbtProdTarget` | The dbt target that builds prod. Defer to prod reads from it. Empty, defer to prod is not applied. |
-| `vscode-dataform-tools.dbtVars` | dbt's `--vars`, for compiles and runs. |
-| `vscode-dataform-tools.dbtProfilesDir` | dbt's `--profiles-dir`, for compiles and runs. |
-| `vscode-dataform-tools.dbtCompileWithHooks` | Compile a dbt v2 project that has on-run hooks. The hooks then run on every save. |
-| `vscode-dataform-tools.dbtEditorFeatures` | Go to definition, hover and completions in dbt files: `auto` (off beside another dbt extension), `on` or `off`. |
-| `vscode-dataform-tools.dbtDryRunOnSave` | Compile and dry-run a dbt file on save while the panel is closed. Off, a save only parses. |
-| `vscode-dataform-tools.backend` | Only for a folder that is both a Dataform and a dbt project: which one a file belongs to when its type does not say. |
-
-### Remote hosts
-
-The extension works over Remote SSH, in dev containers and in WSL, for both Dataform and dbt: it runs where your project is, and uses the dbt, the Dataform CLI and the credentials of that machine. A dev container with a dbt project is in [`.devcontainer/dbt`](.devcontainer/dbt/README.md).
-
----
-
-## ✨ Features / Previews
-
-<table>
-  <thead>
-    <tr>
-      <th>Feature</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><a href="#compilation">Compiled Query & Dry run stats</a></td>
-      <td>Compiled query with dry run stats in a vertical split, with the option to switch between backends for compilation (CLI or Dataform API)</td>
-    </tr>
-    <tr>
-      <td><a href="#errors">Inline diagnostics on <code>.sqlx</code> file</a> 🚨</td>
-      <td>Native LSP like experience with diagnostics being directly put on sqlx file</td>
-    </tr>
-    <tr>
-      <td>Dependency graph</td>
-      <td>Interactive dependency graph with external sources highlighted in distinct colors</td>
-    </tr>
-    <tr>
-      <td><a href="#preview_query_results">Preview query results</a></td>
-      <td>Preview query results in a table by running the file</td>
-    </tr>
-    <tr>
-      <td><a href="#defer_to_prod">Defer to production</a></td>
-      <td>Develop without rebuilding upstream tables in dev. Like dbt's <code>--defer</code>, automatically resolves unbuilt dependencies against production tables (via <code>vscode-dataform-tools.prodCompilerOptions</code>) for dry runs, previews, and runs (via proxy views), with in-editor hints on <code>${ref()}</code></td>
-    </tr>
-    <tr>
-      <td><a href="#run_changed">Run changed actions</a></td>
-      <td>Run only the actions whose compiled SQL or materialization changed vs the default branch, like dbt's <code>state:modified</code>. Includes interactive file selection and daily-cached merge-base compiles</td>
-    </tr>
-    <tr>
-      <td>Column impact &amp; lineage</td>
-      <td>Inspect column-level lineage and downstream impact directly from the compiled view. Highlights columns dropped or retyped against prod and maps downstream consumers via Dataplex lineage, with PR markdown export</td>
-    </tr>
-    <tr>
-      <td><a href="#hover">BigQuery hover provider</a></td>
-      <td>Hover definition for tables, columns, column descriptions, types and common BigQuery functions</td>
-    </tr>
-    <tr>
-      <td>Cost estimator</td>
-      <td>Estimate the cost of running a Tag</td>
-    </tr>
-    <tr>
-      <td>Go to definition</td>
-      <td>Go to definition for a source in <code>${ref("my_source")}</code>, which opens <code>my_source.sqlx</code> or <code>sources.js</code> at the line that defines it, and from a JavaScript variable or module in a <code>.sqlx</code> file to its <code>js</code> block or <code>.js</code> file</td>
-    </tr>
-    <tr>
-      <td>Auto-completion</td>
-      <td>
-        <ul>
-          <li>Column names of current model</li>
-          <li>Dependencies and declarations in <code>${ref("..")}</code> trigger when <code>$</code> character is typed</li>
-          <li>Dependencies when <code>"</code> or <code>'</code> is typed inside the config block which has <code>dependencies</code> keyword is in the line prefix</li>
-          <li><code>tags</code> when <code>"</code> or <code>'</code> is typed inside the config block which has <code>tags</code> keyword is in the line prefix</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><a href="#codeactions">Code actions</a></td>
-      <td>Apply dry run suggestions at the speed of thought</td>
-    </tr>
-    <tr>
-      <td>Config block IntelliSense</td>
-      <td>Completion, hover docs and as-you-type warnings with quick fixes for <code>config {}</code> options, based on the action <code>type</code>. Catches typos like <code>partitonBy</code> and options that don't apply, like <code>uniqueKey</code> on a view</td>
-    </tr>
-    <tr>
-      <td><a href="#filetagruns">Run file(s)/tag(s)</a></td>
-      <td>Run file(s)/tag(s), optionally with dependencies/dependents/full refresh using cli or <a href="https://cloud.google.com/nodejs/docs/reference/dataform/latest/dataform/v1beta1.dataformclient">Dataform API</a></td>
-    </tr>
-    <tr>
-      <td>Format using Sqlfluff 🪄</td>
-      <td>Format <code>.sqlx</code> files using <a href="https://github.com/sqlfluff/sqlfluff">sqlfluff</a></td>
-    </tr>
-    <tr>
-      <td><a href="#snippets">BigQuery snippets</a></td>
-      <td>Code snippets for generic BigQuery functions taken from <a href="https://github.com/shinichi-takii/vscode-language-sql-bigquery">vscode-language-sql-bigquery</a> extension</td>
-    </tr>
-    <tr>
-      <td><a href="#tests">Tests</a></td>
-      <td>Support to view and run tests. Running test is currently only supported via Dataform CLI.</td>
-    </tr>
-    <tr>
-      <td>Dependency Inspector</td>
-      <td>Explore the dependencies of a model, apply one filter across all of them, and dry run or run each in BigQuery</td>
-    </tr>
-  </tbody>
-</table>
-
-The pictures below are taken from the [live demo](https://dataformtools.com) by `just website-demo`, of the extension's own panel. Every feature is described at [dataformtools.com/features](https://dataformtools.com/features).
-
-### <a id="errors">Errors, before anything runs</a>
-
-A dry run checks every save against BigQuery. What it rejects is marked on the line you wrote, listed in Problems and told in the panel.
-
-![A model with a typo: the dry-run error on its line, in Problems and in the compiled query panel](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_errors_dark.png#gh-dark-mode-only)
-![A model with a typo: the dry-run error on its line, in Problems and in the compiled query panel](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_errors_light.png#gh-light-mode-only)
-
-### <a id="preview_query_results">Run a file and preview its rows</a>
-
-Run a file with the Dataform CLI, the Dataform API or `dbt build`, with its BigQuery jobs listed in the panel as they go, and preview the rows of its query.
-
-![The panel after a run, with its bytes billed, and the query results below](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_and_results_dark.png#gh-dark-mode-only)
-![The panel after a run, with its bytes billed, and the query results below](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_and_results_light.png#gh-light-mode-only)
-
-### <a id="hover">Hover over a table</a>
-
-Hover over tables, columns, column types and BigQuery functions to see their documentation, syntax and examples without leaving your editor.
-
-The hover of a table is the same in a Dataform and a dbt project: its name as a link to BigQuery, a **Search columns** link, its kind and location, its description, its partition, row count and last change, and its columns. Descriptions written in the project win over BigQuery's. A table that is not built yet says so.
-
-![The card shown over a ref(): the table, its kind, location, description and columns](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_hover_dark.png#gh-dark-mode-only)
-![The card shown over a ref(): the table, its kind, location, description and columns](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_hover_light.png#gh-light-mode-only)
-
-### <a id="defer_to_prod">Defer to production</a>
-
-Develop without rebuilding upstream tables in dev. Like dbt's `--defer`, automatically resolves unbuilt dependencies against production tables (via `vscode-dataform-tools.prodCompilerOptions`) for dry runs, previews, and runs (via proxy views), with in-editor hints on `${ref()}`.
-
-![Defer to prod on, with prod in a Google Cloud project of its own: beside each ref(), whether that table is read from prod or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_dark.png#gh-dark-mode-only)
-![Defer to prod on, with prod in a Google Cloud project of its own: beside each ref(), whether that table is read from prod or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_light.png#gh-light-mode-only)
-
-### <a id="run_changed">Run changed actions</a>
-
-Run only the actions whose compiled SQL or materialization changed vs the default branch, like dbt's `state:modified`. Includes interactive file selection and daily-cached merge-base compiles.
-
-![The Changed list in the compiled query panel: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_dark.png#gh-dark-mode-only)
-![The Changed list in the compiled query panel: a new table and a view whose SQL changed, against the default branch](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_run_changed_light.png#gh-light-mode-only)
-
----
-
-### <a id="cli_run_jobs">BigQuery jobs of a CLI run</a>
-
-A `dataform run` sent to the terminal is listed with the API runs, in the Executions tab and the latest-run banner, tagged `cli`. It has a row for each BigQuery job, live while the run goes: state, duration, slot time, bytes billed, estimated cost, the failure reason and a link to the job in the Cloud console. "Stop run" cancels the run's jobs.
-
-The run is given `--job-prefix vscode-<id>`, so the IDs of its jobs start with `dataform-vscode-<id>-`, and your jobs are listed for the ones that have it. It needs a Dataform CLI with `--job-prefix` and the `bigquery.jobs.list` permission. A job is named after the table it writes to; one that writes to none goes by the end of its ID. Turn it off with `vscode-dataform-tools.trackCliRunJobs`.
+* [dbt projects](docs/dbt.md): which dbt is used, what each feature does in a dbt project, how it compiles, where BigQuery jobs run, a folder that is both kinds of project, settings, and remote hosts (Remote SSH, dev containers, WSL).
+* [Dataform projects](docs/dataform.md): the BigQuery jobs of a CLI run, and Run Changed from a keybinding.
+* [FAQ](FAQ.md): answers to common problems.
+* [dataformtools.com/features](https://dataformtools.com/features): every feature, in words.
 
 ## Commands
 
-Most features can be invoked via the Command Palette by pressing <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> on Mac and searching for the following. Commands in the category "Dataform/dbt" work in both kinds of project; the others are for Dataform and are not listed while a file of a dbt project is in focus. These key bindings can also be attached to a keybinding to further streamline your workflow.
-
-<table>
-  <thead>
-    <tr>
-      <th>Command</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>vscode-dataform-tools.showCompiledQueryInWebView</code></td>
-      <td>Show compiled Query in web view</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runCurrentFile</code></td>
-      <td>Run current file</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runCurrentFileWtDeps</code></td>
-      <td>Run current file with dependencies</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runCurrentFileWtDownstreamDeps</code></td>
-      <td>Run current file with dependents</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runQuery</code></td>
-      <td>Preview query results</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runTag</code></td>
-      <td>Run a tag</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runTagWtDeps</code></td>
-      <td>Run a tag with dependencies</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runTagWtDownstreamDeps</code></td>
-      <td>Run a tag with dependents</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runFilesTagsWtOptions</code></td>
-      <td>Run file(s) / tag(s) with options</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runFilesTagsWtOptionsApi</code></td>
-      <td>Run file(s) / tag(s) with options using API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace</code></td>
-      <td>Run file(s) / tag(s) with options using API in remote workspace [beta]</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.dependencyGraphPanel</code></td>
-      <td>Show dependency graph</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runTagWtApi</code></td>
-      <td>Run a tag using API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runTagWtDependenciesApi</code></td>
-      <td>Run tag with dependencies using API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runCurrentFileWtApi</code></td>
-      <td>Run current file using API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runCurrentFileWtDependenciesApi</code></td>
-      <td>Run current file with dependencies using API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runCurrentFileWtDependentsApi</code></td>
-      <td>Run current file with dependents using API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.clearExtensionCache</code></td>
-      <td>Clear extension cache</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.openLastWorkflowExecution</code></td>
-      <td>Open last workflow execution in browser</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.rerunLastExecution</code></td>
-      <td>Rerun last execution (same files/tags, options and mode as the previous run)</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runChangedActions</code></td>
-      <td>Run only the actions changed vs the default branch, after previewing them. In a keybinding, pass <code>"args": { "includeDependents": true, "fullRefresh": false }</code> (also <code>includeDependencies</code>) to skip the prompts</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.runChangedActionsApi</code></td>
-      <td>Same as above, using the Dataform API</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.toggleDeferToProd</code></td>
-      <td>Toggle defer to prod</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.removeProxyViews</code></td>
-      <td>Remove defer to prod proxy views</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.columnLineage</code></td>
-      <td>Show column lineage and impact</td>
-    </tr>
-    <tr>
-      <td><code>vscode-dataform-tools.columnImpactOfChanges</code></td>
-      <td>Show column impact of branch changes</td>
-    </tr>
-  </tbody>
-</table>
+Every command is in the Command Palette (<kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd>, or <kbd>CMD</kbd> + <kbd>SHIFT</kbd> + <kbd>P</kbd> on Mac). Commands in the category "Dataform/dbt" work in both kinds of project; those in "Dataform" are for Dataform and are not listed while a file of a dbt project is in focus. The extension's **Feature Contributions** tab lists them with their ids, for keybindings.
 
 ---
 
 ## Products
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Registry</th>
-      <th>Badge</th>
-      <th>Description</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td rowspan="2">Dataform Tools</td>
-      <td><a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">VS Code marketplace</a></td>
-      <td>
-        <a href="https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode">
-          <img src="https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode" alt="VS Code marketplace">
-          <img src="https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg" alt="Downloads">
-        </a>
-      </td>
-      <td rowspan="2">VS Code extension — dependency graph, compiled query preview, dry-run stats, inline diagnostics, go-to-definition, autocomplete, formatting, and more. Same build is published to both the VS Code marketplace and Open VSX (for forks such as <a href="https://cursor.com">Cursor</a> and <a href="https://antigravity.google/">Antigravity</a>).</td>
-    </tr>
-    <tr>
-      <td><a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">Open VSX marketplace</a></td>
-      <td>
-        <a href="https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode">
-          <img src="https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
-          <img src="https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode" alt="Open VSX Version">
-        </a>
-      </td>
-    </tr>
-    <tr>
-      <td><code>@ashishalex/dataform-graph</code></td>
-      <td><a href="https://www.npmjs.com/package/@ashishalex/dataform-graph">npm</a></td>
-      <td>
-        <a href="https://www.npmjs.com/package/@ashishalex/dataform-graph">
-          <img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-graph" alt="NPM Version">
-          <img src="https://img.shields.io/npm/dm/%40ashishalex%2Fdataform-graph" alt="NPM Downloads">
-        </a>
-      </td>
-      <td><code>dataform-graph</code> CLI — serves the dependency graph in your browser; no VS Code required (<a href="./packages/dataform-graph-cli/README.md">readme</a>).</td>
-    </tr>
-    <tr>
-      <td><code>@ashishalex/dataform-tools</code></td>
-      <td><a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">npm</a></td>
-      <td>
-        <a href="https://www.npmjs.com/package/@ashishalex/dataform-tools">
-          <img src="https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools" alt="NPM Version">
-        </a>
-      </td>
-      <td>Programmatic wrapper around the <code>@google-cloud/dataform</code> npm package.</td>
-    </tr>
-    <tr>
-      <td><code>dataform-tools</code></td>
-      <td><a href="https://pypi.org/project/dataform-tools/">PyPI</a></td>
-      <td>
-        <a href="https://pypi.org/project/dataform-tools/">
-          <img src="https://img.shields.io/pypi/v/dataform-tools" alt="PyPI - Version">
-        </a>
-      </td>
-      <td>Programmatic wrapper around the <code>google-cloud-dataform</code> Python package.</td>
-    </tr>
-  </tbody>
-</table>
+| Name | Registry | Version | Description |
+| --- | --- | --- | --- |
+| Dataform Tools | [VS Code marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) | [![VS Code marketplace](https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode)![Downloads](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) | This extension. |
+| Dataform Tools | [Open VSX](https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode) | [![Open VSX version](https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode)![Open VSX downloads](https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode)](https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode) | The same build, for forks such as [Cursor](https://cursor.com) and [Antigravity](https://antigravity.google/). |
+| `@ashishalex/dataform-graph` | [npm](https://www.npmjs.com/package/@ashishalex/dataform-graph) | [![NPM version](https://img.shields.io/npm/v/%40ashishalex%2Fdataform-graph)![NPM downloads](https://img.shields.io/npm/dm/%40ashishalex%2Fdataform-graph)](https://www.npmjs.com/package/@ashishalex/dataform-graph) | `dataform-graph` CLI: serves the dependency graph in your browser, without VS Code ([readme](./packages/dataform-graph-cli/README.md)). |
+| `@ashishalex/dataform-tools` | [npm](https://www.npmjs.com/package/@ashishalex/dataform-tools) | [![NPM version](https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools)](https://www.npmjs.com/package/@ashishalex/dataform-tools) | Programmatic wrapper around the `@google-cloud/dataform` npm package. |
+| `dataform-tools` | [PyPI](https://pypi.org/project/dataform-tools/) | [![PyPI version](https://img.shields.io/pypi/v/dataform-tools)](https://pypi.org/project/dataform-tools/) | Programmatic wrapper around the `google-cloud-dataform` Python package. |
 
 ---
 
@@ -509,16 +152,6 @@ If this extension saves you time and makes working with Dataform or dbt easier, 
   <a href="https://buymeacoffee.com/ashishalexj">
     <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee" height="25">
   </a>
-
----
-
-## Known Issues
-
-* [ ] Features such as go to definition / dependancy graph might not work with consistantly with `${ref("dataset", "table")}` or when it is multiline or a different format works best with `${ref('table_name')}` format
-
-## TODO
-
-* [ ] Handle case where user is not connected to internet or on vpn where network request for dry run cannot be made
 
 ---
 
