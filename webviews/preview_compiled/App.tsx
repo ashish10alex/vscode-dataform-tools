@@ -243,8 +243,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
           const modeLabel = isApi ? 'API' : 'CLI';
           return (
             <div className="mb-4">
-              {/* The compiled query says it is compiling in its Compile row, where nothing moves for it */}
-              {showCompiledQuery && !isPropertyGraphFile && !showSkeleton ? null : <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
+              {/* The compiled query says it is compiling in its Compile row, where nothing moves for it. So does its skeleton */}
+              {(showCompiledQuery && !isPropertyGraphFile && !showSkeleton) || (showSkeleton && !isConfigFile) ? null : <div className="flex items-center gap-2 text-[var(--vscode-textLink-foreground)]">
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span>
                   {state.dataform.dataformCoreVersion
@@ -277,7 +277,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
         })()}
 
         {showSkeleton && (
-            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} mode={state.dataform.compilationMode || state.dataform.compilationInfo?.mode} />
+            <SkeletonLoader type={isConfigFile ? 'config' : 'default'} mode={state.dataform.compilationMode || state.dataform.compilationInfo?.mode} installing={state.dataform.dataformCoreVersion} />
         )}
 
 {!(showCompiledQuery && compileFailedInRows) && (problem.type === CompilationErrorType.COMPILATION_ERROR ||
