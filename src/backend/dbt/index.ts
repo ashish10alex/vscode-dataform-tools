@@ -4,7 +4,9 @@
  */
 export { DBT_COMPILE_FILES, DbtBackend } from './backend';
 export type { DbtCompileResult } from './compile';
-export type { DbtMacro, DbtName, DbtProjectData } from './graph';
+export { dbtDeferral } from './defer';
+export type { DbtDeferral } from './defer';
+export type { DbtGraph, DbtMacro, DbtName, DbtProjectData } from './graph';
 export type { DbtOptions } from './options';
 export { probeDbt } from './probe';
 export type { DbtFlavour, DbtProbe } from './probe';

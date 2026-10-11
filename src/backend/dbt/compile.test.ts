@@ -100,6 +100,13 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
             assert.deepStrictEqual(ran().slice(3), [['parse'], selected]);
         });
 
+        test('with defer to prod only the compile defers: a parse resolves no ref', async () => {
+            plan('parse', { manifest: fullManifestPath('dbt-v2') });
+            plan('compile', { manifest: fullManifestPath('dbt-v2') });
+            await new DbtCompiler().compile(request({ file: 'models/marts/fct_orders.sql', defer: { stateDir: '/store/prod/target' } }));
+            assert.deepStrictEqual(ran(), [['parse'], ['compile', '--select', `path:${path.join('models', 'marts', 'fct_orders.sql')}`, '--defer', '--defer-state', '/store/prod/target']]);
+        });
+
         test('with no file on show it parses once, and never compiles the whole Project', async () => {
             plan('parse', { manifest: fullManifestPath('dbt-v2') });
             const compiler = new DbtCompiler();
@@ -164,6 +171,12 @@ process.exitCode = Number(fs.readFileSync(planned('exit'), 'utf8'));
             assert.deepStrictEqual(ran(), [['compile', '--select', `path:${path.join('models', 'marts', 'fct_orders.sql')}`]]);
             assert.strictEqual(result.parsedOnly, false);
             assert.strictEqual(result.dbt?.dbtVersion, '1.12.5');
+        });
+
+        test('with defer to prod the compile defers to the prod manifest', async () => {
+            plan('compile', { manifest: fullManifestPath('dbt-core') });
+            await new DbtCompiler().compile(request({ flavour: 'dbt-core', file: 'models/marts/fct_orders.sql', defer: { stateDir: '/store/prod/target' } }));
+            assert.deepStrictEqual(ran(), [['compile', '--select', `path:${path.join('models', 'marts', 'fct_orders.sql')}`, '--defer', '--defer-state', '/store/prod/target']]);
         });
 
         test('with no file on show it parses, and never compiles the whole Project', async () => {

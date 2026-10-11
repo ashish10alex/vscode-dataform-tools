@@ -28,6 +28,12 @@ export interface DbtOptions {
      * comparisons rely on, and each engine keeps its own partial-parse state. It is made when missing.
      */
     artifactDir: string;
+    /**
+     * Defer to prod: an upstream action that is not selected and is not built in the dbt target is read from where
+     * the manifest in `stateDir` says it is (`--defer --defer-state`). The host makes that manifest: a parse of the
+     * Project at the base with the prod dbt target. Unset compiles and runs without `--defer`.
+     */
+    defer?: { stateDir: string };
     /** The environment dbt runs in. Unset gives it this process's */
     env?: NodeJS.ProcessEnv;
 }

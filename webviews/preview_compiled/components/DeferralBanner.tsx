@@ -80,6 +80,8 @@ const WARNING_BOX_CLASS = "rounded-lg border border-[var(--vscode-editorWarning-
 const SLOW_LOOKUP_MS = 30_000;
 const NOT_IN_DEV_TITLE = "Not built in dev, so it is read from prod, like dbt --defer.";
 const BUILT_IN_DEV_TITLE = "Built in dev, so it is read from dev, like dbt --defer. Upstream tables are only read from prod when they are not built in dev.";
+/** In a dbt Project dbt defers itself, when it compiles and when it runs */
+export const DBT_SWITCH_TITLE = "Read upstream tables that are not built in your dbt target from prod, in the compiled SQL, dry run, Preview Data and runs (dbt --defer)";
 export const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
 
 /** What a lookup of the upstream tables found, in a line */
@@ -131,7 +133,7 @@ export function deferralSummary(deferral: DeferralView | null | undefined, defer
  * from prod. Always shown for a query file, as a quiet dashed strip while defer to prod is off, so the switch sits
  * next to what it changes.
  */
-export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, on: onGiven }: {
+export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, on: onGiven, dbt }: {
   deferral?: DeferralView | null;
   deferToProd?: DeferToProdState;
   leftoverProxies?: string[] | null;
@@ -139,6 +141,8 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
   bare?: boolean;
   /** Whether that switch is on, which it is at the click, before the panel redraws */
   on?: boolean;
+  /** Of a dbt Project: dbt defers, to the manifest of the prod dbt target, so there are no prod options and no proxy views */
+  dbt?: boolean;
 }) {
   // Collapsed to the summary by default, like the other sections of the panel; kept across recompiles
   const [expanded, setExpanded] = useState(false);
@@ -170,21 +174,21 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
   const toggle = (checked: boolean) => {
     setOn(checked);
     setExpanded(false);
-    vscode.postMessage({ command: "dataform.toggleDeferToProd", on: checked });
+    vscode.postMessage(dbt ? { command: "dbt.toggleDeferToProd", on: checked } : { command: "dataform.toggleDeferToProd", on: checked });
   };
   const retry = () => {
     setRetrying(true);
     setAttempt((count) => count + 1);
-    vscode.postMessage({ command: "dataform.retryDeferral" });
+    vscode.postMessage({ command: dbt ? "dbt.retryDeferral" : "dataform.retryDeferral" });
   };
-  const deferSwitch = bare ? null : <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={SWITCH_TITLE} />;
+  const deferSwitch = bare ? null : <ModifierSwitch label="Defer to prod" checked={on} onChange={toggle} title={dbt ? DBT_SWITCH_TITLE : SWITCH_TITLE} />;
   const setProdOptionsButton = (label: string, primary: boolean) => (
-    <button onClick={() => vscode.postMessage({ command: "dataform.openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
-      <Settings2 className="w-3 h-3" /> {label}
+    <button onClick={() => vscode.postMessage({ command: dbt ? "dbt.openDeferToProdSettings" : "dataform.openDeferToProdSettings" })} className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}>
+      <Settings2 className="w-3 h-3" /> {dbt ? label.replace("prod options", "prod dbt target") : label}
     </button>
   );
   const retryButton = (
-    <button onClick={retry} title="Compile with the prod options and look up the upstream tables again" className={SECONDARY_BUTTON}>
+    <button onClick={retry} title={dbt ? "Parse the prod manifest again and compile" : "Compile with the prod options and look up the upstream tables again"} className={SECONDARY_BUTTON}>
       <RotateCw className="w-3 h-3" /> Retry
     </button>
   );
@@ -248,7 +252,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
         <div className="flex flex-wrap items-center gap-2">
           {deferSwitch}
           <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
-          <span className="font-semibold text-[var(--vscode-foreground)]">Could not look up the upstream tables, so nothing is read from prod.</span>
+          <span className="font-semibold text-[var(--vscode-foreground)]">{dbt ? "Could not make the prod manifest, so nothing is read from prod." : "Could not look up the upstream tables, so nothing is read from prod."}</span>
           <div className="flex-grow" />
           {setProdOptionsButton("Set prod options", true)}
           {retryButton}
@@ -276,7 +280,9 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
   const looked = lookupSummary(entries, builtInDev);
   const noneInProd = !pending && looked.noneInProd;
   const summary = pending
-    ? (slow ? "still looking up upstream tables, this is taking longer than usual" : "looking up upstream tables…")
+    ? dbt
+      ? (slow ? "still compiling with --defer, this is taking longer than usual" : "compiling with --defer…")
+      : (slow ? "still looking up upstream tables, this is taking longer than usual" : "looking up upstream tables…")
     : looked.text;
 
   return (
@@ -304,8 +310,8 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
         {pending && slow && logsButton}
         {noneInProd && setProdOptionsButton("Check prod options", false)}
         <button
-          onClick={() => vscode.postMessage({ command: "dataform.deferToProdActions" })}
-          title="Refresh, remove proxy views or configure defer to prod"
+          onClick={() => vscode.postMessage({ command: dbt ? "dbt.deferToProdActions" : "dataform.deferToProdActions" })}
+          title={dbt ? "Parse the prod manifest again or configure defer to prod" : "Refresh, remove proxy views or configure defer to prod"}
           className={SECONDARY_BUTTON}
         >
           <Settings2 className="w-3 h-3" /> Options

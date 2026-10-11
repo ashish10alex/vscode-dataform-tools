@@ -52,6 +52,18 @@ suite('the command line of a dbt run', () => {
         assert.throws(() => dbtRunArguments({ options, run: run({ changed, actions: ['exposure.revenue_dashboard'] }) }, names), /dbt cannot select exposure\.revenue_dashboard/);
     });
 
+    test('with defer to prod, a run defers to the prod manifest, and what changed is still compared with the base', () => {
+        const deferring = { ...options, defer: { stateDir: '/store/prod/target' } };
+        const actions = [`${P}.xf_example.fct_orders`];
+        assert.deepStrictEqual(dbtRunArguments({ options: deferring, run: run({ actions, fullRefresh: true }) }, names), [
+            'build', '--select', 'xf_example.marts.fct_orders', '--defer', '--defer-state', '/store/prod/target', '--full-refresh',
+        ]);
+        assert.deepStrictEqual(dbtRunArguments({ options: deferring, run: run({ tags: ['daily'] }) }, names), ['build', '--select', 'tag:daily', '--defer', '--defer-state', '/store/prod/target']);
+        assert.deepStrictEqual(dbtRunArguments({ options: deferring, run: run({ changed: { base: '/store/base/target' } }) }, names), [
+            'build', '--select', 'state:modified', '--state', '/store/base/target', '--defer', '--defer-state', '/store/prod/target',
+        ]);
+    });
+
     test('the base and an intersection are quoted for the shell that needs it', () => {
         const request = { root: '/work/shop', options: { binary: 'dbt' }, run: run({ changed: { base: '/Application Support/base/target' }, actions: [`${P}.xf_example.fct_orders`] }) };
         assert.strictEqual(dbtRunCommand(request, names, 'darwin'), `dbt build --select state:modified,xf_example.marts.fct_orders --state '/Application Support/base/target'`);

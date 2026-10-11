@@ -213,6 +213,8 @@ export interface DbtBlockInput {
     /** The file on show, relative to the Project root with forward slashes */
     file?: string;
     changedActions?: DbtBlock['changedActions'];
+    deferToProd?: DbtBlock['deferToProd'];
+    deferral?: DbtBlock['deferral'];
 }
 
 const BIGQUERY = 'bigquery';
@@ -252,6 +254,10 @@ export function dbtBlock(input: DbtBlockInput, compile: CompileNumber): DbtBlock
     }
     if (input.changedActions) {
         block.changedActions = input.changedActions;
+    }
+    if (input.deferToProd) {
+        block.deferToProd = input.deferToProd;
+        block.deferral = input.deferral ?? null;
     }
     if (data && graph) {
         const actions: Partial<Record<Kind, number>> = {};

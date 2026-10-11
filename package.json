@@ -577,7 +577,7 @@
                     "type": "boolean",
                     "default": false,
                     "scope": "resource",
-                    "markdownDescription": "Defer to prod, like dbt's `--defer`: when an upstream table has not been built in dev, dry runs, previews and the compiled query read it from prod instead, and runs read it through a labelled proxy view created in dev. The prod table comes from compiling with `#vscode-dataform-tools.prodCompilerOptions#`. Toggle it from the status bar or the compiled query panel."
+                    "markdownDescription": "Defer to prod, like dbt's `--defer`: when an upstream table has not been built in dev, dry runs, previews and the compiled query read it from prod instead, and runs read it through a labelled proxy view created in dev. The prod table comes from compiling with `#vscode-dataform-tools.prodCompilerOptions#`. Toggle it from the status bar or the compiled query panel.\n\nIn a dbt project dbt defers itself: compiles and runs are given `--defer` and the manifest of the dbt target named by `#vscode-dataform-tools.dbtProdTarget#`. There are no proxy views."
                 },
                 "vscode-dataform-tools.prodCompilerOptions": {
                     "type": "string",
@@ -718,6 +718,12 @@
                     "default": null,
                     "scope": "resource",
                     "markdownDescription": "**The dbt target to compile and run a dbt project with** (dbt's `--target`): one of the `outputs` of the project's profile, such as `dev`.\n\nLeave it empty to let dbt choose: `$DBT_TARGET` if it is set, else the profile's default.\n\nThis is the default for everyone who uses the workspace. The compiled query panel shows the dbt target in use and lets you pick another for yourself; that choice is kept privately for the workspace and does not change this setting."
+                },
+                "vscode-dataform-tools.dbtProdTarget": {
+                    "type": "string",
+                    "default": null,
+                    "scope": "resource",
+                    "markdownDescription": "**The dbt target that builds prod**: one of the `outputs` of the project's profile, such as `prod`. It is what `#vscode-dataform-tools.deferToProd#` defers to in a dbt project.\n\nThe extension parses the merge-base with `#vscode-dataform-tools.defaultBranch#` with this dbt target and keeps that manifest by commit. With defer to prod on, compiles and runs are given it (`--defer --defer-state`), so an upstream table that is not built in your own dbt target is read from prod. A parse connects to nothing: you need the dbt target in your profile, and read access to the prod tables when a query runs.\n\nLeave it empty and defer to prod is not applied in a dbt project."
                 },
                 "vscode-dataform-tools.dbtVars": {
                     "type": "string",

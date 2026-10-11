@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { BackendRequest, CompileError, CompileResult, CompileScope } from '../backend';
 import { buildCompiledGraph } from '../../shared/compiledGraph';
+import { dbtDeferArguments } from './defer';
 import { invocationErrors } from './errors';
 import type { DbtProjectData } from './graph';
 import { DbtCommand, invokeDbt } from './invoke';
@@ -14,7 +15,8 @@ import { activeDbtTarget } from './targets';
  *
  * - Either engine compiles only the actions of the file on show (`--select path:<file>`), which brings the tests of
  *   those actions with it and leaves every other action without compiled SQL. With no file it parses. The whole
- *   Project is never compiled.
+ *   Project is never compiled. With `options.defer` that compile defers to prod, so the SQL it gives reads what a
+ *   run would read. A parse resolves no `ref()`, and is never given the flags.
  * - dbt v2 runs the Project's on-run hooks against the warehouse when it compiles, `--select` included, so the
  *   Project is parsed first, and a Project that has hooks is left parsed, with a notice, unless `compileWithHooks`
  *   is on.
@@ -107,7 +109,7 @@ export class DbtCompiler {
         // By path, so that nothing has to be known of the Project beforehand. A file that defines no action (a
         // macro, the Project's settings) selects nothing, which dbt answers with the parsed Project
         const file = request.file.split('/').join(path.sep);
-        const compiled = await run(request, 'compile', ['--select', `path:${file}`]);
+        const compiled = await run(request, 'compile', ['--select', `path:${file}`, ...dbtDeferArguments(options.defer)]);
         return { ...compiled, commands: [...commands, ...compiled.commands], parsedOnly: false };
     }
 }

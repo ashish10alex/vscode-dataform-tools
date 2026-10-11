@@ -3,13 +3,14 @@ import { listDbtTargets } from '../backend/dbt';
 import { logger } from '../logger';
 import type { RunOptions } from '../shared/compiledGraph';
 import { dbtOptions, dbtSettings } from './dbtCompile';
+import { resolveDbtDefer } from './dbtDefer';
 import type { ProjectState } from './registry';
 import { createTerminalWhenReady, sendTextWhenReady } from '../utils/terminalReady';
 
 /*
  * Runs of a dbt Project (xf#54): always `dbt build`, in a terminal of the extension, from the Project root, with the
  * same dbt, dbt target, variables and profiles directory as compiles. The extension starts the run and no more: the
- * user watches it in the terminal and stops it there.
+ * user watches it in the terminal and stops it there. With defer to prod on, the run defers (dbtDefer.ts).
  */
 
 /** A run that was sent to the terminal */
@@ -29,6 +30,8 @@ export const onDidRunDbt = changed.event;
 const terminals = new Map<string, vscode.Terminal>();
 /** The dbt targets, by Project root, that the user has agreed to build into in this window */
 const confirmed = new Set<string>();
+/** By Project root: why defer to prod was last not applied to a run, so that the same reason is said once */
+const deferWarned = new Map<string, string>();
 
 /** The last run of the Project sent to the terminal in this window */
 export function lastDbtRun(root: string): DbtRun | undefined {
@@ -82,9 +85,15 @@ export async function runDbt(project: ProjectState, request: RunOptions): Promis
         return undefined;
     }
     const target = dbtRunTarget(project);
+    // As the settings are now, so that a run that is repeated follows the switch
+    const defer = await resolveDbtDefer(project, options, target);
+    if (defer && 'error' in defer && defer.error !== deferWarned.get(root)) {
+        deferWarned.set(root, defer.error);
+        vscode.window.showWarningMessage(`Defer to prod is not applied: ${defer.error}`);
+    }
     let command: string;
     try {
-        command = dbtBackend.runner.command({ root, options: { ...options, target }, run: request });
+        command = dbtBackend.runner.command({ root, options: { ...options, target, ...(defer && 'stateDir' in defer ? { defer } : {}) }, run: request });
     } catch (error) {
         vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
         return undefined;
