@@ -2,7 +2,7 @@
 // Makes the states of the website's live demo (website/public/demo/states) of what `just website-demo-capture`
 // recorded, and checks that nothing of the machine or the Google Cloud project it was recorded on is left in them.
 //
-//   node scripts/demo/build-states.mjs <capture dir> <real GCP project>
+//   node scripts/demo/build-states.mjs <capture dir> <real GCP project> <real prod GCP project>
 //
 // The capture dir has out-dataform/, out-dbt/, out-diagnostics/ and out-defer/ (src/demoCapture), rows.json (the model's rows, from `bq query`)
 // and terminal-dataform.txt / terminal-dbt.txt (what a run prints). Strings that must never be published and that
@@ -13,9 +13,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const [captureDir, realProject] = process.argv.slice(2);
-if (!captureDir || !realProject) {
-    console.error('usage: build-states.mjs <capture dir> <real GCP project>');
+const [captureDir, realProject, prodProject] = process.argv.slice(2);
+if (!captureDir || !realProject || !prodProject) {
+    console.error('usage: build-states.mjs <capture dir> <real GCP project> <real prod GCP project>');
     process.exit(2);
 }
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -204,7 +204,7 @@ function dataform() {
         backend: 'dataform',
         hover: hover('out-dataform', pairs),
         changed: changed('out-dataform', pairs),
-        defer: { capturedAt: earliestTime(deferred), initial: deferred.map(({ message }) => message), hints: read('out-defer', 'defer-hints.json') },
+        defer: { capturedAt: lastOf(deferred, 'compile status').compiledAt, initial: deferred.map(({ message }) => message), hints: read('out-defer', 'defer-hints.json') },
         compile,
         capturedAt: earliestTime(initial),
         initial: initial.map(({ message }) => message),
@@ -283,22 +283,26 @@ function inspector() {
     };
 }
 
-// ---- A file whose upstream tables are in each of defer to prod's states, for the README's picture
+// ---- A file of a Project whose prod is another Google Cloud project, with defer to prod on, for the README's picture
 
 function defer() {
-    const workspace = path.join(captureDir, 'football-defer');
-    const initial = renamed(slicesOnly(read('out-defer-refs', 'compiled.json')), renames(workspace, `${DEMO_HOME}/football`));
+    const workspace = path.join(captureDir, 'orders');
+    // This Project's dev and prod are two Google Cloud projects, which is what the picture is of: each has a name
+    const pairs = [[prodProject, 'acme-analytics-prod'], [realProject, 'acme-analytics-dev'], ...renames(workspace, `${DEMO_HOME}/orders`)];
+    const initial = renamed(slicesOnly(read('out-defer-refs', 'compiled.json')), pairs);
     withoutErrors('The file with defer to prod on', lastOf(initial, 'bigquery'));
     const hints = read('out-defer-refs', 'defer-hints.json');
-    for (const kind of ['prod', 'warning', 'dev']) {
+    for (const kind of ['prod', 'dev']) {
         if (!hints.some((hint) => hint.kind === kind)) {
-            throw new Error(`The recording of defer to prod has no upstream table of the kind "${kind}": record the demo again`);
+            throw new Error(`The recording of defer to prod has no upstream table of the kind "${kind}": see what website-demo-capture says the two projects must have`);
         }
     }
     return {
         backend: 'defer',
         compile: lastOf(initial, 'compile status').compile,
-        capturedAt: earliestTime(initial),
+        // When it was compiled, and not the earliest time in it: that is when the dev table was last built, which
+        // must stay as long ago as it was
+        capturedAt: lastOf(initial, 'compile status').compiledAt,
         initial: initial.map(({ message }) => message),
         hints,
     };
@@ -312,7 +316,7 @@ for (const state of [dataform(), dbt(), diagnostics(), inspector(), defer()]) {
 }
 
 const localDeny = path.join(repo, 'scripts', 'demo', 'deny.local.json');
-const denied = [...new Set([realProject, home, user, os.hostname(), ...emails, ...emails.map((email) => email.split('@')[0]), path.resolve(captureDir), ...(fs.existsSync(localDeny) ? JSON.parse(fs.readFileSync(localDeny, 'utf8')) : [])])].filter((text) => text && text.length > 2);
+const denied = [...new Set([realProject, prodProject, home, user, os.hostname(), ...emails, ...emails.map((email) => email.split('@')[0]), path.resolve(captureDir), ...(fs.existsSync(localDeny) ? JSON.parse(fs.readFileSync(localDeny, 'utf8')) : [])])].filter((text) => text && text.length > 2);
 
 function filesUnder(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

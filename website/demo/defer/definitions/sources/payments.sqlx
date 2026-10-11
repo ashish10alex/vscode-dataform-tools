@@ -1,0 +1,6 @@
+config {
+  type: "declaration",
+  schema: "raw",
+  name: "payments",
+  description: "Raw payments, one row per payment attempt."
+}

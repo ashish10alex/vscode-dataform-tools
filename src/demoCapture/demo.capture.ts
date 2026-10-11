@@ -113,10 +113,13 @@ suite('capture for the website demo', function () {
                 return { database, schema, name };
             };
             // The words the editor puts beside each ref(), from the rules the extension's own hints use
+            const refs = [...document.getText().matchAll(/ref\(\s*["']([^"']+)["']\s*\)/g)].map((match) => match[1]);
             const hints = [
                 ...deferral()!.entries.map((entry) => ({ name: target(entry.dev).name, ...deferralEntryHint({ ...entry, dev: target(entry.dev), prod: entry.prod ? target(entry.prod) : undefined }) })),
                 ...(deferral()!.builtInDev ?? []).map((entry) => ({ name: target(entry.dev).name, ...builtInDevHint({ ...entry, dev: target(entry.dev) }, Date.now()) })),
-            ].map(({ name, label, kind }) => ({ name, label, kind }));
+            ]
+                // A hint is told by the name in its ref(), which a table prefix or suffix of the dev compile is not part of
+                .map(({ name, label, kind }) => ({ name: refs.find((ref) => name === ref || name.endsWith(`_${ref}`) || name.startsWith(`${ref}_`)) ?? name, label, kind }));
             fs.writeFileSync(path.join(OUT!, 'defer-hints.json'), JSON.stringify(hints, null, 1));
         }
         save('compiled');

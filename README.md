@@ -290,8 +290,8 @@ The hover of a table is the same in a Dataform and a dbt project: its name as a 
 
 Develop without rebuilding upstream tables in dev. Like dbt's `--defer`, automatically resolves unbuilt dependencies against production tables (via `vscode-dataform-tools.prodCompilerOptions`) for dry runs, previews, and runs (via proxy views), with in-editor hints on `${ref()}`.
 
-![Defer to prod on: beside each ref(), whether that table is read from prod, was changed on the branch, or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_dark.png#gh-dark-mode-only)
-![Defer to prod on: beside each ref(), whether that table is read from prod, was changed on the branch, or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_light.png#gh-light-mode-only)
+![Defer to prod on, with prod in a Google Cloud project of its own: beside each ref(), whether that table is read from prod or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_dark.png#gh-dark-mode-only)
+![Defer to prod on, with prod in a Google Cloud project of its own: beside each ref(), whether that table is read from prod or is built in dev; the panel lists the same](https://raw.githubusercontent.com/ashish10alex/vscode-dataform-tools/main/media/images/demo_defer_to_prod_light.png#gh-light-mode-only)
 
 ### <a id="run_changed">Run changed actions</a>
 

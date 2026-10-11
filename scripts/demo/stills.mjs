@@ -52,7 +52,7 @@ const STILLS = [
         },
     },
     {
-        // A file that reads three tables, one in each of defer to prod's states
+        // A file of a Project whose prod is another Google Cloud project: one table read from prod, one built in dev
         name: 'defer_to_prod',
         frame: 'defer',
         act: async ({ page, panel }) => {
@@ -60,8 +60,8 @@ const STILLS = [
             // The Compile row opens to the switch and the count; the count opens to each table and where it is read from
             await panel.locator('button[title="Show compile"]').click();
             await panel.locator('button').filter({ hasText: /upstream tables? read from prod/ }).last().click();
-            if ((await page.locator('#still [data-demo-pill]').count()) !== 3) {
-                throw new Error('the source does not say where each of its three tables is read from');
+            if ((await page.locator('#still [data-demo-pill]').count()) !== 2) {
+                throw new Error('the source does not say where each of its two tables is read from');
             }
         },
     },

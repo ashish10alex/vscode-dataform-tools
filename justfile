@@ -94,9 +94,10 @@ website-demo:
     node scripts/demo/stills.mjs
 
 # gcp_project must hold the tables of website/demo/data/seed.sql. Runs the model once with the Dataform CLI and
-# once with dbt, and builds one view in the dataset analytics_dev for the defer to prod recording. The states are renamed and checked for leaks (scripts/demo/build-states.mjs) before they reach website/.
+# once with dbt. prod_project is the prod of website/demo/defer, read for the defer to prod picture; nothing is
+# written to it. The states are renamed and checked for leaks (scripts/demo/build-states.mjs) before they reach website/.
 # Record the live demo's states again from the demo Projects (website/demo), against real BigQuery
-website-demo-capture gcp_project:
+website-demo-capture gcp_project prod_project:
     #!/usr/bin/env bash
     set -euo pipefail
     work=/tmp/vdt-demo
@@ -125,27 +126,33 @@ website-demo-capture gcp_project:
     rm -rf /tmp/vdt-demo-ud
     DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-diagnostics" DEMO_FILE=definitions/fct_club_spend.sqlx \
         VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
-    # Defer to prod is recorded in a copy of the Project whose dev tables are in datasets of their own
-    # (--schema-suffix=dev), on a branch. What a file reads is then in one of three states, and the copy has one of
-    # each: stg_clubs is built in dev (the one thing written: a view in analytics_dev), stg_transfers is not, so it
-    # is read from the dataset without the suffix, and stg_players is not either and is changed on the branch
+    # Defer to prod in the hero: a copy of the Project whose dev tables are in datasets of their own
+    # (--schema-suffix=dev) that are never built, so what the file reads is read from the dataset without the suffix
     rm -rf /tmp/vdt-demo-ud
     cp -R "$work/football" "$work/football-defer"
     mkdir -p "$work/football-defer/.vscode"
     printf '{\n  "vscode-dataform-tools.compilerOptions": "--schema-suffix=dev",\n  "vscode-dataform-tools.deferToProd": true\n}\n' > "$work/football-defer/.vscode/settings.json"
-    (cd "$work/football-defer" && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "dev datasets" && git checkout -q -b feat/player-names)
-    sed -i '' 's/^  player_id,$/  player_id,\n  name,/' "$work/football-defer/definitions/stg_players.sqlx"
-    (cd "$work/football-defer" && dataform run --actions stg_clubs --schema-suffix=dev)
-    DEMO_DEFER=stale DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football-defer" DEMO_OUT="$work/out-defer-refs" DEMO_FILE=definitions/int_signings.sqlx \
-        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
-    rm -rf /tmp/vdt-demo-ud
+    (cd "$work/football-defer" && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "dev datasets")
     DEMO_DEFER=1 DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football-defer" DEMO_OUT="$work/out-defer" DEMO_FILE=definitions/fct_player_transfers.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    # Defer to prod in the README's picture: another Project (website/demo/defer), whose prod is a Google Cloud
+    # project of its own. Nothing is built for it: gcp_project must already have AA_dim_customers in xf_example
+    # (the dev table, with the table prefix AA) and prod_project the Project's tables, so that one table the file
+    # reads is built in dev and the other is read from prod
+    rm -rf /tmp/vdt-demo-ud
+    cp -R website/demo/defer "$work/orders"
+    sed -i '' "s/acme-analytics-dev/{{gcp_project}}/" "$work/orders/workflow_settings.yaml"
+    printf '{"projectId": "{{gcp_project}}", "location": "EU"}\n' > "$work/orders/.df-credentials.json"
+    mkdir -p "$work/orders/.vscode"
+    printf '{\n  "vscode-dataform-tools.compilerOptions": "--table-prefix=\\"AA\\"",\n  "vscode-dataform-tools.prodCompilerOptions": "--default-database={{prod_project}}",\n  "vscode-dataform-tools.deferToProd": true\n}\n' > "$work/orders/.vscode/settings.json"
+    (cd "$work/orders" && git init -q -b main && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "demo")
+    DEMO_DEFER=1 DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/orders" DEMO_OUT="$work/out-defer-refs" DEMO_FILE=definitions/reports/revenue_report.sqlx \
         VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
     (cd "$work/football" && dataform run --actions fct_player_transfers) > "$work/terminal-dataform.txt" 2>&1
     (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select football.fct_player_transfers --target dev --profiles-dir .) > "$work/terminal-dbt.txt" 2>&1
     bq query --use_legacy_sql=false --project_id={{gcp_project}} --location=europe-west2 --format=json --max_rows=100 \
         'SELECT * FROM analytics.fct_player_transfers ORDER BY transfer_date DESC' > "$work/rows.json"
-    node scripts/demo/build-states.mjs "$work" {{gcp_project}}
+    node scripts/demo/build-states.mjs "$work" {{gcp_project}} {{prod_project}}
     just website-demo
 
 # Set BENCH_GCP_PROJECT for real BigQuery dry runs, BENCH_ITERATIONS to change the 10 runs per loop.

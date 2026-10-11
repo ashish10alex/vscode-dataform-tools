@@ -1,0 +1,13 @@
+config {
+  type: "view",
+  tags: ["staging"],
+  description: "One row per successful payment, in dollars."
+}
+
+SELECT
+  id AS payment_id,
+  order_id,
+  payment_method,
+  ${helpers.centsToDollars("amount")} AS amount
+FROM ${ref("payments")}
+WHERE status = "success"

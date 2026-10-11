@@ -126,9 +126,9 @@ function hoverOf(backend: "dataform" | "dbt"): SourceHover | undefined {
   return { name: hover.name, title, facts, columns };
 }
 
-function source(backend: DemoSource["backend"], project: "dataform" | "dbt", relativePath: string): DemoSource {
+function source(backend: DemoSource["backend"], project: "dataform" | "dbt" | "defer", relativePath: string): DemoSource {
   const code = fs.readFileSync(path.join(process.cwd(), "demo", project, relativePath), "utf8");
-  return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code), hover: backend === "dataform" || backend === "dbt" ? hoverOf(project) : undefined };
+  return { backend, fileName: path.basename(relativePath), path: relativePath, lines: tokenise(code), hover: project !== "defer" && (backend === "dataform" || backend === "dbt") ? hoverOf(project) : undefined };
 }
 
 export function demoSources(): DemoSource[] {
@@ -158,7 +158,10 @@ export function diagnosticsSource(): DemoSource {
   return { ...file, problem: { line, text, message: failed.error.message.replace(/ at \[\d+:\d+\]$/, "") } };
 }
 
-/** A file that reads three tables, each in another of defer to prod's states, with what the editor says of each */
+/**
+ * A file of another Project (website/demo/defer), whose prod is a Google Cloud project of its own, with defer to prod
+ * on: one table it reads is read from prod and one is built in dev, and the editor says which beside each ref()
+ */
 export function deferSource(): DemoSource {
-  return { ...source("defer", "dataform", "definitions/int_signings.sqlx"), hints: recorded("defer").hints };
+  return { ...source("defer", "defer", "definitions/reports/revenue_report.sqlx"), hints: recorded("defer").hints };
 }
