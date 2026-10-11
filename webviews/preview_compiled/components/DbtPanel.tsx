@@ -640,6 +640,7 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
         <SummaryRow
           label="Lineage"
           tone={lineage ? "calm" : "off"}
+          wide
           summary={!lineage ? "—" : (
             <span data-dbt="lineage">
               {[

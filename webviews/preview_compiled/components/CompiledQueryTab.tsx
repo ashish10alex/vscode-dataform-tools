@@ -574,6 +574,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         <SummaryRow
           label="Lineage"
           tone={lineageTone}
+          wide
           summary={!hasTargets ? (models.length > 0 ? "unit tests have no lineage" : "—") : (
             <>
               {changedColumns > 0 && <RowChip tone="warning" title={columnImpactTitle}>{changedColumns} column{changedColumns === 1 ? " changes" : "s change"}</RowChip>}
