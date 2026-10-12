@@ -179,7 +179,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox ,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "bigQueryJobId": jobStats?.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -191,7 +191,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "bigQueryJobId": jobStats?.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -202,7 +202,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "bigQueryJobId": jobStats?.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);

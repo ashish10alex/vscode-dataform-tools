@@ -4,6 +4,7 @@ import type { JobPlace } from './bigquery/jobPlace';
 import { QueryResultsOptions } from '@google-cloud/bigquery';
 import { getBigQueryTimeoutMs } from './constants';
 import { formatBytes } from './utils';
+import type { JobStats } from './shared/queryResultsView';
 
 let cancelBigQueryJobSignal = false;
 
@@ -160,7 +161,7 @@ function transformBigValues(obj: any) {
     return obj;
 }
 
-export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false, place?: JobPlace): Promise<{rows: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false, place?: JobPlace): Promise<{rows: any[] | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined}> {
     await checkAuthentication();
 
     const bigquery = await getBigQueryClientFor(place);
@@ -204,8 +205,12 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
     //TODO: even when the job has been cancelled it might return results, handle this
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
     let rows;
+    let totalRows: number | undefined;
     try {
-        [rows] = await localJob!.getQueryResults(options);
+        let response;
+        [rows, , response] = await localJob!.getQueryResults(options);
+        const total = Number(response?.totalRows);
+        totalRows = response?.totalRows !== undefined && !isNaN(total) ? total : undefined;
     } catch (error: any) {
         // vscode.window.showErrorMessage(`Error executing BigQuery query: ${error.message}`);
         return { rows: undefined, jobStats: undefined, errorMessage: error.message };
@@ -214,15 +219,20 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
     let totalBytesBilled: string | undefined;
     let bigQueryJobId: string | undefined;
     let bigQueryJobEndTime: Date | undefined;
+    let durationMs: number | undefined;
+    let cacheHit: boolean | undefined;
 
     if (localJob) {
         const jobMetadata = await localJob.getMetadata();
         const queryStats = jobMetadata[0]?.statistics?.query;
         bigQueryJobId = jobMetadata[0]?.id;
         totalBytesBilled = queryStats?.totalBytesBilled;
+        cacheHit = queryStats?.cacheHit;
         try {
             const jobEndTime = parseInt(jobMetadata[0].statistics.endTime, 10);
             bigQueryJobEndTime = new Date(jobEndTime);
+            const jobBegan = parseInt(jobMetadata[0].statistics.creationTime ?? jobMetadata[0].statistics.startTime, 10);
+            durationMs = isNaN(jobEndTime - jobBegan) ? undefined : jobEndTime - jobBegan;
         } catch (error:any) {
             bigQueryJobEndTime = new Date();
         }
@@ -234,7 +244,7 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
         ? formatBytes(bytesBilled)
         : undefined;
 
-    return { rows: rows, jobStats: { bigQueryJobEndTime, bigQueryJobId, jobCostMeta }, errorMessage: undefined };
+    return { rows: rows, jobStats: { bigQueryJobEndTime, bigQueryJobId, jobCostMeta, durationMs, cacheHit, totalRows }, errorMessage: undefined };
 }
 
 export function processQueryResults(rows: any[]): { results: any[], columns: any[] } {
@@ -339,7 +349,7 @@ export function processQueryResults(rows: any[]): { results: any[], columns: any
     return { results, columns };
 }
 
-export async function queryBigQuery(query: string, place?: JobPlace): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: {bigQueryJobEndTime: Date | undefined, bigQueryJobId: string | undefined, jobCostMeta: string | undefined} | undefined, errorMessage: string | undefined}> {
+export async function queryBigQuery(query: string, place?: JobPlace): Promise<{results: any[] | undefined, columns: any[] | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined}> {
 
     let { rows, jobStats, errorMessage } = await runQueryInBigQuery(query, false, place);
 
