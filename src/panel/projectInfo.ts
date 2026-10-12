@@ -2,7 +2,7 @@ import path from 'path';
 import type { BackendName } from '../project/detection';
 import type { CompilationMode } from '../project/tools';
 import type { InfoLink, InfoRow, InfoSection, ProjectInfoSlice } from '../shared/panelContract';
-import { Credentials, GcloudAccount, SIGN_IN_COMMAND, credentialTypeText } from '../utils/googleAccounts';
+import { Credentials, GCLOUD_SIGN_IN_COMMAND, GcloudAccount, JobProject, SIGN_IN_COMMAND, credentialTypeText } from '../utils/googleAccounts';
 
 /*
  * The `project info` slice of the compiled-query panel (see src/shared/panelContract.ts): what the Project tab shows
@@ -201,8 +201,11 @@ export interface ProjectInfoInput {
     extensionVersion: string;
     tools: ToolInfo[];
     settings: SettingInfo[];
-    /** Unset while they are being looked up. `credentials` is what the extension's own Google calls sign in with */
-    google?: { credentials: Credentials; gcloud: GcloudAccount };
+    /**
+     * Unset while they are being looked up. `credentials` is what the extension's own Google calls sign in with, and
+     * `jobs` the project that jobs run in when the `gcpProjectId` setting names none
+     */
+    google?: { credentials: Credentials; gcloud: GcloudAccount; jobs?: JobProject };
     /** Unset while it is being read */
     git?: GitInfo;
 }
@@ -338,12 +341,28 @@ function credentialRows(credentials: Credentials, input: ProjectInfoInput): Info
         rows.push({ label: '', value: credentials.source, link: { kind: 'path', path: credentials.source }, ...(credentials.sourceFrom ? { note: credentials.sourceFrom } : {}) });
     }
     const jobsProject = input.settings.find((setting) => setting.key === 'gcpProjectId')?.value;
+    rows.push(jobsRow(typeof jobsProject === 'string' ? jobsProject.trim() : '', input));
     const quota: InfoRow = credentials.quotaProject ? { label: 'quota', value: credentials.quotaProject } : { label: 'quota', value: '(no quota project)', absent: true };
     if (credentials.quotaProject && typeof jobsProject === 'string' && jobsProject && jobsProject !== credentials.quotaProject) {
         quota.warning = `the gcpProjectId setting is ${jobsProject}`;
     }
     rows.push(quota);
     return rows;
+}
+
+/** The project that the extension's BigQuery jobs run in, and what names it: `jobPlace` has the rules */
+function jobsRow(setting: string, input: ProjectInfoInput): InfoRow {
+    const label = 'jobs run in';
+    if (setting) {
+        return { label, value: setting, note: 'from the gcpProjectId setting' };
+    }
+    if (input.backend === 'dbt') {
+        return { label, value: "each model's own project", note: 'as profiles.yml gives it' };
+    }
+    const jobs = input.google?.jobs;
+    return jobs?.projectId
+        ? { label, value: jobs.projectId, ...(jobs.from ? { note: `from ${jobs.from}` } : {}) }
+        : { label, value: '(no project)', absent: true, warning: 'set gcpProjectId, or run gcloud config set project' };
 }
 
 function gcloudRows(gcloud: GcloudAccount, credentials: Credentials): InfoRow[] {
@@ -356,6 +375,10 @@ function gcloudRows(gcloud: GcloudAccount, credentials: Credentials): InfoRow[] 
     }
     if (gcloud.account && credentials.account && gcloud.account.toLowerCase() !== credentials.account.toLowerCase()) {
         row.warning = 'not the account the extension uses';
+    }
+    if (gcloud.loginExpired) {
+        // Not a warning: the extension's own calls do not use this login
+        return [row, { label: '', value: 'login expired', note: 'bq and gcloud in a terminal need it' }, { label: '', value: GCLOUD_SIGN_IN_COMMAND, note: 'put it in a terminal', link: { kind: 'gcloud sign in' } }];
     }
     return [row];
 }
