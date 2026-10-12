@@ -12,8 +12,6 @@ interface ResultsHeaderProps {
   showIncremental: boolean;
   incremental: boolean;
   onIncrementalChange: (checked: boolean) => void;
-  queryLimit: string;
-  onQueryLimitChange: (limit: string) => void;
   running: boolean;
   /** The running job's page in the BigQuery console, once the job is created */
   onViewJob?: () => void;
@@ -24,8 +22,6 @@ interface ResultsHeaderProps {
   canDownload: boolean;
   onDownloadCsv: () => void;
 }
-
-const QUERY_LIMITS = ['1000', '50000', '100000', '500000'];
 
 const tabClass = (active: boolean) => `px-3 py-1.5 text-sm font-medium transition-colors border-b-2 ${
   active
@@ -71,17 +67,6 @@ export function ResultsHeader(props: ResultsHeaderProps) {
             <span className="ml-2 font-medium">Incremental</span>
           </label>
         )}
-
-        <select
-          className="bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] text-sm rounded focus:border-[var(--vscode-focusBorder)] block p-1 outline-none"
-          value={props.queryLimit}
-          onChange={(e) => props.onQueryLimitChange(e.target.value)}
-          title="Most rows a query returns"
-        >
-          {QUERY_LIMITS.map(limit => (
-            <option key={limit} value={limit}>Limit: {Number(limit).toLocaleString('en-US')}</option>
-          ))}
-        </select>
 
         {props.running && props.onViewJob && (
           <button
