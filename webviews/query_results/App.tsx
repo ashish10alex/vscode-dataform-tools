@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { vscode } from './vscode';
-import { DataTable } from '../components/ui/data-table';
+import { DataTable, type ServerTable } from '../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { CodeBlock } from '../components/CodeBlock';
 import { FindWidget } from '../components/FindWidget';
 import { ResultsHeader, type ResultsTab } from './components/ResultsHeader';
 import { JobStatusLine, hasJobStatus } from './components/JobStatusLine';
-import { bigQueryJobUrl, type JobStats } from '../../src/shared/queryResultsView';
+import { bigQueryJobUrl, type JobStats, type ResultPaging } from '../../src/shared/queryResultsView';
 
 function escapeRegex(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -51,7 +51,12 @@ export default function App() {
   const [type, setType] = useState<string>('');
 
   const [incrementalCheckBox, setIncrementalCheckBox] = useState<boolean>(false);
-  const [queryLimit, setQueryLimit] = useState<string>('1000');
+
+  // Set when the host holds the result and `results` is one page of it
+  const [paging, setPaging] = useState<ResultPaging | null>(null);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const viewRequestRef = useRef(0);
 
   const [multiResults, setMultiResults] = useState<boolean>(false);
   const [summaryData, setSummaryData] = useState<any[] | null>(null);
@@ -116,7 +121,6 @@ export default function App() {
         }
       }
 
-      if ('queryLimit' in msg) { setQueryLimit(msg.queryLimit); }
       if ('incrementalCheckBox' in msg) { setIncrementalCheckBox(msg.incrementalCheckBox); }
       if ('type' in msg) { setType(msg.type || ''); }
       if (msg.bigQueryJobId) { setBigQueryJobId(msg.bigQueryJobId); }
@@ -140,6 +144,11 @@ export default function App() {
         setResults(msg.results);
         setColumns(msg.columns);
         setJobStats(msg.jobStats ?? null);
+        setPaging(msg.paging ?? null);
+        setPageLoading(false);
+        setPageError(null);
+        // An answer still on its way is to a request for the result before this one
+        viewRequestRef.current++;
 
         if (msg.type === 'assertion' && msg.errorMessage) {
           setErrorMessage('Assertion failed');
@@ -150,6 +159,19 @@ export default function App() {
         setNoResults(false);
         setActiveTab('results');
         stopLoading();
+      }
+
+      // The page asked for, unless another was asked for since
+      if (msg.resultPage && msg.resultPage.requestId === viewRequestRef.current) {
+        setResults(msg.resultPage.rows);
+        setPaging(msg.resultPage.paging);
+        setPageLoading(false);
+        setPageError(null);
+      }
+
+      if (msg.resultPageError && msg.resultPageError.requestId === viewRequestRef.current) {
+        setPageError(msg.resultPageError.message);
+        setPageLoading(false);
       }
 
       if (msg.bigQueryJobCancelled && msg.bigQueryJobId) {
@@ -258,6 +280,9 @@ export default function App() {
     if (!columns) { return []; }
     const baseColumns = columns.map(col => ({
       accessorKey: col.field,
+      // Of a result held by the host, only the columns BigQuery can order are sorted and filtered
+      enableSorting: !paging || !!col.sortable,
+      enableColumnFilter: !paging || !!col.sortable,
       header: () => highlightText(col.title, searchTerm),
       cell: ({ row }: any) => {
         const val = row.getValue(col.field);
@@ -277,13 +302,13 @@ export default function App() {
         size: 80,
         cell: ({ row }: any) => (
           <span className="text-[var(--vscode-descriptionForeground)] font-mono text-xs">
-            {row.depth > 0 ? '' : Number(row.id) + 1}
+            {row.depth > 0 ? '' : (paging ? paging.pageIndex * paging.pageSize + row.index : Number(row.id)) + 1}
           </span>
         ),
       },
       ...baseColumns
     ];
-  }, [columns, searchTerm]);
+  }, [columns, searchTerm, paging]);
 
   const summaryColumns = useMemo<ColumnDef<any, any>[]>(() => {
     return [
@@ -339,6 +364,39 @@ export default function App() {
     vscode.postMessage({ command: 'backToSummary' });
   };
 
+  // Asks the host for a page of the result it holds, with what changed of the paging, the sorting or the filters
+  const requestView: ServerTable['onChange'] = (change) => {
+    if (!paging) { return; }
+    const sorting = change.sorting?.map(sort => ({ id: sort.id, desc: sort.desc })) ?? paging.sorting;
+    const filters = change.columnFilters?.map(filter => ({ id: filter.id, value: String(filter.value ?? '') })).filter(filter => filter.value !== '') ?? paging.filters;
+    const viewChanged = change.sorting !== undefined || change.columnFilters !== undefined;
+    const next: ResultPaging = {
+      ...paging,
+      sorting,
+      filters,
+      pageSize: change.pageSize ?? paging.pageSize,
+      pageIndex: viewChanged ? 0 : change.pageIndex ?? paging.pageIndex,
+    };
+    // The controls show what was asked for at once; the rows follow
+    setPaging(next);
+    setPageLoading(true);
+    setPageError(null);
+    const requestId = ++viewRequestRef.current;
+    vscode.postMessage({
+      command: 'resultView',
+      value: { requestId, pageIndex: next.pageIndex, pageSize: next.pageSize, sorting, filters },
+    });
+  };
+
+  const serverTable: ServerTable | undefined = paging ? {
+    rowCount: paging.rowCount,
+    pageIndex: paging.pageIndex,
+    pageSize: paging.pageSize,
+    sorting: paging.sorting,
+    columnFilters: paging.filters,
+    onChange: requestView,
+  } : undefined;
+
   const goToNextMatch = () => setCurrentMatchIndex(i => i + 1);
   const goToPrevMatch = () => setCurrentMatchIndex(i => i - 1);
 
@@ -351,8 +409,10 @@ export default function App() {
     elapsedSeconds: elapsedTime,
     jobStats,
     jobId: bigQueryJobId,
-    shownRows: !singleResult ? undefined : results ? results.length : noResults ? 0 : undefined,
+    shownRows: !singleResult ? undefined : results ? (paging ? paging.rowCount : results.length) : noResults ? 0 : undefined,
+    viewBilled: paging?.viewBilled,
   };
+  const busy = loading || pageLoading;
   const runningJobUrl = bigQueryJobUrl(bigQueryJobId);
   const status = hasJobStatus(jobStatus) ? <JobStatusLine {...jobStatus} /> : undefined;
 
@@ -370,11 +430,6 @@ export default function App() {
           setIncrementalCheckBox(checked);
           vscode.postMessage({ command: 'incrementalCheckBox', value: checked });
         }}
-        queryLimit={queryLimit}
-        onQueryLimitChange={(limit) => {
-          setQueryLimit(limit);
-          vscode.postMessage({ command: 'queryLimit', value: limit });
-        }}
         running={loading}
         onViewJob={runningJobUrl ? () => vscode.postMessage({ command: 'openExternal', value: runningJobUrl }) : undefined}
         canRun={!multiResults}
@@ -386,7 +441,7 @@ export default function App() {
 
       {/* The line under the header, along which a bar runs while the query does */}
       <div className="relative h-0.5 shrink-0 mt-1 mb-2 overflow-hidden bg-[var(--vscode-widget-border)]">
-        {loading && <div className="query-progress" />}
+        {busy && <div className="query-progress" />}
       </div>
 
       {bigQueryJobCancelledMsg && (
@@ -414,8 +469,8 @@ export default function App() {
         />
       )}
 
-      {/* While a query runs, the results of the one before stay in view, dimmed (see .query-running) */}
-      <div className={`flex-1 min-h-0 overflow-hidden${loading ? ' query-running' : ''}`}>
+      {/* While a query runs or a page is read, the rows before stay in view, dimmed (see .query-running) */}
+      <div className={`flex-1 min-h-0 overflow-hidden${busy ? ' query-running' : ''}`}>
         {/* Multi Results summary block */}
         {summaryShown && (
           <div className="h-full flex flex-col">
@@ -436,6 +491,12 @@ export default function App() {
                 </div>
               )}
 
+              {pageError && (
+                <div className="shrink-0 mb-2 p-2 rounded border font-mono text-sm whitespace-pre-wrap bg-[var(--vscode-inputValidation-errorBackground)] border-[var(--vscode-inputValidation-errorBorder)] text-[var(--vscode-inputValidation-errorForeground,var(--vscode-foreground))]">
+                  {pageError}
+                </div>
+              )}
+
               {noResults && (
                 <div className={`mb-2 font-medium ${type === 'assertion' ? 'text-[var(--vscode-testing-iconPassed)]' : 'text-[var(--vscode-descriptionForeground)]'}`}>
                   {type === 'assertion' ? 'Assertion passed' : 'There is no data to display'}
@@ -448,7 +509,7 @@ export default function App() {
 
               {results && convertedColumns.length > 0 && (
                 <div className="flex-1 min-h-0">
-                  <DataTable columns={convertedColumns} data={results} status={status} />
+                  <DataTable columns={convertedColumns} data={results} status={status} server={serverTable} />
                 </div>
               )}
             </div>

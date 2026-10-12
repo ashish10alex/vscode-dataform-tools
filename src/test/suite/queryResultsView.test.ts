@@ -41,8 +41,15 @@ suite('queryResultsView', () => {
         assert.deepStrictEqual(parts, ['1,000 rows', '2.3s', '269.00 MiB billed', 'cache hit']);
     });
 
-    test('jobStatsParts says when the limit cut the result', () => {
-        assert.deepStrictEqual(jobStatsParts({ totalRows: 48213 }, 1000), ['first 1,000 of 48,213 rows']);
+    test('jobStatsParts says how many rows a filter left', () => {
+        assert.deepStrictEqual(jobStatsParts({ totalRows: 48213 }, 212), ['212 of 48,213 rows']);
+    });
+
+    test('jobStatsParts adds what sorting and filtering billed after what the job billed', () => {
+        assert.deepStrictEqual(
+            jobStatsParts({ jobCostMeta: '269.00 MiB', cacheHit: true }, undefined, '10.00 MiB'),
+            ['269.00 MiB billed', '10.00 MiB billed to sort and filter', 'cache hit']
+        );
     });
 
     test('jobStatsParts counts one row and no rows', () => {

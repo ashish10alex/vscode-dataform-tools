@@ -13,6 +13,8 @@ interface JobStatusLineProps {
   jobId?: string;
   /** Rows in the table, when a finished query has a table or returned no rows */
   shownRows?: number;
+  /** Bytes billed for sorting and filtering a result the host holds */
+  viewBilled?: string;
 }
 
 /** Whether the status line has anything to say, so that its bar is not drawn empty */
@@ -61,11 +63,11 @@ function JobLink({ jobId }: { jobId: string }) {
 }
 
 /** One line on the query's job: how long it has been running, or the stats of the finished job */
-export function JobStatusLine({ running, elapsedSeconds, jobStats, jobId, shownRows }: JobStatusLineProps) {
+export function JobStatusLine({ running, elapsedSeconds, jobStats, jobId, shownRows, viewBilled }: JobStatusLineProps) {
   const id = jobStats?.bigQueryJobId || jobId;
   const parts = running
     ? [`Running… ${elapsedSeconds < 60 ? `${elapsedSeconds}s` : formatDuration(elapsedSeconds * 1000)}`]
-    : jobStatsParts(jobStats, shownRows);
+    : jobStatsParts(jobStats, shownRows, viewBilled);
 
   if (parts.length === 0 && !id) {
     return null;
