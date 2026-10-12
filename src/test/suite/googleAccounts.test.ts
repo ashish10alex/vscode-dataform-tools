@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import path from 'path';
-import { AccountLookups, CREDENTIALS_ENV, METADATA_SERVER, credentialTypeText, defaultCredentialFile, lookUpCredentials, lookUpGcloud } from '../../utils/googleAccounts';
+import { AccountLookups, CREDENTIALS_ENV, METADATA_SERVER, credentialTypeText, defaultCredentialFile, gcloudLoginExpired, lookUpCredentials, lookUpGcloud, lookUpJobProject } from '../../utils/googleAccounts';
 
 const HOME = path.join(path.sep, 'home', 'me');
 const DEFAULT_FILE = path.join(HOME, '.config', 'gcloud', 'application_default_credentials.json');
@@ -93,5 +93,40 @@ suite('the Google accounts in use', () => {
 
     test('a credential type is said in words', () => {
         assert.deepStrictEqual(['authorized_user', 'service_account', METADATA_SERVER, 'something_new', ''].map(credentialTypeText), ['user login', 'service account key', 'metadata server', 'something_new', 'unknown type']);
+    });
+
+    test('the project that jobs run in is looked for in the order of Google\'s library, with gcloud asked without a login', async () => {
+        const asked: string[][] = [];
+        const user = JSON.stringify({ type: 'authorized_user', quota_project_id: 'quota-project' });
+        const everywhere = (fields: Partial<AccountLookups> = {}) => lookups({ [DEFAULT_FILE]: user }, {
+            gcloud: async (_binary, args) => { asked.push(args); return JSON.stringify({ core: { account: 'me@example.com', project: 'gcloud-project' } }); },
+            metadataProject: async () => 'machine-project',
+            ...fields,
+        });
+        const inputs = { gcloudBinary: '/bin/gcloud', defaultProject: 'dataform-project' };
+        assert.deepStrictEqual(await lookUpJobProject({ ...inputs, setting: ' team-dev ' }, everywhere({ env: { GOOGLE_CLOUD_PROJECT: 'env-project' } })), { projectId: 'team-dev', from: 'the gcpProjectId setting' });
+        assert.deepStrictEqual(await lookUpJobProject(inputs, everywhere({ env: { GOOGLE_CLOUD_PROJECT: 'env-project' } })), { projectId: 'env-project', from: '$GOOGLE_CLOUD_PROJECT' });
+        assert.deepStrictEqual(asked, []);
+        const key = JSON.stringify({ type: 'service_account', project_id: 'key-project' });
+        assert.deepStrictEqual(await lookUpJobProject({ ...inputs, keyFile: '/keys/k.json' }, lookups({ '/keys/k.json': key })), { projectId: 'key-project', from: 'the credential file' });
+        assert.deepStrictEqual(await lookUpJobProject(inputs, everywhere()), { projectId: 'gcloud-project', from: 'gcloud config' });
+        // `config list` reads gcloud's files and needs no token: `config config-helper`, as Google's library asks, fails with an expired login
+        assert.deepStrictEqual(asked, [['config', 'list', '--format=json']]);
+        // What gcloud said already is not asked for again
+        assert.deepStrictEqual(await lookUpJobProject({ ...inputs, gcloud: { project: 'said-project' } }, everywhere()), { projectId: 'said-project', from: 'gcloud config' });
+        assert.strictEqual(asked.length, 1);
+        const noGcloudProject = { gcloud: async () => JSON.stringify({ core: { account: 'me@example.com' } }) };
+        assert.deepStrictEqual(await lookUpJobProject(inputs, everywhere(noGcloudProject)), { projectId: 'quota-project', from: "the credentials' quota project" });
+        assert.deepStrictEqual(await lookUpJobProject({ defaultProject: 'dataform-project' }, lookups({}, { metadataProject: async () => 'machine-project' })), { projectId: 'dataform-project', from: "the Dataform project's default project" });
+        assert.deepStrictEqual(await lookUpJobProject({}, lookups({}, { metadataProject: async () => 'machine-project' })), { projectId: 'machine-project', from: 'the metadata server' });
+        assert.deepStrictEqual(await lookUpJobProject({}, lookups({}, { metadataProject: async () => { throw new Error('not on Google Cloud'); } })), {});
+    });
+
+    test('an expired gcloud login is told from a gcloud that only could not reach Google', async () => {
+        const failing = (stderr: string) => ({ gcloud: async () => { throw Object.assign(new Error('Command failed'), { stderr }); } });
+        assert.strictEqual(await gcloudLoginExpired('/bin/gcloud', { gcloud: async () => 'ya29.token' }), false);
+        assert.strictEqual(await gcloudLoginExpired('/bin/gcloud', failing('Reauthentication required.\nERROR: (gcloud.auth.print-access-token) Please run:\n\n  $ gcloud auth login\n')), true);
+        assert.strictEqual(await gcloudLoginExpired('/bin/gcloud', failing("ERROR: There was a problem refreshing your current auth tokens: ('invalid_grant: Token has been expired or revoked.')")), true);
+        assert.strictEqual(await gcloudLoginExpired('/bin/gcloud', failing('ERROR: HTTPSConnectionPool(host=\'oauth2.googleapis.com\', port=443): Max retries exceeded')), false);
     });
 });

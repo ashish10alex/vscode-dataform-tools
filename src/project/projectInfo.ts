@@ -10,7 +10,7 @@ import type { InfoLink, ProjectInfoSlice } from '../shared/panelContract';
 import type { ExecutableSource } from '../types';
 import { readDataformCoreVersion } from '../utils/dataformHelpers';
 import { getSqlfluffConfigPathFromSettings, resolveExecutable } from '../utils/executableResolver';
-import { Credentials, GcloudAccount, SIGN_IN_COMMAND, lookUpCredentials, lookUpGcloud } from '../utils/googleAccounts';
+import { Credentials, GCLOUD_SIGN_IN_COMMAND, GcloudAccount, JobProject, SIGN_IN_COMMAND, gcloudLoginExpired, lookUpCredentials, lookUpGcloud, lookUpJobProject } from '../utils/googleAccounts';
 import { dbtSettings } from './dbtCompile';
 import { dbtToolNow } from './dbtTool';
 import { SETTINGS_FILES, isWithin } from './detection';
@@ -192,7 +192,7 @@ async function readGit(root: string, apiMode: boolean, context: vscode.Extension
 
 interface Known {
     project: ProjectState;
-    google?: { credentials: Credentials; gcloud: GcloudAccount };
+    google?: { credentials: Credentials; gcloud: GcloudAccount; jobs?: JobProject };
     git?: GitInfo;
     /** By executable path. A path that is not in it is still being asked */
     versions: Map<string, string | undefined>;
@@ -354,11 +354,20 @@ export class ProjectInfoWatch {
         const { root } = this.known!.project;
         const keyFile = extensionConfiguration(vscode.Uri.file(root)).get<string>('serviceAccountJsonPath')?.trim() || undefined;
         const gcloud = resolveExecutable('gcloud', root).path ?? undefined;
+        const defaultProject = this.known!.project.dataformBackend?.rawResult?.projectConfig?.defaultDatabase;
         Promise.all([lookUpCredentials(keyFile), lookUpGcloud(gcloud)])
-            .then(([credentials, account]) => {
+            .then(async ([credentials, account]) => {
+                // The setting is not given: the tab reads it as it is now, and this is what is used without it
+                const jobs = await lookUpJobProject({ keyFile, gcloud: account, defaultProject });
                 const known = this.current(generation);
-                if (known) {
-                    known.google = { credentials, gcloud: account };
+                if (!known) {
+                    return;
+                }
+                known.google = { credentials, gcloud: account, jobs };
+                this.post();
+                // Asked last, and only here, where the tab is on show: it reaches Google
+                if (gcloud && account.account && await gcloudLoginExpired(gcloud) && this.current(generation)?.google) {
+                    known.google = { ...known.google, gcloud: { ...account, loginExpired: true } };
                     this.post();
                 }
             })
@@ -410,6 +419,12 @@ export class ProjectInfoWatch {
                 const terminal = vscode.window.createTerminal('Google Cloud sign-in');
                 terminal.show();
                 terminal.sendText(SIGN_IN_COMMAND, false);
+                return;
+            }
+            case 'gcloud sign in': {
+                const terminal = vscode.window.createTerminal('Google Cloud sign-in');
+                terminal.show();
+                terminal.sendText(GCLOUD_SIGN_IN_COMMAND, false);
                 return;
             }
             case 'path':

@@ -13,6 +13,9 @@ import { loadGoogleAuth } from '../lazySdk';
 /** What to run to sign in again */
 export const SIGN_IN_COMMAND = 'gcloud auth application-default login';
 
+/** What to run to sign the gcloud CLI itself in again. The extension's calls do not use that login; `bq` and `gcloud` do */
+export const GCLOUD_SIGN_IN_COMMAND = 'gcloud auth login';
+
 /** The type of credentials that come from no file but from the machine, as in Cloud Shell or on a VM */
 export const METADATA_SERVER = 'metadata_server';
 
@@ -42,6 +45,8 @@ export interface Credentials {
 export interface GcloudAccount {
     account?: string;
     project?: string;
+    /** The CLI's own login no longer gives a token: `GCLOUD_SIGN_IN_COMMAND` renews it */
+    loginExpired?: boolean;
     /** Why gcloud did not say */
     error?: string;
 }
@@ -97,6 +102,8 @@ export interface AccountLookups {
     email?: (token: string) => Promise<string | undefined>;
     /** Runs gcloud and gives what it printed */
     gcloud?: (binary: string, args: string[]) => Promise<string>;
+    /** Asks the metadata server of a Google Cloud machine for its project */
+    metadataProject?: () => Promise<string | undefined>;
 }
 
 async function signIn(keyFile?: string): Promise<string> {
@@ -209,4 +216,93 @@ export async function lookUpGcloud(binary: string | undefined, lookups: AccountL
     } catch {
         return { error: 'gcloud config list printed no JSON' };
     }
+}
+
+/** What gcloud prints when its login has to be made again, and not when it only could not reach Google */
+const LOGIN_EXPIRED = /reauth|invalid_grant/i;
+
+/**
+ * Whether the gcloud CLI's own login still gives a token. It is another login than the extension's credentials, and
+ * `bq` and `gcloud` in a terminal fail without it. This reaches Google, so it is for when the answer is on show.
+ */
+export async function gcloudLoginExpired(binary: string, lookups: AccountLookups = {}): Promise<boolean> {
+    try {
+        await (lookups.gcloud ?? runGcloud)(binary, ['auth', 'print-access-token', '--quiet']);
+        return false;
+    } catch (error) {
+        const failed = error as { stderr?: string; message?: string };
+        return LOGIN_EXPIRED.test(`${failed.stderr ?? ''}\n${failed.message ?? ''}`);
+    }
+}
+
+/** The project that jobs run in when no job names its own, and what named it */
+export interface JobProject {
+    projectId?: string;
+    from?: string;
+}
+
+export interface JobProjectInputs {
+    /** The `gcpProjectId` setting */
+    setting?: string;
+    /** The `serviceAccountJsonPath` setting */
+    keyFile?: string;
+    /** The gcloud CLI, when there is one. Not needed with `gcloud` */
+    gcloudBinary?: string;
+    /** What gcloud has said already, so that it is not asked again */
+    gcloud?: GcloudAccount;
+    /** The default project of the Dataform Project, when it is known */
+    defaultProject?: string;
+}
+
+/** The variables Google's library reads a project from, in its order */
+const PROJECT_ENV = ['GCLOUD_PROJECT', 'GOOGLE_CLOUD_PROJECT', 'gcloud_project', 'google_cloud_project'];
+
+async function metadataServerProject(): Promise<string | undefined> {
+    const host = process.env.GCE_METADATA_HOST || 'metadata.google.internal';
+    const response = await fetch(`http://${host}/computeMetadata/v1/project/project-id`, { headers: { 'Metadata-Flavor': 'Google' }, signal: AbortSignal.timeout(3000) });
+    return response.ok && response.headers.get('metadata-flavor') === 'Google' ? (await response.text()).trim() || undefined : undefined;
+}
+
+/**
+ * Finds the project that the extension's jobs run in. Google's library can find one itself, but it asks gcloud in a
+ * way that needs the CLI's own login to work (`gcloud config config-helper`), and says "Unable to detect a Project
+ * Id" when that login has expired, although the extension's credentials are in order. So the project is found here,
+ * from the same places in the same order, with gcloud asked in a way that needs no login, and is given to each client.
+ * Two places more are looked in before the metadata server: the credentials' quota project and the Dataform Project.
+ */
+export async function lookUpJobProject(inputs: JobProjectInputs, lookups: AccountLookups = {}): Promise<JobProject> {
+    const setting = inputs.setting?.trim();
+    if (setting) {
+        return { projectId: setting, from: 'the gcpProjectId setting' };
+    }
+    const env = lookups.env ?? process.env;
+    const variable = PROJECT_ENV.find((name) => env[name]);
+    if (variable) {
+        return { projectId: env[variable], from: `$${variable}` };
+    }
+    const file = inputs.keyFile ? { path: inputs.keyFile, from: 'the serviceAccountJsonPath setting' } : defaultCredentialFile(env, lookups.platform, lookups.homeDir);
+    let content: Record<string, unknown> = {};
+    try {
+        const parsed: unknown = JSON.parse((lookups.readFile ?? ((path: string) => fs.readFileSync(path, 'utf8')))(file.path));
+        content = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch {
+        // No credential file, or not one: the other places are still looked in
+    }
+    const text = (name: string) => (typeof content[name] === 'string' && content[name] ? (content[name] as string) : undefined);
+    if (text('project_id')) {
+        return { projectId: text('project_id'), from: 'the credential file' };
+    }
+    const gcloud = inputs.gcloud ?? await lookUpGcloud(inputs.gcloudBinary, lookups);
+    if (gcloud.project) {
+        return { projectId: gcloud.project, from: 'gcloud config' };
+    }
+    if (text('quota_project_id')) {
+        return { projectId: text('quota_project_id'), from: "the credentials' quota project" };
+    }
+    const defaultProject = inputs.defaultProject?.trim();
+    if (defaultProject) {
+        return { projectId: defaultProject, from: "the Dataform project's default project" };
+    }
+    const machine = await (lookups.metadataProject ?? metadataServerProject)().catch(() => undefined);
+    return machine ? { projectId: machine, from: 'the metadata server' } : {};
 }

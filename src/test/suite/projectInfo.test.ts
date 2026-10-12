@@ -19,7 +19,7 @@ const dataformTool: ToolInfo = { name: 'dataform', path: '/usr/local/bin/datafor
 function dataform(fields: Partial<ProjectInfoInput> = {}): ProjectInfoInput {
     return {
         root: ROOT, backend: 'dataform', settingsFile: 'workflow_settings.yaml', compilationMode: 'cli', extensionVersion: '2.0.0',
-        tools: [dataformTool], settings: [], google: { credentials: signedIn, gcloud }, git: { branch: 'feature', origin: 'git@github.com:acme/orders.git' },
+        tools: [dataformTool], settings: [], google: { credentials: signedIn, gcloud, jobs: { projectId: 'dev-project', from: 'gcloud config' } }, git: { branch: 'feature', origin: 'git@github.com:acme/orders.git' },
         ...fields,
     };
 }
@@ -159,6 +159,7 @@ suite('project info: the slice', () => {
             { label: 'extension uses', value: 'me@example.com' },
             { label: '', value: 'user login' },
             { label: '', value: signedIn.source, link: { kind: 'path', path: signedIn.source }, note: "gcloud's default file" },
+            { label: 'jobs run in', value: 'dev-project', note: 'from gcloud config' },
             { label: 'quota', value: 'dev-project' },
             { label: 'gcloud', value: 'me@example.com', note: 'project dev-project' },
         ]);
@@ -189,6 +190,28 @@ suite('project info: the slice', () => {
         const badKey = rowsOf(projectInfoSlice(dataform({ google: { credentials: key, gcloud } })), 'google cloud');
         assert.strictEqual(badKey.some((candidate) => candidate.link?.kind === 'sign in'), false);
         assert.deepStrictEqual(badKey[1], { label: '', value: 'service account key' });
+    });
+
+    test('the project that jobs run in is shown with what names it', () => {
+        assert.deepStrictEqual(row(projectInfoSlice(dataform()), 'google cloud', 'jobs run in'), { label: 'jobs run in', value: 'dev-project', note: 'from gcloud config' });
+        // The setting wins, as it is now: it may have changed since the machine was asked
+        const withSetting = projectInfoSlice(dataform({ settings: [{ key: 'gcpProjectId', value: 'team-dev', source: 'user' }] }));
+        assert.deepStrictEqual(row(withSetting, 'google cloud', 'jobs run in'), { label: 'jobs run in', value: 'team-dev', note: 'from the gcpProjectId setting' });
+        const none = projectInfoSlice(dataform({ google: { credentials: signedIn, gcloud: { account: 'me@example.com' }, jobs: {} } }));
+        assert.deepStrictEqual(row(none, 'google cloud', 'jobs run in'), { label: 'jobs run in', value: '(no project)', absent: true, warning: 'set gcpProjectId, or run gcloud config set project' });
+        // A dbt model's jobs run in the model's own project
+        assert.deepStrictEqual(row(projectInfoSlice({ ...dataform(), backend: 'dbt' }), 'google cloud', 'jobs run in'), { label: 'jobs run in', value: "each model's own project", note: 'as profiles.yml gives it' });
+    });
+
+    test("a gcloud login that has expired is a note, not a warning, with the command that renews it", () => {
+        const expired = projectInfoSlice(dataform({ google: { credentials: signedIn, gcloud: { ...gcloud, loginExpired: true }, jobs: { projectId: 'dev-project', from: 'gcloud config' } } }));
+        assert.deepStrictEqual(rowsOf(expired, 'google cloud').slice(-3), [
+            { label: 'gcloud', value: 'me@example.com', note: 'project dev-project' },
+            { label: '', value: 'login expired', note: 'bq and gcloud in a terminal need it' },
+            { label: '', value: 'gcloud auth login', note: 'put it in a terminal', link: { kind: 'gcloud sign in' } },
+        ]);
+        assert.strictEqual(warningsOf(expired), 0);
+        assert.strictEqual(rowsOf(projectInfoSlice(dataform()), 'google cloud').some((candidate) => candidate.link?.kind === 'gcloud sign in'), false);
     });
 
     test('a quota project that is not the gcpProjectId setting is marked, and for a dbt Project the tab says whose sign-in this is', () => {

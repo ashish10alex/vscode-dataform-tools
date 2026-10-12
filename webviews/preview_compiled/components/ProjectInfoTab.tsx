@@ -27,6 +27,7 @@ const LINK_TITLE: Record<InfoLink["kind"], string> = {
   path: "Open it, or show where it is",
   url: "Open in the browser",
   "sign in": "Put this command in a terminal, for you to run",
+  "gcloud sign in": "Put this command in a terminal, for you to run",
 };
 
 function Linked({ link, muted, children }: { link?: InfoLink; muted?: boolean; children: React.ReactNode }) {

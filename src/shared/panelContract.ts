@@ -317,7 +317,9 @@ export type InfoLink =
     | { kind: 'path'; path: string }
     | { kind: 'url'; url: string }
     /** Put the command that signs in to Google Cloud in a terminal, for the user to run */
-    | { kind: 'sign in' };
+    | { kind: 'sign in' }
+    /** The same for the command that signs the gcloud CLI itself in */
+    | { kind: 'gcloud sign in' };
 
 /** One line of the Project tab: a label, a value and a note. A line that continues the one above has no label */
 export interface InfoRow {
