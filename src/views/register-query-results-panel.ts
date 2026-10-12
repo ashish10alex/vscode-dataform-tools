@@ -8,6 +8,7 @@ import { getQueryStringForPreview } from '../previewQueryResults';
 import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
 import { Job } from '@google-cloud/bigquery';
+import { fullJobId } from '../shared/queryResultsView';
 
 function waitForBigQueryJob(queryOutputPromise?: Promise<any>, timeout = getBigQueryTimeoutMs()): Promise<Job | null> { // default timeout from config
   return new Promise((resolve, reject) => {
@@ -179,7 +180,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox ,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "bigQueryJobId": jobStats?.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -191,7 +192,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "bigQueryJobId": jobStats?.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -202,7 +203,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "type": this.queryType, 
                         "incrementalCheckBox": incrementalCheckBox,
                         "queryLimit":  queryLimit,
-                        "bigQueryJobId": jobStats.bigQueryJobId,
+                        "bigQueryJobId": jobStats?.bigQueryJobId,
                         "viewingDetailMode": true
                       };
                       this._view?.webview.postMessage(this._lastRenderPayload);
@@ -273,7 +274,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             const job = await waitForBigQueryJob(queryOutput);
 
             if (this?._view?.webview && job) {
-              this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id };
+              this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": fullJobId(job) };
               this._view.webview.postMessage(this._lastRenderPayload);
             }
 

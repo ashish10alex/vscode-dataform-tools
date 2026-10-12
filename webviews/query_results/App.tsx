@@ -4,6 +4,9 @@ import { DataTable } from '../components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { CodeBlock } from '../components/CodeBlock';
 import { FindWidget } from '../components/FindWidget';
+import { ResultsHeader, type ResultsTab } from './components/ResultsHeader';
+import { JobStatusLine, hasJobStatus } from './components/JobStatusLine';
+import { bigQueryJobUrl, type JobStats } from '../../src/shared/queryResultsView';
 
 function escapeRegex(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -33,14 +36,14 @@ function highlightText(text: string, search: string) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'results' | 'query'>('results');
+  const [activeTab, setActiveTab] = useState<ResultsTab>('results');
   const [loading, setLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   const [results, setResults] = useState<any[] | null>(null);
   const [columns, setColumns] = useState<any[] | null>(null);
 
-  const [jobStats, setJobStats] = useState<any>(null);
+  const [jobStats, setJobStats] = useState<JobStats | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noResults, setNoResults] = useState<boolean>(false);
 
@@ -100,23 +103,31 @@ export default function App() {
         setErrorMessage(null);
         setNoResults(false);
         setBigQueryJobCancelledMsg(null);
-        startTimeRef.current = Date.now();
-        setElapsedTime(0);
-        if (timerRef.current) { clearInterval(timerRef.current); }
-        timerRef.current = setInterval(() => {
-          setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
-        }, 1000);
+        // The stats and the job of the run before are not those of this one
+        setJobStats(null);
+        setBigQueryJobId('');
+        // The message comes again once the job has an id: the clock keeps the time of the first one
+        if (!timerRef.current) {
+          startTimeRef.current = Date.now();
+          setElapsedTime(0);
+          timerRef.current = setInterval(() => {
+            setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
+          }, 1000);
+        }
       }
 
       if ('queryLimit' in msg) { setQueryLimit(msg.queryLimit); }
       if ('incrementalCheckBox' in msg) { setIncrementalCheckBox(msg.incrementalCheckBox); }
       if ('type' in msg) { setType(msg.type || ''); }
-      if ('bigQueryJobId' in msg) { setBigQueryJobId(msg.bigQueryJobId); }
+      if (msg.bigQueryJobId) { setBigQueryJobId(msg.bigQueryJobId); }
+      if ('viewingDetailMode' in msg) { setViewingDetailMode(!!msg.viewingDetailMode); }
 
       if (msg.multiResults && msg.summaryData) {
         setMultiResults(true);
         setSummaryData(msg.summaryData);
         setResults(null);
+        setJobStats(null);
+        setBigQueryJobId('');
         setErrorMessage(null);
         setNoResults(false);
         setActiveTab('results');
@@ -131,7 +142,7 @@ export default function App() {
         setJobStats(msg.jobStats ?? null);
 
         if (msg.type === 'assertion' && msg.errorMessage) {
-          setErrorMessage('Assertion failed !');
+          setErrorMessage('Assertion failed');
         } else {
           setErrorMessage(null);
         }
@@ -143,7 +154,7 @@ export default function App() {
 
       if (msg.bigQueryJobCancelled && msg.bigQueryJobId) {
         setMultiResults(false);
-        setBigQueryJobCancelledMsg(`❕ BigQuery Job was cancelled, bigQueryJobId: ${msg.bigQueryJobId}`);
+        setBigQueryJobCancelledMsg('BigQuery job was cancelled');
         setActiveTab('results');
         stopLoading();
       }
@@ -152,7 +163,7 @@ export default function App() {
         setMultiResults(false);
         setNoResults(true);
         setResults(null);
-        setJobStats(msg.jobStats);
+        setJobStats(msg.jobStats ?? null);
         setErrorMessage(null);
         setActiveTab('results');
         stopLoading();
@@ -170,6 +181,7 @@ export default function App() {
         setMultiResults(false);
         setErrorMessage(msg.errorMessage);
         setResults(null);
+        setJobStats(null);
         setActiveTab('results');
         stopLoading();
       }
@@ -249,6 +261,10 @@ export default function App() {
       header: () => highlightText(col.title, searchTerm),
       cell: ({ row }: any) => {
         const val = row.getValue(col.field);
+        // A child row holds one element of an array: its other cells are empty, not NULL
+        if ((val === null || val === undefined) && row.depth === 0) {
+          return <span className="italic text-[var(--vscode-disabledForeground)]">NULL</span>;
+        }
         const text = typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '');
         return highlightText(text, searchTerm);
       }
@@ -326,134 +342,56 @@ export default function App() {
   const goToNextMatch = () => setCurrentMatchIndex(i => i + 1);
   const goToPrevMatch = () => setCurrentMatchIndex(i => i - 1);
 
-  const renderDateTimeText = () => {
-    const jobIdToUse = jobStats?.bigQueryJobId || bigQueryJobId;
-    if (!jobStats && !jobIdToUse) { return null; }
-    const { bigQueryJobEndTime, jobCostMeta } = jobStats || {};
-    const text = `Query results ran at: ${bigQueryJobEndTime || ''} | Took: (${elapsedTime} seconds) | billed: ${jobCostMeta || '0'} | jobId: ${jobIdToUse}`;
-    return <span className="text-sm font-mono text-[var(--vscode-descriptionForeground)]">{text}</span>;
-  };
+  const singleResult = !multiResults || viewingDetailMode;
+  const summaryShown = multiResults && !!summaryData && !viewingDetailMode;
+  const tableShown = singleResult && activeTab === 'results' && !!results && convertedColumns.length > 0;
 
-  const renderBigQueryLink = () => {
-    const jobIdToUse = jobStats?.bigQueryJobId || bigQueryJobId;
-    if (!jobIdToUse) { return null; }
-    const parts = jobIdToUse.split(':');
-    if (parts.length < 2) { return null; }
-    const projectId = parts[0];
-    const jobId = parts[1].replace('.', ':');
-    const bqLink = `https://console.cloud.google.com/bigquery?project=${projectId}&j=bq:${jobId}&page=queryresults`;
-
-    return (
-      <>
-        <span className="mx-2 text-[var(--vscode-widget-border)]">|</span>
-        <button
-          onClick={() => vscode.postMessage({ command: 'openExternal', value: bqLink })}
-          className="text-sm text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline cursor-pointer bg-transparent border-none p-0"
-        >
-          View job in BigQuery
-        </button>
-      </>
-    );
+  const jobStatus = {
+    running: loading,
+    elapsedSeconds: elapsedTime,
+    jobStats,
+    jobId: bigQueryJobId,
+    shownRows: !singleResult ? undefined : results ? results.length : noResults ? 0 : undefined,
   };
+  const runningJobUrl = bigQueryJobUrl(bigQueryJobId);
+  const status = hasJobStatus(jobStatus) ? <JobStatusLine {...jobStatus} /> : undefined;
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] p-4 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] p-2 font-sans overflow-hidden">
 
-      {/* Top Nav */}
-      {(!multiResults || viewingDetailMode) && (
-        <div className="flex border-b border-[var(--vscode-widget-border)] mb-4">
-          <button
-            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'results' ? 'border-b-2 border-[var(--vscode-button-background)] text-[var(--vscode-foreground)]' : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'}`}
-            onClick={() => setActiveTab('results')}
-          >
-            Results
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'query' ? 'border-b-2 border-[var(--vscode-button-background)] text-[var(--vscode-foreground)]' : 'text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]'}`}
-            onClick={() => setActiveTab('query')}
-          >
-            Query
-          </button>
-        </div>
-      )}
+      <ResultsHeader
+        showTabs={singleResult}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onBackToSummary={viewingDetailMode ? handleBackToSummary : undefined}
+        showIncremental={type === 'incremental'}
+        incremental={incrementalCheckBox}
+        onIncrementalChange={(checked) => {
+          setIncrementalCheckBox(checked);
+          vscode.postMessage({ command: 'incrementalCheckBox', value: checked });
+        }}
+        queryLimit={queryLimit}
+        onQueryLimitChange={(limit) => {
+          setQueryLimit(limit);
+          vscode.postMessage({ command: 'queryLimit', value: limit });
+        }}
+        running={loading}
+        onViewJob={runningJobUrl ? () => vscode.postMessage({ command: 'openExternal', value: runningJobUrl }) : undefined}
+        canRun={!multiResults}
+        onRun={handleRunQuery}
+        onCancel={handleCancelQuery}
+        canDownload={!!results}
+        onDownloadCsv={handleDownloadCsv}
+      />
 
-      <div className="flex items-center space-x-4 mb-4 text-sm flex-wrap gap-y-2">
-        {type === 'incremental' && (
-          <label className="relative inline-flex items-center cursor-pointer group">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={incrementalCheckBox}
-              onChange={(e) => {
-                setIncrementalCheckBox(e.target.checked);
-                vscode.postMessage({ command: 'incrementalCheckBox', value: e.target.checked });
-              }}
-            />
-            <div className="w-9 h-5 bg-[var(--vscode-widget-border)] group-hover:bg-[var(--vscode-toolbar-hoverBackground)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--vscode-widget-border)] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--vscode-button-background)]"></div>
-            <span className="ml-2 font-medium">Incremental</span>
-          </label>
-        )}
-
-        <select
-          className="bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)] text-[var(--vscode-input-foreground)] text-sm rounded-lg focus:ring-[var(--vscode-focusBorder)] focus:border-[var(--vscode-focusBorder)] block p-1 outline-none"
-          value={queryLimit}
-          onChange={(e) => {
-            setQueryLimit(e.target.value);
-            vscode.postMessage({ command: 'queryLimit', value: e.target.value });
-          }}
-        >
-          <option value="1000">Limit: 1000</option>
-          <option value="50000">Limit: 50000</option>
-          <option value="100000">Limit: 100000</option>
-          <option value="500000">Limit: 500000</option>
-        </select>
-
-        {!multiResults && (
-           <button
-             onClick={handleRunQuery}
-             disabled={loading}
-             className="px-3 py-1 bg-[var(--vscode-extensionIcon-preReleaseForeground)] hover:opacity-90 text-[var(--vscode-editor-background)] rounded text-sm font-medium disabled:opacity-50 transition-opacity"
-           >
-             RUN
-           </button>
-        )}
-
-        <button
-          onClick={handleCancelQuery}
-          disabled={!loading}
-          className="px-3 py-1 bg-[var(--vscode-errorForeground)] hover:opacity-90 text-[var(--vscode-editor-background)] rounded text-sm font-medium disabled:opacity-50 transition-opacity"
-        >
-          Cancel query
-        </button>
-
-        <button
-          onClick={handleDownloadCsv}
-          disabled={!results}
-          className="px-3 py-1 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm font-medium disabled:opacity-50 transition-colors"
-        >
-          Download CSV
-        </button>
-      </div>
-
-      <div className="mb-4">
-        {renderDateTimeText()}
-        {renderBigQueryLink()}
+      {/* The line under the header, along which a bar runs while the query does */}
+      <div className="relative h-0.5 shrink-0 mt-1 mb-2 overflow-hidden bg-[var(--vscode-widget-border)]">
+        {loading && <div className="query-progress" />}
       </div>
 
       {bigQueryJobCancelledMsg && (
-        <div className="mb-4 p-2 bg-[var(--vscode-inputValidation-warningBackground)] border border-[var(--vscode-inputValidation-warningBorder)] text-[var(--vscode-inputValidation-warningForeground)] rounded text-sm">
+        <div className="mb-2 p-2 bg-[var(--vscode-inputValidation-warningBackground)] border border-[var(--vscode-inputValidation-warningBorder)] text-[var(--vscode-inputValidation-warningForeground,var(--vscode-foreground))] rounded text-sm">
           {bigQueryJobCancelledMsg}
-        </div>
-      )}
-
-      {viewingDetailMode && (
-        <div className="mb-4">
-          <button
-            onClick={handleBackToSummary}
-            className="px-3 py-1.5 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm font-medium transition-colors"
-          >
-            ← Back to results summary
-          </button>
         </div>
       )}
 
@@ -476,17 +414,10 @@ export default function App() {
         />
       )}
 
-      <div className="flex-1 overflow-hidden relative">
-        {loading && (
-          <div className="absolute inset-0 bg-[var(--vscode-editor-background)] opacity-70 z-50 flex items-center justify-center">
-             <div className="text-sm font-mono bg-[var(--vscode-sideBar-background)] text-[var(--vscode-foreground)] p-4 rounded shadow-lg border border-[var(--vscode-widget-border)]">
-                Loading data... ({elapsedTime} seconds.) {bigQueryJobId ? `JobId: ${bigQueryJobId}` : ''}
-             </div>
-          </div>
-        )}
-
+      {/* While a query runs, the results of the one before stay in view, dimmed (see .query-running) */}
+      <div className={`flex-1 min-h-0 overflow-hidden${loading ? ' query-running' : ''}`}>
         {/* Multi Results summary block */}
-        {multiResults && summaryData && !viewingDetailMode && (
+        {summaryShown && (
           <div className="h-full flex flex-col">
             <h3 className="text-lg font-medium mb-2">Assertion Checks</h3>
             <div className="flex-1 overflow-auto">
@@ -496,23 +427,29 @@ export default function App() {
         )}
 
         {/* Single result viewing mode (either single query, or drilling down into multi results) */}
-        {(!multiResults || viewingDetailMode) && (
+        {singleResult && (
           <>
             <div className={`h-full flex-col ${activeTab === 'results' ? 'flex' : 'hidden'}`}>
               {errorMessage && (
-                <div className="text-[var(--vscode-errorForeground)] mb-4 font-mono text-sm whitespace-pre-wrap">
+                <div className="shrink-0 max-h-full overflow-auto mb-2 p-2 rounded border font-mono text-sm whitespace-pre-wrap bg-[var(--vscode-inputValidation-errorBackground)] border-[var(--vscode-inputValidation-errorBorder)] text-[var(--vscode-inputValidation-errorForeground,var(--vscode-foreground))]">
                   {errorMessage}
                 </div>
               )}
 
               {noResults && (
-                <div className="text-[var(--vscode-extensionIcon-preReleaseForeground)] mb-4 font-medium">
-                  {type === 'assertion' ? 'Assertion passed !' : 'There is no data to display'}
+                <div className={`mb-2 font-medium ${type === 'assertion' ? 'text-[var(--vscode-testing-iconPassed)]' : 'text-[var(--vscode-descriptionForeground)]'}`}>
+                  {type === 'assertion' ? 'Assertion passed' : 'There is no data to display'}
                 </div>
               )}
 
+              {loading && !results && (
+                <div className="text-sm text-[var(--vscode-descriptionForeground)]">Running query…</div>
+              )}
+
               {results && convertedColumns.length > 0 && (
-                <DataTable columns={convertedColumns} data={results} />
+                <div className="flex-1 min-h-0">
+                  <DataTable columns={convertedColumns} data={results} status={status} />
+                </div>
               )}
             </div>
 
@@ -522,6 +459,13 @@ export default function App() {
           </>
         )}
       </div>
+
+      {/* Under a table the status is part of the table's own bar */}
+      {status && !tableShown && (
+        <div className="shrink-0 mt-2 px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)]">
+          {status}
+        </div>
+      )}
 
     </div>
   );
