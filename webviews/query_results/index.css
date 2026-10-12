@@ -84,3 +84,24 @@
 .hljs-strong {
     font-weight: bold;
 }
+
+/* The bar that runs along the line under the header while a query does */
+.query-progress {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 30%;
+    background: var(--vscode-progressBar-background);
+    animation: query-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes query-progress {
+    from { left: -30%; }
+    to { left: 100%; }
+}
+
+/* The results of the query before, while the next one runs */
+.query-running table {
+    opacity: 0.45;
+    pointer-events: none;
+}

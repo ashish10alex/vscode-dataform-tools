@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -38,6 +38,8 @@ interface DataTableProps<TData, TValue> {
   footerPosition?: 'top' | 'bottom'
   /** Keeps the first column in view while the table is scrolled sideways: for a table whose first column names the row */
   stickyFirstColumn?: boolean
+  /** Shown at the start of the bar under the table, which is then drawn even when there is a single page */
+  status?: ReactNode
 }
 
 function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, unknown>; shouldAutoFocus: boolean }) {
@@ -82,6 +84,7 @@ export function DataTable<TData, TValue>({
   onExpandedChange,
   footerPosition = 'bottom',
   stickyFirstColumn = false,
+  status,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -130,6 +133,7 @@ export function DataTable<TData, TValue>({
   const stuck = (index: number, background: string) => stickyFirstColumn && index === 0
     ? ` sticky left-0 z-[5] ${background} group-hover/row:[background-image:linear-gradient(var(--vscode-list-hoverBackground),var(--vscode-list-hoverBackground))]`
     : '';
+  const hasPager = paginated && table.getPageCount() > 1;
   const hasFooter = table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer));
 
   return (
@@ -252,8 +256,11 @@ export function DataTable<TData, TValue>({
       </div>
 
        {/* Pagination */}
-       {paginated && table.getPageCount() > 1 && (
-        <div className="flex items-center justify-between px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] text-xs text-[var(--vscode-foreground)]">
+       {(hasPager || status) && (
+        <div className={`flex items-center justify-between px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] text-xs text-[var(--vscode-foreground)]${status ? ' flex-wrap gap-x-4 gap-y-1' : ''}`}>
+          {status}
+          {hasPager && (
+          <div className={status ? 'flex items-center gap-x-4 ml-auto' : 'contents'}>
              <div className="flex items-center space-x-2">
                 <span className="flex items-center gap-1">
                     <div>Page</div>
@@ -320,6 +327,8 @@ export function DataTable<TData, TValue>({
                     <ChevronsRight className="h-4 w-4" />
                 </button>
             </div>
+          </div>
+          )}
         </div>
       )}
 
