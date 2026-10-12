@@ -24,13 +24,13 @@ import { perfCount } from "./perf";
 import { resolveDataformOptions } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
 import { tableOfError, tableOfMetadata } from './project/heldTable';
-import { SEARCH_COLUMNS_COMMAND, tableHoverText } from './project/tableHoverText';
+import { COPY_COLUMNS_COMMAND, SEARCH_COLUMNS_COMMAND, tableHoverText } from './project/tableHoverText';
 
-/** The text of a table's hover as the Markdown a hover shows: its icons drawn, and its one command allowed to run */
+/** The text of a table's hover as the Markdown a hover shows: its icons drawn, and its two commands allowed to run */
 export function tableHoverMarkdown(text: string): vscode.MarkdownString {
   const markdown = new vscode.MarkdownString(text);
-  // The descriptions are text from the Project and from BigQuery: nothing but the link to search the columns may run
-  markdown.isTrusted = { enabledCommands: [SEARCH_COLUMNS_COMMAND] };
+  // The descriptions are text from the Project and from BigQuery: nothing but the links to search the columns and to copy their names may run
+  markdown.isTrusted = { enabledCommands: [SEARCH_COLUMNS_COMMAND, COPY_COLUMNS_COMMAND] };
   markdown.supportThemeIcons = true;
   return markdown;
 }

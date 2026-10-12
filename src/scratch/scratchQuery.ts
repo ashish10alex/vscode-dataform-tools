@@ -110,30 +110,49 @@ export function hasStatement(sql: string): boolean {
     return sql.replace(/--[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\//g, '').trim() !== '';
 }
 
+/** A table a query names, and where in the text: from `start` up to `end` */
+export interface TableNameAt {
+    table: TableName;
+    start: number;
+    end: number;
+}
+
 /**
- * The tables a query names, read from its text, as a query being written often does not parse: names in backticks
- * and names after FROM or JOIN, of two or three parts. A name of one part is left out: it is a CTE or an alias.
+ * Each place a query names a table, read from its text, as a query being written often does not parse: names in
+ * backticks and names after FROM or JOIN, of two or three parts. A name of one part is left out: it is a CTE or an
+ * alias.
  */
-export function tableNamesIn(sql: string): TableName[] {
+export function tableNamesAt(sql: string): TableNameAt[] {
     const text = withoutCommentsAndStrings(sql);
-    const found = new Map<string, TableName>();
-    const add = (name: string) => {
-        const parts = name.split('.').map((part) => part.trim()).filter(Boolean);
-        if (parts.length < 2 || parts.length > 3) {
+    const found: TableNameAt[] = [];
+    const add = (name: string, start: number) => {
+        const parts = name.replace(/`/g, '').split('.').map((part) => part.trim()).filter(Boolean);
+        if (parts.length < 2 || parts.length > 3 || found.some((each) => start < each.end && each.start < start + name.length)) {
             return;
         }
         const [tableId, datasetId, projectId] = [...parts].reverse();
-        const table: TableName = projectId ? { projectId, datasetId, tableId } : { datasetId, tableId };
-        found.set(tableNameText(table).toLowerCase(), table);
+        found.push({ table: projectId ? { projectId, datasetId, tableId } : { datasetId, tableId }, start, end: start + name.length });
     };
     // `project.dataset.table`, and `project`.`dataset`.`table` or `project.dataset`.table
     for (const match of text.matchAll(/`[^`\n]+`(?:\s*\.\s*(?:`[^`\n]+`|[\w-]+))*/g)) {
-        add(match[0].replace(/`/g, ''));
+        add(match[0], match.index);
     }
     for (const match of text.matchAll(/\b(?:from|join)\s+([A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*){1,2})/gi)) {
-        add(match[1]);
+        add(match[1], match.index + match[0].length - match[1].length);
     }
+    return found.sort((x, y) => x.start - y.start);
+}
+
+/** The tables a query names, each once: see `tableNamesAt` */
+export function tableNamesIn(sql: string): TableName[] {
+    const found = new Map<string, TableName>();
+    tableNamesAt(sql).forEach(({ table }) => found.set(tableNameText(table).toLowerCase(), table));
     return [...found.values()];
+}
+
+/** The top-level column names of a table, as one line to paste into a SELECT: `order_id, order_date, total` */
+export function columnNamesText(fields: ReadonlyArray<{ name: string }>): string {
+    return fields.map((field) => field.name).join(', ');
 }
 
 /**

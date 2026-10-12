@@ -9,12 +9,17 @@ import { logger } from '../logger';
 import { runQueryInPanel } from '../previewQueryResults';
 import { fileBackendHints, projects, ProjectState } from '../project';
 import { extensionConfiguration } from '../project/settings';
-import { CompiledGraph, kindHasTable } from '../shared/compiledGraph';
+import { tableOfError, tableOfMetadata } from '../project/heldTable';
+import { tableHoverText } from '../project/tableHoverText';
+import { fetchTableMetadata, tableHoverMarkdown } from '../hoverProvider';
+import { formatTimestamp } from '../utils';
+import { CompiledGraph, Target, kindHasTable, targetId } from '../shared/compiledGraph';
 import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse } from '../types';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
-    hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix, tableNamesIn,
+    columnNamesText, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
+    tableNamesAt, tableNamesIn,
     type TableName,
 } from './scratchQuery';
 
@@ -328,6 +333,80 @@ class ScratchCompletionProvider implements vscode.CompletionItemProvider {
     }
 }
 
+// ---- Hover of a table name, and copying a table's column names
+
+/** The Target a table name in the scratch query at `filePath` stands for. A name without a project is in the project its jobs run in */
+async function targetOf(table: TableName, filePath: string): Promise<Target> {
+    const place = placeOf(filePath);
+    const database = table.projectId ?? place.projectId ?? (await getBigQueryClientFor(place))?.projectId ?? '';
+    return { database, schema: table.datasetId, name: table.tableId };
+}
+
+function tableAt(document: vscode.TextDocument, position: vscode.Position) {
+    const offset = document.offsetAt(position);
+    return tableNamesAt(document.getText()).find((each) => each.start <= offset && offset <= each.end);
+}
+
+/** The hover a table has in a file of the Project: what the Project says of it when it is one of its Actions, and what BigQuery has */
+class ScratchHoverProvider implements vscode.HoverProvider {
+    async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
+        const named = tableAt(document, position);
+        if (!named) {
+            return undefined;
+        }
+        const target = await targetOf(named.table, document.uri.fsPath);
+        if (!target.database) {
+            return undefined;
+        }
+        const action = graphOf(projectOf(document.uri.fsPath))?.actions[targetId(target)];
+        const table = await fetchTableMetadata(target.database, target.schema, target.name).then(tableOfMetadata, tableOfError);
+        const range = new vscode.Range(document.positionAt(named.start), document.positionAt(named.end));
+        return new vscode.Hover(tableHoverMarkdown(tableHoverText(action ?? { target }, table, formatTimestamp)), range);
+    }
+}
+
+/**
+ * Copies the column names of a table, on one line with commas, to paste into a query. The table is the one given (by
+ * the link of a hover), else the one the cursor is on in a scratch query, else one picked from the Project's.
+ */
+async function copyTableColumns(given?: Target) {
+    let target = given?.database && given.schema && given.name ? given : undefined;
+    const editor = vscode.window.activeTextEditor;
+    if (!target && editor && isScratchDocument(editor.document)) {
+        const named = tableAt(editor.document, editor.selection.active);
+        target = named && await targetOf(named.table, editor.document.uri.fsPath);
+    }
+    if (!target) {
+        const project = (editor?.document.uri.scheme === 'file' ? projectOf(editor.document.uri.fsPath) : undefined) ?? projects.active;
+        const tables = Object.values(graphOf(project)?.actions ?? {}).filter((action) => kindHasTable(action.kind) && action.target.database);
+        if (tables.length === 0) {
+            vscode.window.showWarningMessage('There is no table to copy the column names of: put the cursor on a table name in a scratch query, or open a file of a compiled project.');
+            return;
+        }
+        const picked = await vscode.window.showQuickPick(
+            tables.map((action) => ({ label: action.target.name, description: `${action.target.database}.${action.target.schema}`, detail: action.kind, target: action.target })),
+            { placeHolder: 'The table to copy the column names of', matchOnDescription: true },
+        );
+        target = picked?.target;
+    }
+    if (!target?.database) {
+        return;
+    }
+    const name = `${target.database}.${target.schema}.${target.name}`;
+    try {
+        const metadata = await fetchTableMetadata(target.database, target.schema, target.name);
+        const fields: { name: string }[] = metadata?.schema?.fields ?? [];
+        if (fields.length === 0) {
+            vscode.window.showWarningMessage(`${name} has no columns to copy.`);
+            return;
+        }
+        await vscode.env.clipboard.writeText(columnNamesText(fields));
+        vscode.window.setStatusBarMessage(`$(check) Copied ${fields.length} column name${fields.length === 1 ? '' : 's'} of ${target.name}`, 4000);
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Could not read the columns of ${name}: ${error?.message ?? error}`);
+    }
+}
+
 // ---- Wiring
 
 function onShown(editor: vscode.TextEditor | undefined) {
@@ -354,7 +433,9 @@ export function initScratchQueries(context: vscode.ExtensionContext) {
         statusBarItem,
         diagnostics,
         vscode.commands.registerCommand('vscode-dataform-tools.newScratchQuery', newScratchQuery),
+        vscode.commands.registerCommand('vscode-dataform-tools.copyTableColumns', copyTableColumns),
         vscode.languages.registerCompletionItemProvider(SCRATCH_SELECTOR, new ScratchCompletionProvider(), '`', '.'),
+        vscode.languages.registerHoverProvider(SCRATCH_SELECTOR, new ScratchHoverProvider()),
         vscode.window.onDidChangeActiveTextEditor(onShown),
         vscode.workspace.onDidSaveTextDocument((document) => {
             if (isScratchDocument(document)) {

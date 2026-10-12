@@ -18,6 +18,8 @@ suite('Scratch queries', () => {
     const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
     const extensionFolder = path.join(root, '.vscode-dataform-tools');
     const hadExtensionFolder = fs.existsSync(extensionFolder);
+    /** The table of definitions/0100_CLUBS.sqlx as the completion writes it: `project.dataset.0100_CLUBS` in backticks */
+    let clubsName = '';
 
     suiteSetup(async () => {
         await vscode.extensions.getExtension(EXTENSION_ID)!.activate();
@@ -69,5 +71,20 @@ suite('Scratch queries', () => {
         }
         const clubs = tables.find((table) => /\.0100_CLUBS`$/.test(String(table.insertText)));
         assert.ok(clubs, `0100_CLUBS was not offered among ${tables.map((table) => table.insertText).join(', ')}`);
+        clubsName = String(clubs.insertText);
+    });
+
+    test('a table name has the hover of a table of the Project, with the links to search and to copy its columns allowed', async () => {
+        const editor = vscode.window.activeTextEditor!;
+        const whole = new vscode.Range(new vscode.Position(0, 0), editor.document.positionAt(editor.document.getText().length));
+        await editor.edit((edit) => edit.replace(whole, `SELECT *\nFROM ${clubsName}\n`));
+        const hovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', editor.document.uri, new vscode.Position(1, 12));
+        const markdown = hovers.flatMap((hover) => hover.contents).find((content): content is vscode.MarkdownString => content instanceof vscode.MarkdownString && content.value.includes('0100_CLUBS'));
+        assert.ok(markdown, 'the table has no hover');
+        // What the Project says of the table is there whether or not BigQuery could be asked
+        assert.match(markdown.value, /\*\*Kind:\*\* view/);
+        assert.deepStrictEqual((markdown.isTrusted as { enabledCommands: string[] }).enabledCommands, ['vscode-dataform-tools.searchTableColumns', 'vscode-dataform-tools.copyTableColumns']);
+        // Nothing is hovered beside the name
+        assert.deepStrictEqual(await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', editor.document.uri, new vscode.Position(0, 3)), []);
     });
 });

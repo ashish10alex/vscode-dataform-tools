@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, tableNamePrefix, tableNamesIn, tableNameText } from '../../scratch/scratchQuery';
+import { columnNamesText, hasStatement, isScratchPath, tableNamesAt, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, tableNamePrefix, tableNamesIn, tableNameText } from '../../scratch/scratchQuery';
 
 const GIB = 1024 ** 3;
 const names = (sql: string) => tableNamesIn(sql).map(tableNameText);
@@ -123,6 +123,26 @@ suite('scratchQuery.tableNamesIn', () => {
     test('a table named twice is read once, and a query half-written is read as far as it goes', () => {
         assert.deepStrictEqual(names('SELECT  FROM `p.d.orders` WHERE x IN (SELECT y FROM `P.D.ORDERS`) AND'), ['P.D.ORDERS']);
         assert.deepStrictEqual(names('SELECT * FROM'), []);
+    });
+});
+
+suite('scratchQuery.tableNamesAt', () => {
+    test('says where each name is, backticks and all, in the order they are written', () => {
+        const sql = 'SELECT *\nFROM `p.d.orders` o\nJOIN d.customers c USING (id)\nJOIN `p.d.orders` again USING (id)';
+        const found = tableNamesAt(sql);
+        assert.deepStrictEqual(found.map((each) => sql.slice(each.start, each.end)), ['`p.d.orders`', 'd.customers', '`p.d.orders`']);
+        assert.deepStrictEqual(found[1].table, { datasetId: 'd', tableId: 'customers' });
+    });
+
+    test('a name in backticks after FROM is read once', () => {
+        assert.strictEqual(tableNamesAt('SELECT 1 FROM `p.d.orders`').length, 1);
+    });
+});
+
+suite('scratchQuery.columnNamesText', () => {
+    test('is the names on one line with commas, in the table\'s order', () => {
+        assert.strictEqual(columnNamesText([{ name: 'order_id' }, { name: 'order_date' }, { name: 'total' }]), 'order_id, order_date, total');
+        assert.strictEqual(columnNamesText([]), '');
     });
 });
 

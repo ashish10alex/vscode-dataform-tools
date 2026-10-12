@@ -94,6 +94,11 @@
                 "title": "New scratch query"
             },
             {
+                "command": "vscode-dataform-tools.copyTableColumns",
+                "category": "Dataform/dbt",
+                "title": "Copy column names of a table"
+            },
+            {
                 "command": "vscode-dataform-tools.cancelQuery",
                 "category": "Dataform/dbt",
                 "title": "Cancel query"

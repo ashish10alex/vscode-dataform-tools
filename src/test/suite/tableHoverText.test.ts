@@ -24,7 +24,8 @@ const FOUND: HeldTable = {
 };
 
 const TITLE = '#### [p.shop.orders](https://console.cloud.google.com/bigquery?project=p&ws=!1m5!1m4!4m3!1sp!2sshop!3sorders)';
-const SEARCH = '[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?%5B%7B%22database%22%3A%22p%22%2C%22schema%22%3A%22shop%22%2C%22name%22%3A%22orders%22%7D%5D)';
+const TARGET_ARGUMENT = '%5B%7B%22database%22%3A%22p%22%2C%22schema%22%3A%22shop%22%2C%22name%22%3A%22orders%22%7D%5D';
+const SEARCH = `[$(search) Search columns](command:vscode-dataform-tools.searchTableColumns?${TARGET_ARGUMENT}) · [$(copy) Copy column names](command:vscode-dataform-tools.copyTableColumns?${TARGET_ARGUMENT})`;
 
 suite('what the hover of a table says, in a Dataform and a dbt Project', () => {
     test('a built table: its name as a link, the search of its columns, its Kind and location, what BigQuery knows, and its columns', () => {
