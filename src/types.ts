@@ -559,13 +559,18 @@ export interface WorkflowUrlEntry {
     includeDependencies: boolean;
     includeDependents: boolean;
     fullRefresh: boolean;
-    /** `cli` is a `dataform run` sent to the terminal: it has no `url`, `workspace` or `repositoryName` */
-    executionMode?: 'api' | 'api_workspace' | 'cli';
+    /** `cli` is a `dataform run` sent to the terminal, `dbt` a `dbt build`: neither has a `url`, `workspace` or `repositoryName` */
+    executionMode?: 'api' | 'api_workspace' | 'cli' | 'dbt';
     /** The invocation's ID. For a CLI run, an ID of the extension's own: the run is no workflow invocation */
     workflowInvocationId?: string;
     /** CLI run: what the IDs of its BigQuery jobs start with. `actions` then has a row for each job, not each action */
     jobPrefix?: string;
-    /** CLI run: why its jobs are not listed, or not all of them */
+    /**
+     * dbt run: its Project, the command line that was sent, how long dbt's log was before it, and the ID dbt gave the
+     * invocation once that is known. `actions` then has a row for each BigQuery job dbt labelled with the ID
+     */
+    dbt?: { root: string; command: string; logOffset: number; invocationId?: string };
+    /** CLI or dbt run: why its jobs are not listed, or not all of them */
     jobsNote?: string;
     /** When each stage between the run's invocation and its first job was reached; absent on older entries */
     stages?: RunStages;

@@ -23,6 +23,8 @@ suite('dbt targets', () => {
         const root = exampleProjectRoot('dbt');
         assert.deepStrictEqual(listDbtTargets(root, { env: {}, homeDir: dir }), {
             profile: 'xf_example', profilesFile: path.join(root, 'profiles.yml'), names: ['dev', 'ci'], defaultName: 'dev',
+            // The project is a Jinja expression, which only dbt can tell
+            jobPlaces: { dev: { projectId: undefined, location: 'EU' }, ci: { projectId: undefined, location: 'EU' } },
         });
     });
 
@@ -56,6 +58,26 @@ suite('dbt targets', () => {
         // A value that is a Jinja expression outside a string does not stop the names being read
         write('names/profiles.yml', 'shop:\n  outputs:\n    dev:\n      project: {{ env_var("P") }}\n    ci:\n      project: x\n');
         assert.deepStrictEqual(listDbtTargets(root, { env: {}, homeDir: dir })?.names, ['dev', 'ci']);
+    });
+
+    test('where a dbt target runs its jobs is its execution project, else its project', () => {
+        const root = path.join(dir, 'places');
+        write('places/dbt_project.yml', 'profile: shop\n');
+        write('places/profiles.yml', [
+            'shop:', '  outputs:',
+            '    dev:', '      project: shop-dev', '      location: EU', '      keyfile: /secret/key.json',
+            '    billed:', '      project: shop-data', '      execution_project: shop-billing',
+            '    templated:', '      project: "{{ env_var(\'P\') }}"', '      location: US',
+            '    empty:',
+        ].join('\n'));
+        const targets = listDbtTargets(root, { env: {}, homeDir: dir });
+        assert.deepStrictEqual(targets?.jobPlaces, {
+            dev: { projectId: 'shop-dev', location: 'EU' },
+            billed: { projectId: 'shop-billing', location: undefined },
+            templated: { projectId: undefined, location: 'US' },
+            empty: { projectId: undefined, location: undefined },
+        });
+        assert.ok(!JSON.stringify(targets).includes('secret'));
     });
 
     test('cannot be told when the profile is missing, has no outputs, or a file does not parse', () => {

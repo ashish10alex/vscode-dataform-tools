@@ -10,6 +10,7 @@ import { SHOW_RUN_DETAILS_EVENT } from './RunStatusPill';
 import { IncludedTargetsList } from './IncludedTargetsList';
 import { RunViaTag, WorkflowActionsTable, getStatusIcon } from './WorkflowActionsTable';
 import { RunStartSummary } from './RunStages';
+import { isTerminalRun } from '../../../src/shared/cliRunJobs';
 
 interface LatestRunBannerProps {
     state: PanelState;
@@ -72,7 +73,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
     if (!latest) { return null; }
 
     const isTerminal = !!latest.state && TERMINAL_WORKFLOW_STATES.has(latest.state);
-    const isCli = latest.executionMode === 'cli';
+    const isCli = isTerminalRun(latest);
     const hasActions = (latest.actions?.length ?? 0) > 0;
     const manyTargets = !latest.includedTags?.length && (latest.includedTargets?.length ?? 0) > 1;
     const slotMs = latest.jobStatsSummary?.totalSlotMs;

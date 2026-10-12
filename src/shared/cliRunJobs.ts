@@ -36,7 +36,7 @@ export interface BigQueryJobMetadata {
         query?: { ddlTargetTable?: TableReference };
         [key: string]: unknown;
     };
-    configuration?: { query?: { query?: string; destinationTable?: TableReference } };
+    configuration?: { query?: { query?: string; destinationTable?: TableReference }; labels?: Record<string, string> };
 }
 
 interface TableReference { projectId?: string; datasetId?: string; tableId?: string }
@@ -136,6 +136,11 @@ export function jobTargetMatcher(actions: MatchedAction[]): (job: BigQueryJobMet
     };
 }
 
+/** Whether a run in the history was sent to a terminal, with the Dataform CLI or dbt: its rows are then its BigQuery jobs, which the extension follows itself */
+export function isTerminalRun(entry: { executionMode?: string }): boolean {
+    return entry.executionMode === 'cli' || entry.executionMode === 'dbt';
+}
+
 /** Whether a row's job has not ended */
 export function isActiveJob(row: WorkflowAction): boolean {
     return row.state === 'RUNNING' || row.state === 'PENDING';
@@ -152,25 +157,25 @@ function jobState(status: BigQueryJobMetadata['status']): string {
 }
 
 /**
- * A row for each of `jobs` whose ID starts with `idPrefix`, oldest first. A job no action can be told for goes by
- * the end of its ID.
+ * A row for each of `jobs` that is the run's, oldest first: one whose ID starts with `ofRun`, or that `ofRun` says
+ * is. A job no action can be told for goes by the end of its ID.
  */
 export function runJobRows(
     jobs: BigQueryJobMetadata[],
-    idPrefix: string,
+    ofRun: string | ((job: BigQueryJobMetadata) => boolean),
     nameOf: (job: BigQueryJobMetadata) => string | undefined,
     toStats: (statistics: unknown, location: string | undefined) => WorkflowActionJobStats,
 ): WorkflowAction[] {
     const rows: WorkflowAction[] = [];
     for (const job of jobs) {
         const ref = job.jobReference;
-        if (!ref?.jobId?.startsWith(idPrefix)) {
+        if (!ref?.jobId || !(typeof ofRun === 'string' ? ref.jobId.startsWith(ofRun) : ofRun(job))) {
             continue;
         }
         const state = jobState(job.status);
         const started = Number(job.statistics?.startTime ?? job.statistics?.creationTime);
         const row: WorkflowAction = {
-            target: nameOf(job) ?? `job …${ref.jobId.slice(idPrefix.length)}`,
+            target: nameOf(job) ?? `job …${typeof ofRun === 'string' ? ref.jobId.slice(ofRun.length) : ref.jobId.slice(-8)}`,
             state,
             jobId: ref.projectId && ref.location ? `${ref.projectId}:${ref.location}.${ref.jobId}` : ref.jobId,
         };
@@ -197,6 +202,7 @@ export function countJobRows(rows: WorkflowAction[]): ActionCounts {
             case 'SUCCEEDED': counts.succeeded++; break;
             case 'FAILED': counts.failed++; break;
             case 'CANCELLED': counts.cancelled++; break;
+            case 'SKIPPED': counts.skipped++; break;
         }
     }
     return counts;

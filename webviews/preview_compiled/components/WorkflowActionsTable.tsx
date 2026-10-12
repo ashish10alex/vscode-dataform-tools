@@ -5,10 +5,11 @@ import { WorkflowAction, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration, needsJobStats } from '../../../src/shared/jobTiming';
+import { isTerminalRun } from '../../../src/shared/cliRunJobs';
 
 /*
  * The list of a run's actions with what their BigQuery jobs did. A run through the API has a line for each action; a
- * run through the CLI has a line for each job, named after the action it could be told for.
+ * run through the CLI, or with dbt, has a line for each job, named after the action it could be told for.
  */
 
 export function getStatusIcon(status?: string | null) {
@@ -55,8 +56,8 @@ export function RunViaTag({ entry }: { entry: WorkflowUrlEntry }) {
     const chip = 'px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]';
     return (
         <>
-            <span className={chip} title={entry.executionMode === 'cli' ? 'Run with the Dataform CLI in the terminal' : 'Run through the Dataform API'}>
-                {entry.executionMode === 'cli' ? 'cli' : 'api'}
+            <span className={chip} title={entry.executionMode === 'dbt' ? 'Run with dbt build in the terminal' : entry.executionMode === 'cli' ? 'Run with the Dataform CLI in the terminal' : 'Run through the Dataform API'}>
+                {isTerminalRun(entry) ? entry.executionMode : 'api'}
             </span>
             {entry.interrupted && (
                 <span className={chip} title="The window was closed or reloaded while the run was going, so how it ended is told by its BigQuery jobs alone">
@@ -159,7 +160,7 @@ function ActionLine({ action, workflowInvocationId, isCli }: { action: WorkflowA
  * still running shows the time since it started, so the list is drawn again every second while there is one.
  */
 export function WorkflowActionsTable({ entry, className, tools }: { entry: WorkflowUrlEntry; className: string; tools?: ReactNode }) {
-    const isCli = entry.executionMode === 'cli';
+    const isCli = isTerminalRun(entry);
     const rows = useMemo<WorkflowAction[]>(() => entry.actions ?? [], [entry.actions]);
     const [filter, setFilter] = useState('');
     const [only, setOnly] = useState<Narrowing | null>(null);
@@ -187,7 +188,8 @@ export function WorkflowActionsTable({ entry, className, tools }: { entry: Workf
     const wanted = filter.trim().toLowerCase();
     const shown = rows.filter((row) => (!wanted || row.target.toLowerCase().includes(wanted)) && (!narrowing || narrowing.has(row))).sort(problemsThenSlowest);
     const done = rows.filter((row) => row.state === 'SUCCEEDED').length;
-    const what = isCli ? 'BigQuery job' : 'action';
+    // A dbt run has a row for each node dbt's log tells of, with or without a job
+    const what = entry.executionMode === 'dbt' ? 'node' : isCli ? 'BigQuery job' : 'action';
 
     return (
         <div data-run-actions={entry.workflowInvocationId ?? ''}>

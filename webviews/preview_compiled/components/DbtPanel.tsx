@@ -16,10 +16,16 @@ import { ROW_BUTTON, ROW_TOKEN, ROW_TOKEN_SET, RowChip, RowTone, SummaryRow } fr
 import { SqlBlock, SqlTabs, shownSqlBlock, sqlTabLabels } from "./SqlTabs";
 import { LineageEntry, LineageLists } from "./LineageColumns";
 import { formatAgo } from "./LastRunCard";
+import { RunHistory, runFacts } from "./RunHistory";
+import { RunStartSummary } from "./RunStages";
+import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
+import { CancelWorkflowButton } from "./CancelWorkflowButton";
+import { WorkflowActionsTable, getStatusIcon, useTick } from "./WorkflowActionsTable";
+import { TERMINAL_WORKFLOW_STATES } from "../utils/workflowPolling";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { useNow } from "./CompilationInfoBadge";
 import { formatRelativeTime } from "../utils/compilationInfoFormat";
-import type { ColumnMetadata } from "../../../src/types";
+import type { ColumnMetadata, WorkflowUrlEntry } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
 import { SchemaTable } from "./SchemaTab";
 import { getUrlToNavigateToTableInBigQuery } from "../../utils/bigquery";
@@ -32,8 +38,8 @@ import { ModifierSwitch } from "./ModifierSwitch";
  * in src/shared/panelDbtView.ts; the components here only draw it. Nothing here reads the `dataform` block.
  */
 
-const TAB_LABEL: Record<DbtTab, string> = { compiled: "Compiled query", schema: "Schema", project: "Project" };
-const TAB_KEY: Record<string, DbtTab> = { c: "compiled", s: "schema", p: "project" };
+const TAB_LABEL: Record<DbtTab, string> = { compiled: "Compiled query", schema: "Schema", runs: "Runs", project: "Project" };
+const TAB_KEY: Record<string, DbtTab> = { c: "compiled", s: "schema", r: "runs", p: "project" };
 
 const PRIMARY_BUTTON = "px-3 py-1.5 rounded text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]";
 const SECONDARY_BUTTON = "px-3 py-1.5 rounded text-sm bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] border border-[var(--vscode-widget-border)]";
@@ -572,9 +578,15 @@ function sqlBlocks(state: PanelSlices, view: DbtView): DbtSqlBlock[] {
 
 /**
  * The Compiled query tab of a dbt file, in the rows of a Dataform file's (CompiledQueryTab.tsx): Target, Compile,
- * Lineage, Run and Last run, then the SQL as tabs. A run is `dbt build` in the extension's terminal (xf#54), so the
- * panel knows what was sent, and not how it ended.
+ * Lineage, Run and Last run, then the SQL as tabs. A run is `dbt build` in the extension's terminal (xf#54): the
+ * panel knows what was sent, and, where the run's BigQuery jobs are followed, what they did and how the run ended.
  */
+/** The runs of the Project on show that are in the history, oldest first */
+function dbtRunsOf(state: PanelSlices): WorkflowUrlEntry[] {
+  const root = state.project?.root;
+  return (state.dataform.workflowUrls ?? []).filter((entry) => entry.executionMode === "dbt" && entry.dbt?.root === root);
+}
+
 function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   const [includeDependencies, setIncludeDependencies] = useState(false);
   const [includeDependents, setIncludeDependents] = useState(false);
@@ -615,6 +627,21 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   const modifiersSaid = [includeDependencies && ", with dependencies", includeDependents && ", with dependents", fullRefresh && ", full refresh"].filter(Boolean).join("");
 
   const lastRun = state.run?.lastRun;
+  // The newest run in the history is the last one sent, where its jobs are followed. After a reload it is all that is known of it
+  const followed = dbtRunsOf(state).pop();
+  const lastEntry = followed && (!lastRun || followed.timestamp >= lastRun.startedAt - 1000) ? followed : undefined;
+  const lastCommand = lastRun?.command ?? lastEntry?.dbt?.command;
+  const lastEnded = !!lastEntry?.state && TERMINAL_WORKFLOW_STATES.has(lastEntry.state);
+  useTick(!!lastEntry && !lastEnded);
+  const lastJobs = lastEntry?.actions?.filter((row) => row.jobId).length ?? 0;
+  const lastNodes = (lastEntry?.actions?.length ?? 0) - lastJobs;
+  // The pill in the header asks for the run's details
+  const [detailsAsked, setDetailsAsked] = useState(0);
+  useEffect(() => {
+    const show = () => setDetailsAsked((asked) => asked + 1);
+    window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
+    return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
+  }, []);
 
   // ---- Target: the tests are one line that opens. The one test of a file that defines nothing else is what the
   // file is for, so it is in full
@@ -730,34 +757,65 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
 
         <SummaryRow
           label="Last run"
-          summary={lastRun ? (
+          tone={lastEntry?.state === "FAILED" ? "error" : "calm"}
+          openRequest={detailsAsked}
+          staysClosed
+          summary={lastEntry ? (
+            <span data-dbt="last run" data-run={lastEntry.state || "UNKNOWN"} title={lastCommand} className="inline-flex items-center gap-1.5 min-w-0 max-w-full align-middle">
+              <span className="flex-shrink-0" title={`Status: ${lastEntry.state || "UNKNOWN"}`}>{getStatusIcon(lastEntry.state)}</span>
+              <span className="truncate">{runFacts(lastEntry) || (lastEntry.state ?? "unknown").toLowerCase()} · {formatAgo(lastEntry.timestamp, now)} · <span className="font-mono">{lastCommand}</span></span>
+            </span>
+          ) : lastRun ? (
             <span data-dbt="last run" title={lastRun.command}>sent to terminal · {formatAgo(lastRun.startedAt, now)} · <span className="font-mono">{lastRun.command}</span></span>
           ) : (
             <span className={MUTED}>No run yet</span>
           )}
           wide
-          actions={lastRun && (
-            <button type="button" className={clsx(ROW_BUTTON, "border-0")} title="Runs the same selection again, with the dbt target of now" onClick={() => vscode.postMessage({ command: "repeatLastRun" })}>
-              <RotateCcw className="w-3 h-3" /> Again
-            </button>
+          actions={(lastRun || lastEntry) && (
+            <>
+              {lastEntry && <CancelWorkflowButton entry={lastEntry} />}
+              {lastRun && (
+                <button type="button" className={clsx(ROW_BUTTON, "border-0")} title="Runs the same selection again, with the dbt target of now" onClick={() => vscode.postMessage({ command: "repeatLastRun" })}>
+                  <RotateCcw className="w-3 h-3" /> Again
+                </button>
+              )}
+            </>
           )}
         >
-          {lastRun && (
-            <div className="flex items-start gap-2">
-              <pre className="flex-1 min-w-0 m-0 px-2 py-1.5 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-textCodeBlock-background,var(--vscode-sideBar-background))] font-mono text-xs whitespace-pre-wrap break-all">{lastRun.command}</pre>
-              <button
-                type="button"
-                className={clsx(ROW_BUTTON, "border-0 flex-shrink-0")}
-                title="Copy the command"
-                onClick={() => {
-                  vscode.postMessage({ command: "copyToClipboard", text: lastRun.command });
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy
-              </button>
-            </div>
+          {lastCommand && (
+            <>
+              <div className="flex items-start gap-2">
+                <pre className="flex-1 min-w-0 m-0 px-2 py-1.5 rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-textCodeBlock-background,var(--vscode-sideBar-background))] font-mono text-xs whitespace-pre-wrap break-all">{lastCommand}</pre>
+                <button
+                  type="button"
+                  className={clsx(ROW_BUTTON, "border-0 flex-shrink-0")}
+                  title="Copy the command"
+                  onClick={() => {
+                    vscode.postMessage({ command: "copyToClipboard", text: lastCommand });
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} Copy
+                </button>
+              </div>
+            {lastEntry && (
+              <div data-dbt="last run jobs" className="mt-2 flex flex-col gap-1.5">
+                {lastEntry.jobsNote && <div className={clsx("text-[11px]", MUTED)}>{lastEntry.jobsNote}</div>}
+                {lastJobs === 0 && !lastEntry.jobsNote && (
+                  <div data-dbt="no jobs yet" className={clsx("text-[11px]", MUTED)}>
+                    {lastEnded ? "The run started no BigQuery job."
+                      : lastNodes > 0 ? `No BigQuery job yet: dbt is at work on ${lastNodes === 1 ? "1 node" : `${lastNodes} nodes`} and has sent BigQuery no query.`
+                        : "Waiting for dbt to start on its first node…"}
+                  </div>
+                )}
+                <RunStartSummary entry={lastEntry} />
+                <div className="-mx-3">
+                  <WorkflowActionsTable entry={lastEntry} className="max-h-[28rem] overflow-auto" />
+                </div>
+              </div>
+            )}
+            </>
           )}
         </SummaryRow>
       </div>
@@ -853,6 +911,11 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // The history of runs is the window's: it is asked for once, and the host sends it again as a run goes on
+  useEffect(() => {
+    vscode.postMessage({ command: "dataform.loadWorkflowUrls" });
+  }, []);
+
   const block = state.dbt;
   const looking = block?.looking === true;
 
@@ -863,7 +926,20 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
           tabs={view.tabs.map((name) => (
             <HeaderTab key={name} active={tab === name} onClick={() => setChosen(name)}>{TAB_LABEL[name]}</HeaderTab>
           ))}
-          actions={<ReportIssueLink />}
+          actions={<>
+            {view.page === "panel" && (
+              <RunStatusPill
+                state={state}
+                runs={dbtRunsOf(state)}
+                onDetails={() => {
+                  setChosen("compiled");
+                  // The Last run row is drawn only once its tab is the one on show
+                  setTimeout(() => window.dispatchEvent(new Event(SHOW_RUN_DETAILS_EVENT)), 50);
+                }}
+              />
+            )}
+            <ReportIssueLink />
+          </>}
         />
       )}
 
@@ -885,6 +961,13 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
             {tab !== "schema" && (
               <div className="p-4">
                 {view.page === "panel" && tab === "compiled" && <CompiledTab state={state} view={view} />}
+                {view.page === "panel" && tab === "runs" && (
+                  <div className="pb-10">
+                    <div data-dbt="runs" className="-mx-4 -mt-4">
+                      <RunHistory urls={dbtRunsOf(state)} refreshable={false} empty="No runs yet. Runs with dbt build appear here, with their BigQuery jobs" />
+                    </div>
+                  </div>
+                )}
                 {tab === "project" && <ProjectInfoTab state={state} />}
               </div>
             )}

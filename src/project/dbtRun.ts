@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { listDbtTargets } from '../backend/dbt';
+import { beforeDbtRun, followDbtRun } from '../cliRunJobs';
 import { logger } from '../logger';
 import type { RunOptions } from '../shared/compiledGraph';
 import { dbtOptions, dbtSettings } from './dbtCompile';
@@ -9,8 +10,9 @@ import { createTerminalWhenReady, sendTextWhenReady } from '../utils/terminalRea
 
 /*
  * Runs of a dbt Project (xf#54): always `dbt build`, in a terminal of the extension, from the Project root, with the
- * same dbt, dbt target, variables and profiles directory as compiles. The extension starts the run and no more: the
- * user watches it in the terminal and stops it there. With defer to prod on, the run defers (dbtDefer.ts).
+ * same dbt, dbt target, variables and profiles directory as compiles. The user watches the run in the terminal; the
+ * extension follows its BigQuery jobs for the history of runs (src/cliRunJobs.ts). With defer to prod on, the run
+ * defers (dbtDefer.ts).
  */
 
 /** A run that was sent to the terminal */
@@ -73,6 +75,7 @@ function terminalFor(root: string): vscode.Terminal {
  * shown to the user.
  */
 export async function runDbt(project: ProjectState, request: RunOptions): Promise<DbtRun | undefined> {
+    const invokedAt = Date.now();
     const { root, dbtBackend } = project;
     const options = await dbtOptions(root);
     if (!dbtBackend?.runner || !options) {
@@ -99,7 +102,8 @@ export async function runDbt(project: ProjectState, request: RunOptions): Promis
         return undefined;
     }
     const settings = dbtSettings(root);
-    const profileDefault = listDbtTargets(root, { profilesDir: settings.profilesDir })?.defaultName;
+    const profile = listDbtTargets(root, { profilesDir: settings.profilesDir });
+    const profileDefault = profile?.defaultName;
     const key = `${root}\n${target}`;
     if (needsConfirmation(target, profileDefault, settings.target !== undefined) && !confirmed.has(key)) {
         const why = profileDefault ? `This is not the profile's default dbt target (${profileDefault}).` : "The profile's default dbt target could not be read.";
@@ -112,9 +116,25 @@ export async function runDbt(project: ProjectState, request: RunOptions): Promis
     const terminal = terminalFor(root);
     terminal.show();
     // A new terminal is waited on, so that a virtual environment activated in it does not cancel the run (#497)
+    const before = beforeDbtRun(root);
     await sendTextWhenReady(terminal, command);
     const run: DbtRun = { request, command, startedAt: Date.now() };
     lastRuns.set(root, run);
+    if (before) {
+        const actions = dbtBackend.lastResult?.graph.actions ?? {};
+        const selection = {
+            tags: request.tags.length > 0 ? request.tags : undefined,
+            targets: request.actions.length > 0 ? request.actions.flatMap((id) => (actions[id] ? [actions[id].target] : [])) : undefined,
+            includeDependencies: !!request.includeDependencies,
+            includeDependents: !!request.includeDependents,
+            fullRefresh: !!request.fullRefresh,
+        };
+        const place = profile?.jobPlaces[target ?? profileDefault ?? ''];
+        // A profile may give its project as a Jinja expression: the actions are then in the project it comes to
+        const projectId = place?.projectId ?? (selection.targets?.[0] ?? Object.values(actions).find((action) => action.target.database)?.target)?.database;
+        followDbtRun({ root, command, terminal, selection, projectId: projectId || undefined, location: place?.location, invokedAt }, before)
+            .catch((error) => logger.error(`dbt: the run's BigQuery jobs are not followed: ${error}`));
+    }
     logger.info(`dbt: sent to the terminal, from ${root}: ${command}`);
     changed.fire(root);
     return run;

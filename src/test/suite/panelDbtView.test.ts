@@ -68,7 +68,7 @@ suite('the dbt panel: a file with SQL', () => {
     test('a model is shown with its tests beneath it, three tabs, and a link to its table', () => {
         const view = viewOf(MODEL);
         assert.deepStrictEqual([view.page, view.file], ['panel', MODEL]);
-        assert.deepStrictEqual(view.tabs, ['compiled', 'schema', 'project']);
+        assert.deepStrictEqual(view.tabs, ['compiled', 'schema', 'runs', 'project']);
         assert.deepStrictEqual(view.actions.map((action) => action.kind), ['table', 'test', 'test']);
         assert.strictEqual(view.actions[0].buildsTable, true);
         assert.deepStrictEqual(view.status, { kind: 'compiled', compiledAt: 1000, durationMs: 2100 });
@@ -85,7 +85,7 @@ suite('the dbt panel: a file with SQL', () => {
         const slices = after({ manifest: v2, file: TEST, state: compiled() });
         const view = dbtView(slices);
         assert.deepStrictEqual(view.actions.map((action) => [action.kind, action.fileName]), [['test', TEST]]);
-        assert.deepStrictEqual(view.tabs, ['compiled', 'project']);
+        assert.deepStrictEqual(view.tabs, ['compiled', 'runs', 'project']);
         const tested = testedBy(slices, view.actions, view.actions[0]);
         assert.deepStrictEqual([tested?.name, tested?.fileName], ['fct_orders', 'models/marts/fct_orders.sql']);
     });
@@ -109,7 +109,7 @@ suite('the dbt panel: a file with SQL', () => {
         const snowflake: DbtManifest = { ...v2, metadata: { ...v2.metadata, adapter_type: 'snowflake' } };
         const view = dbtView(after({ manifest: snowflake, file: MODEL, state: compiled() }));
         assert.strictEqual(view.otherWarehouse, 'snowflake');
-        assert.deepStrictEqual(view.tabs, ['compiled', 'project']);
+        assert.deepStrictEqual(view.tabs, ['compiled', 'runs', 'project']);
         assert.strictEqual(view.actions.length, 3);
     });
 });
@@ -200,7 +200,7 @@ suite('the dbt panel: the Data Lineage of a file', () => {
 suite('the dbt panel: a file with no SQL', () => {
     test('a seed: what it is and its Target', () => {
         const view = viewOf('seeds/country_codes.csv');
-        assert.deepStrictEqual([view.actions.length, view.tabs], [0, ['compiled', 'project']]);
+        assert.deepStrictEqual([view.actions.length, view.tabs], [0, ['compiled', 'runs', 'project']]);
         assert.strictEqual(view.card?.title, 'Seed: country_codes');
         // What uses it is in the Data Lineage, as links
         assert.deepStrictEqual(view.card?.rows.map((row) => row.label), ['What it is', 'File', 'Target']);
@@ -341,7 +341,7 @@ suite('the dbt panel: while dbt works', () => {
         assert.strictEqual(view.status?.kind, 'recompiling');
         assert.deepStrictEqual([view.outdated, view.skeleton, view.actions.length], [true, false, 3]);
         // The tabs do not come and go with every save
-        assert.deepStrictEqual(view.tabs, ['compiled', 'schema', 'project']);
+        assert.deepStrictEqual(view.tabs, ['compiled', 'schema', 'runs', 'project']);
     });
 
     test('on dbt-core, a file not compiled since the last save shows placeholder lines while it is', () => {
@@ -378,7 +378,7 @@ suite('the dbt panel: while dbt works', () => {
         const view = dbtView(after({ manifest: manifest('dbt-v2-hooks-parsed'), file: 'models/orders.sql', parsedForHooks: true, state: compiled([], 'SQL not compiled: hooks') }));
         assert.strictEqual(view.parsedOnly, true);
         assert.deepStrictEqual(view.status, { kind: 'parsed', compiledAt: 1000 });
-        assert.deepStrictEqual(view.tabs, ['compiled', 'project']);
+        assert.deepStrictEqual(view.tabs, ['compiled', 'runs', 'project']);
         assert.deepStrictEqual(view.actions.map((action) => [action.kind, action.sqlPresent, action.sections[0].compiled]), [['view', false, false]]);
     });
 });
@@ -407,7 +407,7 @@ suite('the dbt panel: when something is wrong', () => {
         const own: CompileError = { message: "depends on a node named 'stg_customer' which was not found", fileName: MODEL, line: 2 };
         const view = dbtView(after({ manifest: onlyCompiled(v2, []), file: MODEL, state: compiled([own, ...elsewhere]) }));
         assert.deepStrictEqual([view.errors, view.errorsElsewhere], [[own], elsewhere]);
-        assert.deepStrictEqual([view.status?.kind, view.tabs], ['parsed', ['compiled', 'project']]);
+        assert.deepStrictEqual([view.status?.kind, view.tabs], ['parsed', ['compiled', 'runs', 'project']]);
     });
 
     test('on dbt-core one error anywhere leaves no graph: the card stands alone', () => {
@@ -419,6 +419,6 @@ suite('the dbt panel: when something is wrong', () => {
     test('a compile that gave nothing shows its error', () => {
         const error: CompileError = { message: "The profile 'shop' does not have a target named 'stagin'" };
         const view = dbtView(after({ file: MODEL, state: { inProject: true, errors: [error] } }));
-        assert.deepStrictEqual([view.status?.kind, view.errors, view.tabs], ['failed', [error], ['compiled', 'project']]);
+        assert.deepStrictEqual([view.status?.kind, view.errors, view.tabs], ['failed', [error], ['compiled', 'runs', 'project']]);
     });
 });

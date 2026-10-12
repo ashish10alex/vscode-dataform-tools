@@ -47,7 +47,7 @@ A dash means not in a dbt project yet. Each name links to its description at [da
 | [Column lineage and impact](https://dataformtools.com/features#column_lineage) | ✅ | — | Columns dropped or retyped against prod, and who reads them downstream, from Dataplex |
 | [Dependency inspector](https://dataformtools.com/features#dependency_inspector) | ✅ | — | One filter across a model and its dependencies, then dry run or run each |
 | [Cost estimator](https://dataformtools.com/features#cost_estimator) | ✅ | — | What a tag will cost before you run it |
-| [BigQuery jobs of a run](https://dataformtools.com/features#workflow_invocations) | ✅ | — | Each job of an API or CLI run, live: state, duration, bytes billed and cost |
+| [BigQuery jobs of a run](https://dataformtools.com/features#workflow_invocations) | ✅ | ✅ | Each job of an API or CLI run, or of a `dbt build`, live: state, duration, bytes billed and cost |
 | [Formatting](https://dataformtools.com/features#formatting) | ✅ | — | Formats `.sqlx` files with [sqlfluff](https://github.com/sqlfluff/sqlfluff) |
 | [Code actions](https://dataformtools.com/features#codeactions) | ✅ | — | Applies the fix a dry run suggests |
 | Config block IntelliSense | ✅ | — | Completion, hover and warnings for `config {}` options, by action type |
