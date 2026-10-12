@@ -366,7 +366,7 @@ class ScratchHoverProvider implements vscode.HoverProvider {
 }
 
 /**
- * Copies the column names of a table, on one line with commas, to paste into a query. The table is the one given (by
+ * Copies the column names of a table, one to a line with commas, to paste into a query. The table is the one given (by
  * the link of a hover), else the one the cursor is on in a scratch query, else one picked from the Project's.
  */
 async function copyTableColumns(given?: Target) {

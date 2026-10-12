@@ -150,9 +150,9 @@ export function tableNamesIn(sql: string): TableName[] {
     return [...found.values()];
 }
 
-/** The top-level column names of a table, as one line to paste into a SELECT: `order_id, order_date, total` */
+/** The top-level column names of a table, to paste into a SELECT: one to a line, each but the last with a comma */
 export function columnNamesText(fields: ReadonlyArray<{ name: string }>): string {
-    return fields.map((field) => field.name).join(', ');
+    return fields.map((field) => field.name).join(',\n');
 }
 
 /**

@@ -140,8 +140,9 @@ suite('scratchQuery.tableNamesAt', () => {
 });
 
 suite('scratchQuery.columnNamesText', () => {
-    test('is the names on one line with commas, in the table\'s order', () => {
-        assert.strictEqual(columnNamesText([{ name: 'order_id' }, { name: 'order_date' }, { name: 'total' }]), 'order_id, order_date, total');
+    test('is the names one to a line with commas between, in the table\'s order', () => {
+        assert.strictEqual(columnNamesText([{ name: 'order_id' }, { name: 'order_date' }, { name: 'total' }]), 'order_id,\norder_date,\ntotal');
+        assert.strictEqual(columnNamesText([{ name: 'order_id' }]), 'order_id');
         assert.strictEqual(columnNamesText([]), '');
     });
 });
