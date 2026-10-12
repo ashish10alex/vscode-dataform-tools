@@ -38,9 +38,9 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
     const hiddenInDbt = (name: string) => (palette.get(name) ?? '').includes('vscode-dataform-tools.backend != dbt');
     const shared = commands.filter((command) => command.category === 'Dataform/dbt').map((command) => command.command.slice(PREFIX.length));
 
-    test('the nineteen that work in a dbt Project, and the Project picker, are in the category of both', () => {
+    test('the twenty that work in a dbt Project, and the Project picker, are in the category of both', () => {
         assert.deepStrictEqual(shared.sort(), [
-            'cancelQuery', 'clearExtensionCache', 'dependencyGraphPanel', 'rerunLastExecution', 'runAssertions', 'runChangedActions', 'runCurrentFile', 'runCurrentFileWtDeps',
+            'cancelQuery', 'clearExtensionCache', 'dependencyGraphPanel', 'newScratchQuery', 'rerunLastExecution', 'runAssertions', 'runChangedActions', 'runCurrentFile', 'runCurrentFileWtDeps',
             'runCurrentFileWtDownstreamDeps', 'runFilesTagsWtOptions', 'runQuery', 'runTag', 'runTagWtDeps', 'runTagWtDownstreamDeps',
             'searchTableColumns', 'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'showProjectInfo', 'snoozeCompilation', 'stopSnoozeCompilation',
         ]);
@@ -62,11 +62,19 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
         assert.strictEqual(palette.get('selectWorkspaceFolder'), 'vscode-dataform-tools.multipleProjects');
     });
 
-    test('the editor buttons for running and for the panel show on any file of a dbt Project; Format does not', () => {
+    test('the editor buttons for running and for the panel show on any file of a dbt Project but a scratch query; Format does not', () => {
         const title = new Map<string, string>(manifest.menus['editor/title'].map((entry: { command: string; when: string }) => [entry.command.slice(PREFIX.length), entry.when]));
-        assert.ok(title.get('runCurrentFile')?.endsWith('|| vscode-dataform-tools.backend == dbt'));
-        assert.ok(title.get('showCompiledQueryWtDryRun')?.endsWith('|| vscode-dataform-tools.backend == dbt'));
+        assert.ok(title.get('runCurrentFile')?.endsWith('|| vscode-dataform-tools.backend == dbt) && !vscode-dataform-tools.scratchQuery'));
+        assert.ok(title.get('showCompiledQueryWtDryRun')?.endsWith('|| vscode-dataform-tools.backend == dbt) && !vscode-dataform-tools.scratchQuery'));
         assert.ok(title.get('formatDocument')?.endsWith('&& vscode-dataform-tools.backend != dbt'));
+    });
+
+    test('a scratch query has its own button, which runs it, and Cmd/Ctrl+Enter', () => {
+        const title = new Map<string, string>(manifest.menus['editor/title'].map((entry: { command: string; when: string }) => [entry.command.slice(PREFIX.length), entry.when]));
+        assert.strictEqual(title.get('runQuery'), 'vscode-dataform-tools.scratchQuery');
+        assert.deepStrictEqual(manifest.keybindings, [
+            { command: `${PREFIX}runQuery`, key: 'ctrl+enter', mac: 'cmd+enter', when: 'editorTextFocus && vscode-dataform-tools.scratchQuery' },
+        ]);
     });
 
     test('the six settings added for dbt are contributed under the one prefix, each for a folder of its own', () => {

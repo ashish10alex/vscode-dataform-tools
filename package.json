@@ -85,7 +85,13 @@
             {
                 "command": "vscode-dataform-tools.runQuery",
                 "category": "Dataform/dbt",
-                "title": "Preview query results"
+                "title": "Preview query results",
+                "icon": "$(play)"
+            },
+            {
+                "command": "vscode-dataform-tools.newScratchQuery",
+                "category": "Dataform/dbt",
+                "title": "New scratch query"
             },
             {
                 "command": "vscode-dataform-tools.cancelQuery",
@@ -413,6 +419,14 @@
                 ]
             }
         ],
+        "keybindings": [
+            {
+                "command": "vscode-dataform-tools.runQuery",
+                "key": "ctrl+enter",
+                "mac": "cmd+enter",
+                "when": "editorTextFocus && vscode-dataform-tools.scratchQuery"
+            }
+        ],
         "menus": {
             "commandPalette": [
                 {
@@ -523,19 +537,24 @@
             "editor/context": [
                 {
                     "command": "vscode-dataform-tools.searchTableColumns",
-                    "when": "(resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt) || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)",
+                    "when": "((resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt) || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)) && !vscode-dataform-tools.scratchQuery",
                     "group": "navigation@10"
                 }
             ],
             "editor/title": [
                 {
+                    "command": "vscode-dataform-tools.runQuery",
+                    "when": "vscode-dataform-tools.scratchQuery",
+                    "group": "navigation"
+                },
+                {
                     "command": "vscode-dataform-tools.runCurrentFile",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt",
+                    "when": "(resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt) && !vscode-dataform-tools.scratchQuery",
                     "group": "navigation"
                 },
                 {
                     "command": "vscode-dataform-tools.showCompiledQueryWtDryRun",
-                    "when": "resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt",
+                    "when": "(resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt) && !vscode-dataform-tools.scratchQuery",
                     "group": "navigation@3"
                 },
                 {
@@ -590,6 +609,18 @@
                     "default": 10,
                     "minimum": 0,
                     "markdownDescription": "Ask before running a preview that reads upstream tables from prod and scans more than this many GiB. `0` turns the check off."
+                },
+                "vscode-dataform-tools.scratchQueryWarnScanGiB": {
+                    "type": "number",
+                    "default": 10,
+                    "minimum": 0,
+                    "markdownDescription": "The status bar shows a scratch query's dry run in the warning colour when it would scan this many GiB or more. `0` turns the warning off."
+                },
+                "vscode-dataform-tools.scratchQueryConfirmScanGiB": {
+                    "type": "number",
+                    "default": 50,
+                    "minimum": 0,
+                    "markdownDescription": "The status bar shows a scratch query's dry run in the error colour when it would scan more than this many GiB, and you are asked before the query runs. `0` turns the check off."
                 },
                 "vscode-dataform-tools.deferToProdEditorHints": {
                     "type": "boolean",

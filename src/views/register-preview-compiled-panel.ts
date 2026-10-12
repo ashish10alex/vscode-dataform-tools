@@ -1,4 +1,5 @@
 import {  ExtensionContext, Uri, WebviewPanel, window } from "vscode";
+import { isScratchPath } from '../scratch/scratchQuery';
 import { ProjectState, activateProject, compileNumber, compiledGraph, compiledJson, currentDataformRoot, dataformBackend, fileBackendHints, projectLabel, projects, requiredTools } from '../project';
 import { CompileReason, compileDbtProject, dbtCompileDefer, dbtCompilePending, dbtCompileState, dbtSettings, onDidChangeDbtCompile, setDbtTargetOverride } from '../project/dbtCompile';
 import { dbtDeferToProdState, dbtDeferralView } from '../project/dbtDefer';
@@ -302,6 +303,9 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
         const webviewPanelVisisble = CompiledQueryPanel?.centerPanel?.webviewPanel?.visible;
         if (!activeEditorFileName) {
             activeEditorFileName = changedActiveEditorFileName;
+        } else if (editor && isScratchPath(editor.document.uri.fsPath)) {
+            // The panel shows the files of a Project: it stays as it is beside a scratch query
+            return;
         } else if (editor && changedActiveEditorFileName && activeEditorFileName !== changedActiveEditorFileName && webviewPanelVisisble) {
             activeEditorFileName = changedActiveEditorFileName;
             activeDocumentObj = editor.document;
@@ -438,6 +442,10 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     });
 
     const debouncedSaveHandler = debounce(async (document: vscode.TextDocument) => {
+        // A scratch query has its own dry run on save (src/scratch), and compiles nothing
+        if (isScratchPath(document.uri.fsPath)) {
+            return;
+        }
         // A save in a dbt Project compiles it again when the panel is open, or is opened on save. What is shown stays
         // the file in focus: a save of a macro shows the model beside it afresh
         const dbt = dbtFileOf(document);
@@ -544,7 +552,8 @@ async function projectForInfo(): Promise<ProjectState | undefined> {
 
 /** The dbt Project a document is in, and the document's path from its root, when it is in one */
 export function dbtFileOf(document: vscode.TextDocument | undefined): { project: ProjectState; file: string } | undefined {
-    if (!document || document.uri.scheme !== 'file') {
+    // A scratch query is plain SQL kept in the Project's folder, not a file of the dbt Project
+    if (!document || document.uri.scheme !== 'file' || isScratchPath(document.uri.fsPath)) {
         return undefined;
     }
     const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
