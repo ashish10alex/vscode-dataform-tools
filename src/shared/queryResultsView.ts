@@ -56,6 +56,18 @@ export interface ResultPaging {
     viewBilled?: string;
 }
 
+/**
+ * The id of a job that was just created, in the form its stats give later: `project:location.job_id`. The client's
+ * own `id` is the last part alone, which is not enough to link to the job.
+ */
+export function fullJobId(job: { id?: string, metadata?: { id?: string, jobReference?: { projectId?: string, location?: string, jobId?: string } } }): string | undefined {
+    if (job.metadata?.id) {
+        return job.metadata.id;
+    }
+    const { projectId, location, jobId } = job.metadata?.jobReference ?? {};
+    return projectId && location && jobId ? `${projectId}:${location}.${jobId}` : job.id;
+}
+
 /** The job's page in the BigQuery console, from an id of the form `project:location.job_id` */
 export function bigQueryJobUrl(jobId: string | undefined): string | undefined {
     const parts = jobId?.split(':') ?? [];

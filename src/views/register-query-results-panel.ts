@@ -5,7 +5,7 @@ import os from 'os';
 import { getCurrentFileMetadata, getNonce, saveCsvFile } from '../utils';
 import { cancelBigQueryJob, openQueryResult } from '../bigqueryRunQuery';
 import type { QueryResult } from '../bigquery/queryResult';
-import { RESULT_CHUNK_ROWS, type JobStats, type ResultPaging, type ResultViewRequest } from '../shared/queryResultsView';
+import { RESULT_CHUNK_ROWS, fullJobId, type JobStats, type ResultPaging, type ResultViewRequest } from '../shared/queryResultsView';
 import { getQueryStringForPreview } from '../previewQueryResults';
 import { getBigQueryTimeoutMs } from '../constants';
 import { QueryWtType } from '../types';
@@ -286,7 +286,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
             const job = await waitForBigQueryJob(queryOutput);
 
             if (this?._view?.webview && job) {
-              this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": job.id };
+              this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": fullJobId(job) };
               this._view.webview.postMessage(this._lastRenderPayload);
             }
 
