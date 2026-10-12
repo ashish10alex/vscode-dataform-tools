@@ -46,7 +46,7 @@ import { bigQueryView } from "../utils/bigQueryView";
 import { compilationInfoParts, compilationInfoTooltip } from "../utils/compilationInfoFormat";
 import { TERMINAL_WORKFLOW_STATES } from "../utils/workflowPolling";
 import { describeApiRunGitState } from "../../../src/shared/apiRunGitState";
-import { runProgress } from "../../../src/shared/cliRunJobs";
+import { isTerminalRun, runProgress } from "../../../src/shared/cliRunJobs";
 import { runStage } from "../../../src/shared/runStages";
 import { formatDuration } from "../../../src/shared/jobTiming";
 
@@ -406,7 +406,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           "",
           latestRun.state === "CANCELING" ? "stopping" : (latestRun.stages && !(latestRun.actions?.length) && runStage(latestRun.stages, runVia(latestRun))) || "running",
           clock(Date.now() - (latestRun.stages?.invokedAt ?? latestRun.invocationStartTime ?? latestRun.timestamp)),
-          progress && progress.total > 0 ? `${progress.succeeded} of ${progress.total} ${latestRun.executionMode === "cli" ? "BigQuery jobs" : "actions"} done` : null,
+          progress && progress.total > 0 ? `${progress.succeeded} of ${progress.total} ${isTerminalRun(latestRun) ? "BigQuery jobs" : "actions"} done` : null,
           progress && progress.failed > 0 ? `${progress.failed} failed` : null,
         ].filter((part) => part !== null && part !== undefined).join(" · ")}
       </span>

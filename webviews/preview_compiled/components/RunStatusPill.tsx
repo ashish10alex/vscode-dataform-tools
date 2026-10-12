@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { PanelState, WorkflowAction, WorkflowUrlEntry } from '../types';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration } from '../../../src/shared/jobTiming';
-import { runProgress } from '../../../src/shared/cliRunJobs';
+import { isTerminalRun, runProgress } from '../../../src/shared/cliRunJobs';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { useTick } from './WorkflowActionsTable';
 import { RunStageChecklist, RunStartSummary, clock, jobsLookedFor, runVia } from './RunStages';
@@ -119,7 +119,7 @@ export function RunStatusPill({ state, onDetails }: { state: PanelState; onDetai
 
     if (!shown || !latest) { return null; }
 
-    const isCli = latest.executionMode === 'cli';
+    const isCli = isTerminalRun(latest);
     const progress = runProgress(latest);
     const failed = latest.state === 'FAILED' || latest.state === 'CANCELLED' || progress.failed > 0;
     const tone = failed ? ERROR : ended ? SUCCESS : LINK;

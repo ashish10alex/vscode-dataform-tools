@@ -27,6 +27,7 @@ import { DbtPanel } from './components/DbtPanel';
 import { ProjectInfoTab, useProjectInfoRequest } from './components/ProjectInfoTab';
 import { PanelHeader, HeaderTab, HeaderMenu } from './components/PanelHeader';
 import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from './components/RunStatusPill';
+import { isTerminalRun } from '../../src/shared/cliRunJobs';
 
 /** The panel of a Dataform Project, and of a file in no Project */
 function DataformPanel({ state }: { state: PanelSlices }) {
@@ -70,8 +71,8 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // A CLI run is followed by the host, by its BigQuery jobs: the Dataform API knows nothing of it
-    const items = (state.dataform.workflowUrls || []).filter(i => i.executionMode !== 'cli');
+    // A run sent to a terminal is followed by the host, by its BigQuery jobs: the Dataform API knows nothing of it
+    const items = (state.dataform.workflowUrls || []).filter(i => !isTerminalRun(i));
     const hasNonTerminal = items.some(i => !i.state || !TERMINAL_WORKFLOW_STATES.has(i.state));
     const hasFailedMissingActions = items.some(i =>
       i.state === 'FAILED' && (!i.failedActions || i.failedActions.length === 0)

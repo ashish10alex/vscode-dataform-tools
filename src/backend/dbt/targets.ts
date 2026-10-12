@@ -5,7 +5,8 @@ import { load as loadYaml } from 'js-yaml';
 
 /*
  * The dbt targets of a Project (xf#50): the names a user can choose from, read from the Project's profile, and the
- * one dbt used, read from its log. Only key names are read from a profile, never a value: it holds credentials.
+ * one dbt used, read from its log. Of a profile, which holds credentials, only key names are read, and where each
+ * dbt target runs its BigQuery jobs: its project and location.
  */
 
 export interface DbtTargets {
@@ -17,6 +18,11 @@ export interface DbtTargets {
     names: string[];
     /** The one the profile names as its default (`target:`), when that is one of `names` and not a Jinja expression */
     defaultName?: string;
+    /**
+     * By dbt target, where it runs its BigQuery jobs: in its `execution_project`, else its `project`. A value that is
+     * a Jinja expression is left out, since only dbt can tell what it comes to.
+     */
+    jobPlaces: Record<string, { projectId?: string; location?: string }>;
 }
 
 /**
@@ -92,7 +98,13 @@ function readDbtTargets(projectFile: string, profilesFile: string | undefined): 
     if (names.length === 0) {
         return undefined;
     }
-    const targets: DbtTargets = { profile, profilesFile, names };
+    const plain = (value: unknown) => (typeof value === 'string' && value.trim() && !value.includes('{') ? value.trim() : undefined);
+    const jobPlaces: DbtTargets['jobPlaces'] = {};
+    for (const [name, output] of Object.entries(outputs as Record<string, unknown>)) {
+        const { execution_project: executionProject, project, location } = (output && typeof output === 'object' ? output : {}) as Record<string, unknown>;
+        jobPlaces[name] = { projectId: plain(executionProject) ?? plain(project), location: plain(location) };
+    }
+    const targets: DbtTargets = { profile, profilesFile, names, jobPlaces };
     if (typeof target === 'string' && names.includes(target)) {
         targets.defaultName = target;
     }

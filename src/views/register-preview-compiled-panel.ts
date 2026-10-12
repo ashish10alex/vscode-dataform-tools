@@ -42,10 +42,11 @@ import { debounce } from "../debounce";
 import { loadDataformTools } from "../lazySdk";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
-import { cancelCliRun, cliRunHint } from "../cliRunJobs";
+import { cancelCliRun, cliRunHint, isFollowedRun } from "../cliRunJobs";
 import { pendingRun } from "../runFeedback";
 import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
 import { timestampToMs } from "../shared/jobTiming";
+import { isTerminalRun } from "../shared/cliRunJobs";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
 import {
     PROPERTY_GRAPHS_MIN_CORE_VERSION,
@@ -1562,7 +1563,7 @@ export class CompiledQueryPanel {
                 return;
               case 'dataform.cancelWorkflowInvocation':
                 if (message.workflowInvocationId && this.centerPanel) {
-                    const cancelled = message.workflowInvocationId.startsWith('cli-')
+                    const cancelled = isFollowedRun(message.workflowInvocationId)
                         ? await cancelCliRun(message.workflowInvocationId)
                         : await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
                     if (!cancelled) {
@@ -1639,7 +1640,7 @@ export class CompiledQueryPanel {
                 if (urlsToRefresh.length > 0) {
                     const refreshedUrls = await Promise.all(urlsToRefresh.map(async (original) => {
                         const item = { ...original };
-                        if (item.executionMode === 'cli') { return item; }
+                        if (isTerminalRun(item)) { return item; }
                         const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
                         const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
                         const needsCountsBackfill = !item.actionCounts;
@@ -1721,7 +1722,7 @@ export class CompiledQueryPanel {
                     const updatedUrls = latestUrls.map((current) => {
                         const index = urlsToRefresh.findIndex((item) => item.workflowInvocationId && item.workflowInvocationId === current.workflowInvocationId);
                         // A CLI run is not the Dataform API's to tell of: what follows its jobs writes its entry meanwhile
-                        if (index === -1 || current.executionMode === 'cli' || urlsToRefresh[index].state !== current.state) { return current; }
+                        if (index === -1 || isTerminalRun(current) || urlsToRefresh[index].state !== current.state) { return current; }
                         return refreshedUrls[index];
                     });
                     await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);

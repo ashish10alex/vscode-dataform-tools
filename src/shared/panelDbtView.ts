@@ -13,7 +13,7 @@ import { PanelSlices, fileOnShow } from './panelState';
  * that every state can be tested without a browser.
  */
 
-export type DbtTab = 'compiled' | 'schema' | 'project';
+export type DbtTab = 'compiled' | 'schema' | 'runs' | 'project';
 
 /** The one line next to the file's name that says how the compile stands */
 export type DbtStatusLine =
@@ -380,6 +380,8 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     if (block && !block.bigQuery && block.warehouse) {
         view.otherWarehouse = block.warehouse;
     }
+    // The runs of the Project, with their BigQuery jobs
+    view.tabs = ['compiled', 'runs', 'project'];
 
     const withSql = file?.actions.filter((action) => action.sections.length > 0) ?? [];
     const allErrors = errorsOf(last);
@@ -411,7 +413,7 @@ export function dbtView(slices: Pick<PanelSlices, 'compile' | 'settled' | 'file'
     // The Schema tab is of what the actions build, and a test builds nothing
     const dryRun = withSql.some((action) => !isTestKind(action.kind) && action.sections.some((section) => section.dryRun.length > 0));
     if (last?.status === 'compiled' && view.actions.length > 0 && dryRun && !view.otherWarehouse) {
-        view.tabs = ['compiled', 'schema', 'project'];
+        view.tabs = ['compiled', 'schema', 'runs', 'project'];
     }
 
     const runnable = file?.actions.filter((action) => action.fileName === named && action.runnable) ?? [];

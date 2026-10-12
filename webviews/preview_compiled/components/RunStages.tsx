@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { WorkflowUrlEntry } from '../types';
 import { formatDuration } from '../../../src/shared/jobTiming';
 import { RunStages, RunVia, runStageLines, timeToStart } from '../../../src/shared/runStages';
+import { isTerminalRun } from '../../../src/shared/cliRunJobs';
 
 const MUTED = 'text-[var(--vscode-descriptionForeground)]';
 
@@ -16,7 +17,7 @@ export function clock(ms: number): string {
 }
 
 export function runVia(entry: WorkflowUrlEntry): RunVia {
-    return entry.executionMode === 'cli' ? 'cli' : 'api';
+    return isTerminalRun(entry) ? 'cli' : 'api';
 }
 
 /**
@@ -50,8 +51,11 @@ export function RunStageChecklist({ stages, via, ended = false, lookingFor }: { 
     );
 }
 
-/** Where a CLI run's jobs are looked for: the start of their IDs, and the project */
+/** Where a terminal run's jobs are looked for: the start of their IDs, or the label dbt gives them, and the project */
 export function jobsLookedFor(entry: WorkflowUrlEntry): string | undefined {
+    if (entry.dbt) {
+        return entry.dbt.invocationId ? `dbt_invocation_id ${entry.dbt.invocationId} in ${entry.projectId ?? 'an unknown project'}` : undefined;
+    }
     return entry.jobPrefix ? `${entry.jobPrefix}… in ${entry.projectId ?? 'an unknown project'}` : undefined;
 }
 
