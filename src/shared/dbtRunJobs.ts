@@ -24,6 +24,67 @@ export function invocationsStarted(log: string): string[] {
     return [...log.matchAll(HEADER)].map((match) => match[1]);
 }
 
+/** The start of an invocation in `log`: its ID, and where the lines of the invocation begin. Undefined when the log has none */
+export function firstInvocation(log: string): { id: string; after: number } | undefined {
+    const match = new RegExp(HEADER.source, 'm').exec(log);
+    return match ? { id: match[1], after: match.index + match[0].length } : undefined;
+}
+
+/**
+ * What a line of dbt's log tells of a node: that dbt began on it, or how it ended. dbt may be long at a node before it
+ * sends BigQuery a query, and a node may send none, so the log tells of a run what its jobs do not. dbt v2 names a
+ * node by its relation ("analytics.orders"), dbt-core by its ID ("model.shop.orders"), and does not say in that line
+ * how it ended: `ended` is then left to the node's jobs and to `run_results.json`.
+ */
+export interface NodeEvent { relation?: string; nodeId?: string; state: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'SKIPPED' | 'ENDED' }
+
+const V2_STARTED = /\]: Started running [a-z_ ]+? (\S+)\s*$/;
+const V2_FINISHED = /\]: Finished running \[[^\]]*\] [a-z_ ]+? (\S+) \[([a-z_ -]+)\]\s*$/;
+const V2_SKIPPED = /\]:\s+Skipped [a-z_ ]+? (\S+) /;
+const CORE_BEGAN = /\]: Began running node (\S+)\s*$/;
+const CORE_FINISHED = /\]: Finished running node (\S+)\s*$/;
+
+/** The events of nodes in `lines`, whole lines of dbt's log, in order */
+export function nodeEvents(lines: string): NodeEvent[] {
+    const events: NodeEvent[] = [];
+    for (const line of lines.split('\n')) {
+        if (!line.includes('unning') && !line.includes('Skipped')) {
+            continue;
+        }
+        let match: RegExpExecArray | null;
+        if ((match = V2_STARTED.exec(line))) {
+            events.push({ relation: match[1], state: 'RUNNING' });
+        } else if ((match = V2_FINISHED.exec(line))) {
+            events.push({ relation: match[1], state: stateOf(match[2]) as NodeEvent['state'] });
+        } else if ((match = V2_SKIPPED.exec(line))) {
+            events.push({ relation: match[1], state: 'SKIPPED' });
+        } else if ((match = CORE_BEGAN.exec(line))) {
+            events.push({ nodeId: match[1], state: 'RUNNING' });
+        } else if ((match = CORE_FINISHED.exec(line))) {
+            events.push({ nodeId: match[1], state: 'ENDED' });
+        }
+    }
+    return events;
+}
+
+/** A node the log told of: how it stands, and when dbt was first seen to be on it (epoch ms) */
+export interface NodeProgress { state: string; since: number }
+
+/**
+ * The rows of a run that is going, with a row for each node dbt is on, or has ended, that no job was found for:
+ * a node dbt is still preparing, or one that needs no query. `nodes` is by the name a row for the node has.
+ */
+export function withNodeProgress(jobRows: WorkflowAction[], nodes: Map<string, NodeProgress>): WorkflowAction[] {
+    const named = new Set(jobRows.map((row) => row.target));
+    const rows = [...jobRows];
+    for (const [target, { state, since }] of nodes) {
+        if (!named.has(target) && state !== 'ENDED') {
+            rows.push({ target, state, ...(state === 'RUNNING' ? { startTime: since } : {}) });
+        }
+    }
+    return rows;
+}
+
 /** Where dbt writes `dbt.log` and `run_results.json` for a run from `root`: as its environment says, else in the Project */
 export function dbtRunFiles(root: string, env: Record<string, string | undefined>, resolve: (...parts: string[]) => string): { log: string; results: string } {
     return {

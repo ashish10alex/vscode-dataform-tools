@@ -15,7 +15,8 @@ import {
     isTerminalRun, jobTargetMatcher, newRunId, quietVerdict, runJobRows, withJobPrefix, withRunAdded,
 } from './shared/cliRunJobs';
 import {
-    DbtRunResults, HEADER_WAIT_MS, NamedNode, dbtJobNamer, dbtRunFiles, invocationsStarted, nodeNamer, ofInvocation, readRunResults, withNodeResults,
+    DbtRunResults, HEADER_WAIT_MS, NamedNode, NodeProgress, dbtJobNamer, dbtRunFiles, firstInvocation, nodeEvents, nodeNamer, ofInvocation, readRunResults,
+    withNodeProgress, withNodeResults,
 } from './shared/dbtRunJobs';
 import { RunStages, SILENT_SHELL_MS } from './shared/runStages';
 import { runSentUntracked, takeRunStages, whenCliSaysRunning } from './runFeedback';
@@ -53,6 +54,12 @@ interface DbtFollowed {
     /** How long dbt's log was when the run was sent: the run's own lines come after */
     logOffset: number;
     logSize?: number;
+    /** How far dbt's log has been read, and the start of a line that was not whole yet */
+    logRead?: { at: number; rest: string };
+    /** The nodes the log has told of, by the name a row for the node has */
+    nodes?: Map<string, NodeProgress>;
+    /** The run's BigQuery jobs as last listed: `rows` has the nodes without one beside them */
+    jobRows?: WorkflowAction[];
     /** The invocation's ID, once dbt's log, or `run_results.json`, has told it */
     invocationId?: string;
     /** How the run's nodes ended, once dbt has written it */
@@ -195,7 +202,7 @@ async function listRows(run: TrackedRun): Promise<WorkflowAction[]> {
     const ofRun = run.dbt ? run.dbt.invocationId && ofInvocation(run.dbt.invocationId) : run.idPrefix;
     if (!ofRun || !run.projectId) {
         // dbt has not said yet which invocation the run is, or where it runs its jobs
-        return run.rows;
+        return run.dbt?.jobRows ?? run.rows;
     }
     const client = await jobsClient(run.projectId);
     const [jobs] = await withTimeout(client.getJobs({
@@ -209,7 +216,13 @@ async function listRows(run: TrackedRun): Promise<WorkflowAction[]> {
     return runJobRows(jobs.map((job) => job.metadata as BigQueryJobMetadata), ofRun, nameOf, (statistics, location) => toJobStats(statistics, location, unit));
 }
 
-interface DbtNaming { of: unknown; nameOfNode: (nodeId: string) => string; nameOf: (job: BigQueryJobMetadata) => string | undefined }
+interface DbtNaming {
+    of: unknown;
+    nameOfNode: (nodeId: string) => string;
+    /** By what dbt v2's log calls a node: its dataset and name */
+    nameOfRelation: (relation: string) => string;
+    nameOf: (job: BigQueryJobMetadata) => string | undefined;
+}
 /** By Project root: how the nodes and jobs of its runs are named, from its last compile */
 const namings = new Map<string, DbtNaming>();
 
@@ -230,7 +243,18 @@ function dbtNaming(root: string): DbtNaming {
     });
     const nameOfNode = nodeNamer(nodes);
     // A job without dbt's comment is named after the table it writes to, as a Dataform job is
-    const naming = { of: last, nameOfNode, nameOf: dbtJobNamer(nameOfNode, jobTargetMatcher(actions.map(({ target }) => ({ target })))) };
+    const byRelation = new Map(actions.map((action) => [`${action.target.schema}.${action.target.name}`, action.id]));
+    // By name alone, where one action has the name
+    const byName = new Map<string, string | undefined>();
+    for (const action of actions) {
+        byName.set(action.target.name, byName.has(action.target.name) ? undefined : action.id);
+    }
+    const naming = {
+        of: last, nameOfNode,
+        // A test's dataset in the log is the one its failures are stored in, which its action may not have
+        nameOfRelation: (relation: string) => byRelation.get(relation) ?? byName.get(relation.slice(relation.lastIndexOf('.') + 1)) ?? relation,
+        nameOf: dbtJobNamer(nameOfNode, jobTargetMatcher(actions.map(({ target }) => ({ target })))),
+    };
     namings.set(root, naming);
     return naming;
 }
@@ -243,7 +267,7 @@ function sizeOf(file: string): number | undefined {
     }
 }
 
-function readFrom(file: string, offset: number): { text: string; size: number } | undefined {
+function readFrom(file: string, offset: number): { text: string; size: number; end: number } | undefined {
     try {
         const size = fs.statSync(file).size;
         // A log shorter than it was has been rotated: the run's lines are from its start
@@ -255,7 +279,7 @@ function readFrom(file: string, offset: number): { text: string; size: number } 
         } finally {
             fs.closeSync(handle);
         }
-        return { text: buffer.toString('utf8'), size };
+        return { text: buffer.toString('utf8'), size, end: from + buffer.length };
     } catch {
         return undefined;
     }
@@ -275,13 +299,30 @@ function resultsSince(file: string, startedAt: number): DbtRunResults | undefine
 
 /**
  * Reads what dbt has written of the run: the invocation's ID from the first start its log has after the run was
- * sent, and how the run ended from `run_results.json` once that is the invocation's. With no start in the log, as
- * when dbt writes it somewhere else, the results written since the run was sent are taken for the run's.
+ * sent, which nodes dbt is on from the lines after that, and how the run ended from `run_results.json` once that is
+ * the invocation's. With no start in the log, as when dbt writes it somewhere else, the results written since the
+ * run was sent are taken for the run's.
  */
 function readDbtFiles(run: TrackedRun, dbt: DbtFollowed, now: number) {
-    if (!dbt.invocationId) {
-        const log = readFrom(dbt.files.log, dbt.logOffset);
-        dbt.invocationId = log && invocationsStarted(log.text)[0];
+    const log = dbt.results ? undefined : readFrom(dbt.files.log, dbt.logRead?.at ?? dbt.logOffset);
+    if (log) {
+        const text = (dbt.logRead?.rest ?? '') + log.text;
+        const whole = text.lastIndexOf('\n') + 1;
+        dbt.logRead = { at: log.end, rest: text.slice(whole) };
+        let lines = text.slice(0, whole);
+        const started = dbt.nodes ? undefined : firstInvocation(lines);
+        if (started) {
+            dbt.invocationId ??= started.id;
+            dbt.nodes = new Map();
+            lines = lines.slice(started.after);
+        }
+        if (dbt.nodes) {
+            const naming = dbtNaming(dbt.root);
+            for (const event of nodeEvents(lines)) {
+                const target = event.nodeId ? naming.nameOfNode(event.nodeId) : naming.nameOfRelation(event.relation!);
+                dbt.nodes.set(target, { state: event.state, since: dbt.nodes.get(target)?.since ?? now });
+            }
+        }
     }
     if (!dbt.results) {
         const size = sizeOf(dbt.files.log);
@@ -400,20 +441,27 @@ async function poll(context: vscode.ExtensionContext, run: TrackedRun): Promise<
                 logger.error(`Unable to list the BigQuery jobs of the CLI run ${run.id}: ${run.listError}`);
             }
         }
-        if (run.dbt?.results) {
-            run.rows = withNodeResults(run.rows, run.dbt.results, dbtNaming(run.dbt.root).nameOfNode);
+        if (run.dbt) {
+            // Beside its jobs a dbt run has the nodes dbt's log tells of, until dbt's own account of them is in
+            const jobRows = run.listError ? run.dbt.jobRows ?? [] : run.rows;
+            run.dbt.jobRows = jobRows;
+            run.rows = run.dbt.results
+                ? withNodeResults(jobRows, run.dbt.results, dbtNaming(run.dbt.root).nameOfNode)
+                : run.ended ? jobRows : withNodeProgress(jobRows, run.dbt.nodes ?? new Map());
         }
         const now = Date.now();
-        const active = run.rows.filter(isActiveJob);
+        // A node dbt is on without a job is not waited on: if dbt went, nothing would tell that the node ended
+        const active = run.rows.filter((row) => row.jobId && isActiveJob(row));
+        const firstJob = run.rows.find((row) => row.jobId);
         if (!run.listError) {
-            if (run.rows.length > 0 && !run.sawJobs) {
+            if (firstJob && !run.sawJobs) {
                 run.sawJobs = true;
                 run.lastActiveAt = now;
             }
-            if (run.rows.length > 0 && !run.stages.firstJobAt) {
+            if (firstJob && !run.stages.firstJobAt) {
                 // The job was started before it was listed, and after the stage the run was last known to be in
                 const { compiledAt, startedAt, sentAt, invokedAt } = run.stages;
-                run.stages.firstJobAt = Math.min(now, Math.max(compiledAt ?? startedAt ?? sentAt ?? invokedAt, run.rows[0].startTime ?? now));
+                run.stages.firstJobAt = Math.min(now, Math.max(compiledAt ?? startedAt ?? sentAt ?? invokedAt, firstJob.startTime ?? now));
             }
             if (active.length > 0) {
                 run.lastActiveAt = now;
@@ -445,7 +493,7 @@ async function poll(context: vscode.ExtensionContext, run: TrackedRun): Promise<
                 // longer, as is one that has started none yet: dbt may be long at parsing the Project
                 const blind = !!run.listError || !run.dbt.invocationId || !run.projectId;
                 if (now - (run.lastActiveAt ?? run.startedAt) >= (blind ? DRAIN_MS : run.sawJobs ? QUIET_MS : NO_JOBS_MS)) {
-                    run.ended = { at: now, noJobs: run.rows.length === 0 };
+                    run.ended = { at: now, noJobs: !firstJob };
                 }
             } else if (run.listError) {
                 if (now - run.startedAt >= QUIET_MS) {
@@ -674,7 +722,7 @@ async function resumeRuns(context: vscode.ExtensionContext) {
             const { root, command, logOffset, invocationId } = entry.dbt;
             track(context, {
                 id: entry.workflowInvocationId, projectId: entry.projectId, startedAt: entry.timestamp, stages, resumed: true, rows: entry.actions ?? [],
-                dbt: { root, command, logOffset, invocationId, files: dbtRunFiles(root, process.env, path.resolve) },
+                dbt: { root, command, logOffset, invocationId, files: dbtRunFiles(root, process.env, path.resolve), jobRows: (entry.actions ?? []).filter((row) => row.jobId) },
             });
             continue;
         }

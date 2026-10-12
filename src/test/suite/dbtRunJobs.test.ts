@@ -2,7 +2,9 @@ import * as assert from 'assert';
 import * as path from 'path';
 import { suite, test } from 'mocha';
 import { BigQueryJobMetadata, countJobRows, finalRunState, isTerminalRun, jobTargetMatcher, runJobRows } from '../../shared/cliRunJobs';
-import { dbtJobNamer, dbtRunFiles, invocationsStarted, nodeNamer, nodeOfQuery, ofInvocation, readRunResults, withNodeResults } from '../../shared/dbtRunJobs';
+import {
+    dbtJobNamer, dbtRunFiles, firstInvocation, invocationsStarted, nodeEvents, nodeNamer, nodeOfQuery, ofInvocation, readRunResults, withNodeProgress, withNodeResults,
+} from '../../shared/dbtRunJobs';
 import type { WorkflowActionJobStats } from '../../types';
 
 // As recorded from a build of one model with dbt-core 1.12.5 and with dbt v2 2.0.6
@@ -52,6 +54,66 @@ suite('dbtRunJobs', () => {
         assert.deepStrictEqual(invocationsStarted(V2_LOG), [V2_ID]);
         assert.deepStrictEqual(invocationsStarted(`${V2_LOG}\n${CORE_LOG.replace(/\n/g, '\r\n')}`), [V2_ID, CORE_ID]);
         assert.deepStrictEqual(invocationsStarted('14:44:19 [info ]: nothing started'), []);
+    });
+
+    test('the lines of a run are those after its start', () => {
+        const started = firstInvocation(`${V2_LOG}\n${CORE_LOG}`);
+        assert.strictEqual(started?.id, V2_ID);
+        assert.strictEqual(`${V2_LOG}\n${CORE_LOG}`.slice(started!.after).trimStart().split('\n')[0], '14:44:19.700000 [info ]: dbt 2.0.6');
+        assert.strictEqual(firstInvocation('14:44:19 [info ]: nothing started'), undefined);
+    });
+
+    test("dbt v2's log tells which nodes it is on, and how each ended, long before a job", () => {
+        // As a build of two models, a test and a model that was skipped logged them
+        const log = [
+            '15:27:29.701807 [info ]: Started running (4 nodes)',
+            '15:27:29.701820 [info ]: Started running model allocation_build_plan.0100_ADM_PER_MONTH',
+            '15:27:29.701856 [info ]: Started running model allocation_build_plan.0101_ADM_PER_WEEK',
+            '15:28:36.386492 [debug]: Writing runtime sql for node "model.order_processing.0101_ADM_PER_WEEK"',
+            '15:28:39.745000 [info ]: Finished running [ 70.04s] model allocation_build_plan.0101_ADM_PER_WEEK [success]',
+            '15:28:39.745598 [info ]:  Succeeded model allocation_build_plan.0101_ADM_PER_WEEK (table) [1 of 4 in 1m10s]',
+            '15:28:41.500000 [info ]: Started running test dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF',
+            '15:28:42.863000 [info ]: Finished running [  1.41s] test dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF [error]',
+            '15:28:42.864843 [info ]:    Skipped model allocation_build_plan.0104_CALENDAR (table) [4 of 4]',
+            '15:28:42.900000 [info ]: Finished running [ 73.20s] (4 nodes, 1 skipped, 1 errors)',
+        ].join('\r\n');
+        assert.deepStrictEqual(nodeEvents(log), [
+            { relation: 'allocation_build_plan.0100_ADM_PER_MONTH', state: 'RUNNING' },
+            { relation: 'allocation_build_plan.0101_ADM_PER_WEEK', state: 'RUNNING' },
+            { relation: 'allocation_build_plan.0101_ADM_PER_WEEK', state: 'SUCCEEDED' },
+            { relation: 'dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF', state: 'RUNNING' },
+            { relation: 'dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF', state: 'FAILED' },
+            { relation: 'allocation_build_plan.0104_CALENDAR', state: 'SKIPPED' },
+        ]);
+    });
+
+    test("dbt-core's log tells which nodes it began and finished, by their IDs", () => {
+        const log = [
+            '\u001b[0m16:28:52.065643 [debug] [Thread-1 (]: Began running node model.order_processing.0100_ADM_PER_MONTH',
+            '\u001b[0m16:28:52.066070 [info ] [Thread-1 (]: 1 of 4 START sql table model allocation_build_plan.0100_ADM_PER_MONTH .......... [RUN]',
+            '\u001b[0m16:28:54.279373 [debug] [Thread-1 (]: Finished running node model.order_processing.0100_ADM_PER_MONTH',
+            '\u001b[0m16:28:54.943710 [info ] [MainThread]: Finished running 3 table models, 1 test in 0 hours 0 minutes and 7.23 seconds (7.23s).',
+        ].join('\n');
+        assert.deepStrictEqual(nodeEvents(log), [
+            { nodeId: 'model.order_processing.0100_ADM_PER_MONTH', state: 'RUNNING' },
+            { nodeId: 'model.order_processing.0100_ADM_PER_MONTH', state: 'ENDED' },
+        ]);
+    });
+
+    test('a node dbt is on has a row until a job is found for it', () => {
+        const nodes = new Map([
+            ['proj.analytics.orders', { state: 'RUNNING', since: 500 }],
+            ['proj.analytics.customers', { state: 'RUNNING', since: 600 }],
+            ['proj.analytics.skipped', { state: 'SKIPPED', since: 700 }],
+            ['proj.analytics.done', { state: 'ENDED', since: 800 }],
+        ]);
+        const jobRows = [{ target: 'proj.analytics.orders', state: 'RUNNING', jobId: 'proj:EU.a', startTime: 900 }];
+        assert.deepStrictEqual(withNodeProgress(jobRows, nodes), [
+            jobRows[0],
+            { target: 'proj.analytics.customers', state: 'RUNNING', startTime: 600 },
+            { target: 'proj.analytics.skipped', state: 'SKIPPED' },
+        ]);
+        assert.deepStrictEqual(withNodeProgress([], new Map()), []);
     });
 
     test("dbt's files are where its environment says, else in the Project", () => {

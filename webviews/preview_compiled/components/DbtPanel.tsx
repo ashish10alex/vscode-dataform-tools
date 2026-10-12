@@ -18,6 +18,7 @@ import { LineageEntry, LineageLists } from "./LineageColumns";
 import { formatAgo } from "./LastRunCard";
 import { RunHistory, runFacts } from "./RunHistory";
 import { RunStartSummary } from "./RunStages";
+import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
 import { CancelWorkflowButton } from "./CancelWorkflowButton";
 import { WorkflowActionsTable, getStatusIcon, useTick } from "./WorkflowActionsTable";
 import { TERMINAL_WORKFLOW_STATES } from "../utils/workflowPolling";
@@ -632,6 +633,15 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   const lastCommand = lastRun?.command ?? lastEntry?.dbt?.command;
   const lastEnded = !!lastEntry?.state && TERMINAL_WORKFLOW_STATES.has(lastEntry.state);
   useTick(!!lastEntry && !lastEnded);
+  const lastJobs = lastEntry?.actions?.filter((row) => row.jobId).length ?? 0;
+  const lastNodes = (lastEntry?.actions?.length ?? 0) - lastJobs;
+  // The pill in the header asks for the run's details
+  const [detailsAsked, setDetailsAsked] = useState(0);
+  useEffect(() => {
+    const show = () => setDetailsAsked((asked) => asked + 1);
+    window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
+    return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
+  }, []);
 
   // ---- Target: the tests are one line that opens. The one test of a file that defines nothing else is what the
   // file is for, so it is in full
@@ -748,6 +758,7 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
         <SummaryRow
           label="Last run"
           tone={lastEntry?.state === "FAILED" ? "error" : "calm"}
+          openRequest={detailsAsked}
           summary={lastEntry ? (
             <span data-dbt="last run" data-run={lastEntry.state || "UNKNOWN"} title={lastCommand} className="inline-flex items-center gap-1.5 min-w-0 max-w-full align-middle">
               <span className="flex-shrink-0" title={`Status: ${lastEntry.state || "UNKNOWN"}`}>{getStatusIcon(lastEntry.state)}</span>
@@ -790,8 +801,12 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
             {lastEntry && (
               <div data-dbt="last run jobs" className="mt-2 flex flex-col gap-1.5">
                 {lastEntry.jobsNote && <div className={clsx("text-[11px]", MUTED)}>{lastEntry.jobsNote}</div>}
-                {(lastEntry.actions?.length ?? 0) === 0 && !lastEntry.jobsNote && (
-                  <div className={clsx("text-[11px]", MUTED)}>{lastEnded ? "The run started no BigQuery job." : "Waiting for the run's first BigQuery job…"}</div>
+                {lastJobs === 0 && !lastEntry.jobsNote && (
+                  <div data-dbt="no jobs yet" className={clsx("text-[11px]", MUTED)}>
+                    {lastEnded ? "The run started no BigQuery job."
+                      : lastNodes > 0 ? `No BigQuery job yet: dbt is at work on ${lastNodes === 1 ? "1 node" : `${lastNodes} nodes`} and has sent BigQuery no query.`
+                        : "Waiting for dbt to start on its first node…"}
+                  </div>
                 )}
                 <RunStartSummary entry={lastEntry} />
                 <div className="-mx-3">
@@ -910,7 +925,20 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
           tabs={view.tabs.map((name) => (
             <HeaderTab key={name} active={tab === name} onClick={() => setChosen(name)}>{TAB_LABEL[name]}</HeaderTab>
           ))}
-          actions={<ReportIssueLink />}
+          actions={<>
+            {view.page === "panel" && (
+              <RunStatusPill
+                state={state}
+                runs={dbtRunsOf(state)}
+                onDetails={() => {
+                  setChosen("compiled");
+                  // The Last run row is drawn only once its tab is the one on show
+                  setTimeout(() => window.dispatchEvent(new Event(SHOW_RUN_DETAILS_EVENT)), 50);
+                }}
+              />
+            )}
+            <ReportIssueLink />
+          </>}
         />
       )}
 

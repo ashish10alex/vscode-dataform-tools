@@ -57,15 +57,20 @@ function rowTime(row: WorkflowAction): string {
  * It is there from the moment a run is invoked, before the run is in the history: until its first job it says which
  * stage the run is in (see src/shared/runStages.ts), and a click lists the stages.
  */
-export function RunStatusPill({ state, onDetails }: { state: PanelState; onDetails: () => void }) {
-    const latest = (state.dataform.workflowUrls || []).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
+export function RunStatusPill({ state, onDetails, runs }: {
+    state: PanelState;
+    onDetails: () => void;
+    /** The runs the pill is of, when they are not all those of the history: a dbt Project's panel tells of its own */
+    runs?: WorkflowUrlEntry[];
+}) {
+    const latest = (runs ?? state.dataform.workflowUrls ?? []).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
     const [open, setOpen] = useState(false);
     const [dismissed, setDismissed] = useState<number | null>(null);
     const seenGoing = useRef<Set<number>>(new Set());
     const root = useRef<HTMLDivElement>(null);
 
     // A run that was invoked and is not in the history yet is newer than any that is
-    const invoked = state.dataform.pendingRun ?? undefined;
+    const invoked = runs ? undefined : state.dataform.pendingRun ?? undefined;
     const pending = invoked && (!latest || invoked.stages.invokedAt >= (latest.stages?.invokedAt ?? latest.timestamp)) ? invoked : undefined;
 
     const ended = latest ? hasEnded(latest) : true;
@@ -120,16 +125,19 @@ export function RunStatusPill({ state, onDetails }: { state: PanelState; onDetai
     if (!shown || !latest) { return null; }
 
     const isCli = isTerminalRun(latest);
+    const isDbt = latest.executionMode === 'dbt';
+    const via = isDbt ? 'dbt' : isCli ? 'CLI' : 'API';
     const progress = runProgress(latest);
     const failed = latest.state === 'FAILED' || latest.state === 'CANCELLED' || progress.failed > 0;
     const tone = failed ? ERROR : ended ? SUCCESS : LINK;
     const rows = latest.actions ?? [];
-    // Until a CLI run's first job, the stage it is in says more than "running"
+    // Until a CLI run's first job, the stage it is in says more than "running". dbt's log tells of its nodes before that
     const stage = latest.stages && rows.length === 0 ? runStage(latest.stages, runVia(latest)) : undefined;
+    // A dbt run has a row for each node dbt is on, with or without a job
+    const unit = isDbt ? 'node' : isCli ? 'job' : 'action';
     const waiting = !ended ? stage : undefined;
-    const unit = isCli ? 'job' : 'action';
     const summary = [
-        `${isCli ? 'CLI' : 'API'} run ${waiting ?? (latest.state ?? 'unknown').toLowerCase()}`,
+        `${via} run ${waiting ?? (latest.state ?? 'unknown').toLowerCase()}`,
         progress.running > 0 && `${progress.running} running`,
         progress.succeeded > 0 && `${progress.succeeded} succeeded`,
         progress.failed > 0 && `${progress.failed} failed`,
@@ -146,7 +154,7 @@ export function RunStatusPill({ state, onDetails }: { state: PanelState; onDetai
                 className={pillClass}
                 style={pillStyle}
             >
-                {viaChip(isCli ? 'cli' : 'api')}
+                {viaChip(via.toLowerCase())}
                 {!ended && (
                     <span className={clsx('flex items-center gap-1', LINK)}>
                         <RefreshCw className="w-3 h-3 animate-spin" />
@@ -171,7 +179,7 @@ export function RunStatusPill({ state, onDetails }: { state: PanelState; onDetai
                     <div className="flex items-center gap-2 px-1.5 py-1">
                         <span className={clsx('font-mono', tone)}>{latest.state || 'UNKNOWN'}</span>
                         <span className={clsx('truncate', MUTED)}>
-                            {latest.includedTags?.length ? `tags: ${latest.includedTags.join(', ')}` : isCli ? 'dataform run' : latest.workspace}
+                            {latest.includedTags?.length ? `tags: ${latest.includedTags.join(', ')}` : isDbt ? 'dbt build' : isCli ? 'dataform run' : latest.workspace}
                         </span>
                         <span className={clsx('ml-auto font-mono whitespace-nowrap', MUTED)}>
                             {progress.total} {unit}{progress.total === 1 ? '' : 's'}
@@ -210,7 +218,7 @@ export function RunStatusPill({ state, onDetails }: { state: PanelState; onDetai
                             <button
                                 onClick={() => { setOpen(false); setDismissed(latest.timestamp); }}
                                 className={clsx('bg-transparent border-0 p-0 hover:underline', MUTED)}
-                                title="Hide this until the next run. The run stays in the Executions tab"
+                                title={`Hide this until the next run. The run stays in the ${isDbt ? 'Runs' : 'Executions'} tab`}
                             >
                                 Dismiss
                             </button>

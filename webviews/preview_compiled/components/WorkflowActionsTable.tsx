@@ -188,7 +188,8 @@ export function WorkflowActionsTable({ entry, className, tools }: { entry: Workf
     const wanted = filter.trim().toLowerCase();
     const shown = rows.filter((row) => (!wanted || row.target.toLowerCase().includes(wanted)) && (!narrowing || narrowing.has(row))).sort(problemsThenSlowest);
     const done = rows.filter((row) => row.state === 'SUCCEEDED').length;
-    const what = isCli ? 'BigQuery job' : 'action';
+    // A dbt run has a row for each node dbt's log tells of, with or without a job
+    const what = entry.executionMode === 'dbt' ? 'node' : isCli ? 'BigQuery job' : 'action';
 
     return (
         <div data-run-actions={entry.workflowInvocationId ?? ''}>
