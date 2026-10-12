@@ -759,6 +759,7 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
           label="Last run"
           tone={lastEntry?.state === "FAILED" ? "error" : "calm"}
           openRequest={detailsAsked}
+          staysClosed
           summary={lastEntry ? (
             <span data-dbt="last run" data-run={lastEntry.state || "UNKNOWN"} title={lastCommand} className="inline-flex items-center gap-1.5 min-w-0 max-w-full align-middle">
               <span className="flex-shrink-0" title={`Status: ${lastEntry.state || "UNKNOWN"}`}>{getStatusIcon(lastEntry.state)}</span>

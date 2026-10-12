@@ -680,6 +680,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           tone={lastRunTone}
           summary={lastRunSummary}
           openRequest={runDetailsRequests}
+          staysClosed
           wide
           actions={latestRun && !latestEnded ? (
             <CancelWorkflowButton entry={latestRun} />

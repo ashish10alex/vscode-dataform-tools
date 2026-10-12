@@ -57,6 +57,11 @@ interface SummaryRowProps {
   openActions?: ReactNode;
   /** Opens the row when it changes, e.g. when something elsewhere in the panel asks for its details */
   openRequest?: number;
+  /**
+   * The row stays closed when it has a problem, and only its colour says so: for a row whose problem is told well
+   * enough in its one line, and whose body is long, as the list of a run's jobs is
+   */
+  staysClosed?: boolean;
   /** The body is as wide as the panel, for content that needs the room */
   wide?: boolean;
   /** What the open row shows. It stays mounted while the row is closed, so what it holds is kept */
@@ -67,8 +72,8 @@ interface SummaryRowProps {
  * A section of the compiled query, as one line that says what it holds and opens to all of it. A row with a problem
  * opens by itself and closes when the problem is gone; a row the user opened or closed stays as they left it.
  */
-export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openActions, openRequest, wide, children }: SummaryRowProps) {
-  const problem = tone === "error";
+export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openActions, openRequest, staysClosed, wide, children }: SummaryRowProps) {
+  const problem = tone === "error" && !staysClosed;
   // null: follows the problem. Otherwise what the user chose
   const [chosen, setChosen] = useState<boolean | null>(null);
   const hadProblem = useRef(problem);
