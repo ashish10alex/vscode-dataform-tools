@@ -34,7 +34,7 @@ A dash means not in a dbt project yet. Each name links to its description at [da
 | [Compiled query and dry run](https://dataformtools.com/features#compilation) | ✅ | ✅ | Beside the file on save, with the size and cost of a dry run and the schema of the result |
 | [Errors in the editor](https://dataformtools.com/features#diagnostics) | ✅ | ✅ | Compile errors and BigQuery's dry-run errors, on the line you wrote |
 | [Preview query results](https://dataformtools.com/features#preview_query_results) | ✅ | ✅ | Runs the compiled query and shows its rows; for a dbt test, the rows that fail it |
-| Scratch queries | ✅ | ✅ | `New scratch query` makes a `.sql` file of plain BigQuery SQL in `.vscode-dataform-tools/tmp`. Cmd/Ctrl+Enter runs the selection or the file; saving it shows the dry run's size and cost in the status bar. Table and column names are completed |
+| Scratch queries | ✅ | ✅ | `New scratch query` opens a file for ad hoc BigQuery SQL: run it with Cmd/Ctrl+Enter, with a dry run on save |
 | [Run files and tags](https://dataformtools.com/features#filetagruns) | ✅ | ✅ | With dependencies, dependents or a full refresh. Dataform: the CLI or the Dataform API. dbt: `dbt build` |
 | [Run changed actions](https://dataformtools.com/features#run_changed_actions) | ✅ | ✅ | Runs only what differs from the default branch, like dbt's `state:modified`, with a tick per file |
 | [Tests](https://dataformtools.com/features#test_actions) | ✅ | ✅ | Dataform assertions and `test` actions; the dbt tests of a model, beside its compiled query |
