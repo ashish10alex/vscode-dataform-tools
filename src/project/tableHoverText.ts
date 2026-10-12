@@ -12,6 +12,9 @@ import type { HeldTable } from './heldTable';
 /** The command of the "Search columns" link. The hover's Markdown must be trusted to run it */
 export const SEARCH_COLUMNS_COMMAND = 'vscode-dataform-tools.searchTableColumns';
 
+/** The command of the "Copy column names" link, which the hover's Markdown must also be trusted to run */
+export const COPY_COLUMNS_COMMAND = 'vscode-dataform-tools.copyTableColumns';
+
 /** The most rows of a schema a hover lists */
 const MAX_ROWS = 150;
 
@@ -77,7 +80,7 @@ function withoutTable(hovered: HoveredTable, table: HeldTable | undefined): stri
 const joined = (facts: string[]) => facts.filter(Boolean).join(' · ');
 
 /**
- * The hover of a table: its BigQuery name, a link to search its columns, its Kind and location, its description, its
+ * The hover of a table: its BigQuery name, links to search its columns and to copy their names, its Kind and location, its description, its
  * partition, row count and last change, and its columns. `table` is undefined for an Action that builds none.
  */
 export function tableHoverText(hovered: HoveredTable, table: HeldTable | undefined, formatTime: (time: Date) => string = (time) => time.toISOString()): string {
@@ -87,7 +90,11 @@ export function tableHoverText(hovered: HoveredTable, table: HeldTable | undefin
     parts.push(isMadeUpTarget(hovered.target) || !table ? `#### ${plain(name)}` : `#### [${database}.${schema}.${name}](${bigQueryUrl(hovered.target)})`);
     // The hover itself cannot be searched. Directly under the title: below a long schema it is easy to miss
     if (found?.fields.length) {
-        parts.push(`[$(search) Search columns](command:${SEARCH_COLUMNS_COMMAND}?${encodeURIComponent(JSON.stringify([hovered.target]))})`);
+        const target = encodeURIComponent(JSON.stringify([hovered.target]));
+        parts.push(joined([
+            `[$(search) Search columns](command:${SEARCH_COLUMNS_COMMAND}?${target})`,
+            `[$(copy) Copy column names](command:${COPY_COLUMNS_COMMAND}?${target})`,
+        ]));
     }
     parts.push(joined([hovered.kind ? `**Kind:** ${hovered.kind}` : '', found?.location ? `**Location:** ${found.location}` : '']));
     const description = (hovered.description || found?.description || '').trim();

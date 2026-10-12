@@ -42,6 +42,7 @@ import { registerDeferEditorHints } from './defer/deferEditorHints';
 import { dbtRefHintsOf, registerDbtDeferEditorHints } from './defer/dbtDeferEditorHints';
 import { registerExecutedSqlProvider } from './workflowJobTelemetry';
 import { logger } from './logger';
+import { initScratchQueries, isScratchDocument, runScratchQuery } from './scratch';
 import { createDependencyGraphPanel } from './views/depedancyGraphPanel';
 import { createDependencyInspectorPanel, inspectorForTests } from './views/dependency-inspector-panel';
 import { ColumnLineagePanel } from './views/columnLineagePanel';
@@ -118,6 +119,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initDbtDiagnostics(context);
     initDbtSchemas(context);
     initDbtEditor(context);
+    initScratchQueries(context);
     initDbtWithoutPanel(context);
     initProdTargets(context);
     initCliCompileCache(context);
@@ -163,6 +165,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-dataform-tools.runQuery', async () => {
             logger.info('Running query command');
+            const editor = vscode.window.activeTextEditor;
+            if (editor && isScratchDocument(editor.document)) {
+                await runScratchQuery(editor, queryResultsViewProvider);
+                return;
+            }
             const dbt = CompiledQueryPanel.activeDbtFile();
             if (dbt) {
                 await dbtPreviewFile(dbt);
@@ -224,7 +231,8 @@ export async function activate(context: vscode.ExtensionContext) {
         if (ext === 'sqlx' || ext === 'js') {
             lastDataformFilePath = editor!.document.uri.fsPath;
         }
-        if (editor && queryResultsViewProvider._view?.visible) {
+        // A scratch query is no file of the Project: the results view keeps the query of what last ran
+        if (editor && !isScratchDocument(editor.document) && queryResultsViewProvider._view?.visible) {
             let curFileMeta = await getCurrentFileMetadata(false);
             if (curFileMeta?.fileMetadata) {
                 let type = curFileMeta.fileMetadata.queryMeta.type;

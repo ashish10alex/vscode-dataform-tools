@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { isScratchPath } from '../scratch/scratchQuery';
 import path from 'path';
 import * as vscode from 'vscode';
 import type { Editor, EditorDocument } from '../backend';
@@ -50,7 +51,8 @@ interface DbtDocument {
 }
 
 function dbtDocument(document: vscode.TextDocument): DbtDocument | undefined {
-    if (document.uri.scheme !== 'file') {
+    // A scratch query is plain SQL kept in the Project's folder, not a file of the dbt Project
+    if (document.uri.scheme !== 'file' || isScratchPath(document.uri.fsPath)) {
         return undefined;
     }
     // A folder that is both a Dataform and a dbt Project: the file is asked about only as its own Backend's
