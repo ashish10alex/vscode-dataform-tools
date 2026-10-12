@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, ExternalLink } from 'lucide-react';
 import { formatDuration } from '../../../src/shared/jobTiming';
 import { bigQueryJobUrl, jobStatsParts, shortJobId, type JobStats } from '../../../src/shared/queryResultsView';
 import { vscode } from '../vscode';
@@ -40,9 +40,10 @@ function JobLink({ jobId }: { jobId: string }) {
         <button
           onClick={() => vscode.postMessage({ command: 'openExternal', value: url })}
           title={`View job in BigQuery: ${jobId}`}
-          className="text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline cursor-pointer bg-transparent border-none p-0"
+          className="inline-flex items-center gap-1 text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline cursor-pointer bg-transparent border-none p-0"
         >
           {shortJobId(jobId)}
+          <ExternalLink className="h-3 w-3" />
         </button>
       ) : (
         <span title={jobId}>{shortJobId(jobId)}</span>

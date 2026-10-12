@@ -1,4 +1,4 @@
-import { Download, Play, Square } from 'lucide-react';
+import { Download, ExternalLink, Play, Square } from 'lucide-react';
 
 export type ResultsTab = 'results' | 'query';
 
@@ -15,6 +15,8 @@ interface ResultsHeaderProps {
   queryLimit: string;
   onQueryLimitChange: (limit: string) => void;
   running: boolean;
+  /** The running job's page in the BigQuery console, once the job is created */
+  onViewJob?: () => void;
   /** Whether a query can be started from here. A running query can always be cancelled. */
   canRun: boolean;
   onRun: () => void;
@@ -32,6 +34,7 @@ const tabClass = (active: boolean) => `px-3 py-1.5 text-sm font-medium transitio
 }`;
 
 const secondaryButton = 'inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] rounded text-sm font-medium disabled:opacity-50 transition-colors';
+const cancelButton = 'inline-flex items-center gap-1.5 px-3 py-1 border border-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded text-sm font-medium transition-colors';
 const primaryButton = 'inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] rounded text-sm font-medium transition-colors';
 
 /** The one row above the results: the tabs on the left, what can be done with the query on the right */
@@ -80,10 +83,20 @@ export function ResultsHeader(props: ResultsHeaderProps) {
           ))}
         </select>
 
+        {props.running && props.onViewJob && (
+          <button
+            onClick={props.onViewJob}
+            className="inline-flex items-center gap-1 text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] hover:underline cursor-pointer bg-transparent border-none p-0"
+          >
+            View job in BigQuery
+            <ExternalLink className="h-3 w-3" />
+          </button>
+        )}
+
         {props.running ? (
-          <button onClick={props.onCancel} className={`${secondaryButton} min-w-[5.5rem] justify-center`}>
+          <button onClick={props.onCancel} className={cancelButton} title="Cancel the BigQuery job of this query">
             <Square className="h-3 w-3 fill-current" />
-            Cancel
+            Cancel job
           </button>
         ) : props.canRun && (
           <button onClick={props.onRun} className={`${primaryButton} min-w-[5.5rem] justify-center`}>

@@ -6,7 +6,7 @@ import { CodeBlock } from '../components/CodeBlock';
 import { FindWidget } from '../components/FindWidget';
 import { ResultsHeader, type ResultsTab } from './components/ResultsHeader';
 import { JobStatusLine, hasJobStatus } from './components/JobStatusLine';
-import type { JobStats } from '../../src/shared/queryResultsView';
+import { bigQueryJobUrl, type JobStats } from '../../src/shared/queryResultsView';
 
 function escapeRegex(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -353,6 +353,7 @@ export default function App() {
     jobId: bigQueryJobId,
     shownRows: !singleResult ? undefined : results ? results.length : noResults ? 0 : undefined,
   };
+  const runningJobUrl = bigQueryJobUrl(bigQueryJobId);
   const status = hasJobStatus(jobStatus) ? <JobStatusLine {...jobStatus} /> : undefined;
 
   return (
@@ -375,6 +376,7 @@ export default function App() {
           vscode.postMessage({ command: 'queryLimit', value: limit });
         }}
         running={loading}
+        onViewJob={runningJobUrl ? () => vscode.postMessage({ command: 'openExternal', value: runningJobUrl }) : undefined}
         canRun={!multiResults}
         onRun={handleRunQuery}
         onCancel={handleCancelQuery}
