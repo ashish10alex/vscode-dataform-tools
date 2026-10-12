@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { getBigQueryClientFor, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import type { JobPlace } from './bigquery/jobPlace';
-import { QueryResultsOptions } from '@google-cloud/bigquery';
+import { Job, QueryResultsOptions } from '@google-cloud/bigquery';
 import { getBigQueryTimeoutMs } from './constants';
 import { formatBytes } from './utils';
-import type { JobStats } from './shared/queryResultsView';
+import { RESULT_CHUNK_ROWS, type JobStats, type ResultFilter, type ResultSort } from './shared/queryResultsView';
+import { QueryResult, columnExprs, viewQuery, type ResultColumn, type SchemaField, type TableRef } from './bigquery/queryResult';
 
 let cancelBigQueryJobSignal = false;
 
@@ -161,7 +162,19 @@ function transformBigValues(obj: any) {
     return obj;
 }
 
-export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false, place?: JobPlace): Promise<{rows: any[] | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined}> {
+/** What a job that ran leaves to read the rest of its result with */
+interface JobResult {
+    job: Job;
+    schema: SchemaField[] | undefined;
+    /** The temporary table of the result. A statement that returns no rows has none. */
+    table: TableRef | undefined;
+}
+
+/**
+ * Runs the query and reads its rows: up to the row limit, or the first `firstRows` of them when given, the rest
+ * being read later from `result.job`.
+ */
+export async function runQueryInBigQuery(query: string, alreadyRetried: boolean = false, place?: JobPlace, firstRows?: number, params?: Record<string, string>): Promise<{rows: any[] | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined, result?: JobResult}> {
     await checkAuthentication();
 
     const bigquery = await getBigQueryClientFor(place);
@@ -179,14 +192,14 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
     // Capture job in a local variable so concurrent calls don't overwrite each other's reference
     let localJob: typeof bigQueryJob;
     try {
-        [localJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs(), ...(place?.location ? { location: place.location } : {}) });
+        [localJob] = await bigquery.createQueryJob({query, jobTimeoutMs: getBigQueryTimeoutMs(), ...(params ? { params } : {}), ...(place?.location ? { location: place.location } : {}) });
         bigQueryJob = localJob;  // keep global updated for cancellation
         _bigQueryJobId = localJob?.id;
     } catch (error: any) {
         try {
             await handleBigQueryError(error, alreadyRetried);
             // The client was recreated after an authentication error: retry once
-            return await runQueryInBigQuery(query, true, place);
+            return await runQueryInBigQuery(query, true, place, firstRows, params);
         } catch (finalError: any) {
             // vscode.window.showErrorMessage(`Error creating BigQuery job: ${finalError.message}`);
             return { rows: undefined, jobStats: undefined, errorMessage: finalError.message};
@@ -200,15 +213,20 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
         return { rows: undefined, jobStats: undefined, errorMessage: "BigQuery query execution aborted, job not created" };
     }
 
-    const options:QueryResultsOptions = { maxResults: queryLimit, timeoutMs: getBigQueryTimeoutMs() };
+    // One page is asked for by itself, which is also what makes BigQuery's answer, with the row count and the schema, come back
+    const options:QueryResultsOptions = firstRows !== undefined
+        ? { maxResults: firstRows, autoPaginate: false, timeoutMs: getBigQueryTimeoutMs() }
+        : { maxResults: queryLimit, timeoutMs: getBigQueryTimeoutMs() };
 
     //TODO: even when the job has been cancelled it might return results, handle this
     //TODO: Can we not await and hence avoid the network transfer of data if job is cancelled ?
     let rows;
     let totalRows: number | undefined;
+    let schema: SchemaField[] | undefined;
     try {
         let response;
         [rows, , response] = await localJob!.getQueryResults(options);
+        schema = response?.schema?.fields;
         const total = Number(response?.totalRows);
         totalRows = response?.totalRows !== undefined && !isNaN(total) ? total : undefined;
     } catch (error: any) {
@@ -221,9 +239,11 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
     let bigQueryJobEndTime: Date | undefined;
     let durationMs: number | undefined;
     let cacheHit: boolean | undefined;
+    let table: TableRef | undefined;
 
     if (localJob) {
         const jobMetadata = await localJob.getMetadata();
+        table = jobMetadata[0]?.configuration?.query?.destinationTable;
         const queryStats = jobMetadata[0]?.statistics?.query;
         bigQueryJobId = jobMetadata[0]?.id;
         totalBytesBilled = queryStats?.totalBytesBilled;
@@ -244,7 +264,7 @@ export async function runQueryInBigQuery(query: string, alreadyRetried: boolean 
         ? formatBytes(bytesBilled)
         : undefined;
 
-    return { rows: rows, jobStats: { bigQueryJobEndTime, bigQueryJobId, jobCostMeta, durationMs, cacheHit, totalRows }, errorMessage: undefined };
+    return { rows: rows, jobStats: { bigQueryJobEndTime, bigQueryJobId, jobCostMeta, durationMs, cacheHit, totalRows }, errorMessage: undefined, result: localJob ? { job: localJob, schema, table } : undefined };
 }
 
 export function processQueryResults(rows: any[]): { results: any[], columns: any[] } {
@@ -364,6 +384,59 @@ export async function queryBigQuery(query: string, place?: JobPlace): Promise<{r
     const { results, columns } = processQueryResults(rows);
 
     return { results: results, columns: columns, jobStats: jobStats, errorMessage: errorMessage };
+}
+
+/** The result is kept by BigQuery for a day */
+const resultGone = (error: any) => /not found: (table|job)/i.test(error?.message ?? '')
+    ? new Error('BigQuery no longer keeps this result. Run the query again.')
+    : error;
+
+/**
+ * Runs the query and reads the first rows of its result. The rest are read from BigQuery when they are looked at,
+ * and a sort or a filter runs as a query over the temporary table that holds the result.
+ */
+export async function openQueryResult(query: string, place?: JobPlace, params?: Record<string, string>, columns?: ResultColumn[]): Promise<{result: QueryResult | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined}> {
+    const { rows, jobStats, errorMessage, result: ran } = await runQueryInBigQuery(query, false, place, RESULT_CHUNK_ROWS, params);
+    if (errorMessage || !rows || !ran) {
+        return { result: undefined, jobStats, errorMessage };
+    }
+
+    const exprs = columnExprs(ran.schema);
+    const first = processQueryResults(rows);
+    // A sorted, filtered result keeps the columns of the result it is of, also when no row is left to tell them from
+    const resultColumns: ResultColumn[] = columns ?? first.columns.map((column: ResultColumn) => ({ ...column, sortable: column.field in exprs }));
+    const { job, table } = ran;
+
+    const read = async (startIndex: number, maxResults: number) => {
+        try {
+            const [more] = await job.getQueryResults({ startIndex: String(startIndex), maxResults, autoPaginate: false, timeoutMs: getBigQueryTimeoutMs() });
+            return processQueryResults(more).results;
+        } catch (error: any) {
+            throw resultGone(error);
+        }
+    };
+
+    const openView = table && Object.keys(exprs).length > 0
+        ? async (sorting: ResultSort[], filters: ResultFilter[]) => {
+            const view = viewQuery(table, sorting, filters, exprs);
+            if (!view) {
+                return { result };
+            }
+            // The table is in the place its job ran in
+            const viewPlace = { ...place, location: job.location ?? place?.location } as JobPlace;
+            const opened = await openQueryResult(view.query, viewPlace, view.params, resultColumns);
+            if (opened.errorMessage) {
+                throw resultGone(new Error(opened.errorMessage));
+            }
+            return {
+                result: opened.result ?? new QueryResult(0, resultColumns, async () => []),
+                billed: opened.jobStats?.jobCostMeta === '0 B' ? undefined : opened.jobStats?.jobCostMeta,
+            };
+        }
+        : undefined;
+
+    const result: QueryResult = new QueryResult(jobStats?.totalRows ?? first.results.length, resultColumns, read, first.results, openView);
+    return { result, jobStats, errorMessage: undefined };
 }
 
 export async function cancelBigQueryJob() {

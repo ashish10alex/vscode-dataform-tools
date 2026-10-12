@@ -28,9 +28,9 @@ suite('JobStatusLine', () => {
     test('a finished query shows its stats, then its job as a link', () => {
         const html = render({
             jobStats: { bigQueryJobId: JOB_ID, jobCostMeta: '269.00 MiB', durationMs: 2300, totalRows: 48213 },
-            shownRows: 1000,
+            shownRows: 212,
         });
-        assert.ok(html.includes('first 1,000 of 48,213 rows'), html);
+        assert.ok(html.includes('212 of 48,213 rows'), html);
         assert.ok(html.includes('2.3s'), html);
         assert.ok(html.includes('269.00 MiB billed'), html);
         assert.ok(html.includes(`View job in BigQuery: ${JOB_ID}`), html);

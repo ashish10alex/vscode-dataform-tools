@@ -16,8 +16,44 @@ export interface JobStats {
     /** From the job's creation to its end */
     durationMs?: number;
     cacheHit?: boolean;
-    /** Rows of the whole result, which is more than the rows sent when the limit cut it */
+    /** Rows of the whole result */
     totalRows?: number;
+}
+
+/** The rows the host reads from BigQuery in one go. A result of no more rows than this is sent whole to the view. */
+export const RESULT_CHUNK_ROWS = 1000;
+
+export interface ResultSort {
+    /** The column's field */
+    id: string;
+    desc: boolean;
+}
+
+export interface ResultFilter {
+    id: string;
+    value: string;
+}
+
+/** What the view asks of the host for a result it does not hold whole: a page of it, sorted and filtered */
+export interface ResultViewRequest {
+    /** Counts up, so that the answer to a request the view has since replaced can be told */
+    requestId: number;
+    pageIndex: number;
+    pageSize: number;
+    sorting: ResultSort[];
+    filters: ResultFilter[];
+}
+
+/** Which rows of a result the view was sent. Absent when it was sent all of them. */
+export interface ResultPaging {
+    pageIndex: number;
+    pageSize: number;
+    /** Rows of the result once filtered */
+    rowCount: number;
+    sorting: ResultSort[];
+    filters: ResultFilter[];
+    /** Bytes billed, formatted, for the query that sorted and filtered */
+    viewBilled?: string;
 }
 
 /** The job's page in the BigQuery console, from an id of the form `project:location.job_id` */
@@ -40,14 +76,15 @@ const count = (n: number) => n.toLocaleString('en-US');
 
 /**
  * The items of the status line of a finished job, in the order shown: rows, duration, bytes billed, cache hit,
- * end time. An item the job has no value for is left out.
+ * end time. An item the job has no value for is left out. `shownRows` is fewer than the job's rows when a filter
+ * is on, and `viewBilled` is what sorting and filtering cost on top of the job.
  */
-export function jobStatsParts(jobStats: JobStats | null | undefined, shownRows?: number): string[] {
+export function jobStatsParts(jobStats: JobStats | null | undefined, shownRows?: number, viewBilled?: string): string[] {
     const parts: string[] = [];
     if (shownRows !== undefined) {
         const total = jobStats?.totalRows;
         parts.push(total !== undefined && total > shownRows
-            ? `first ${count(shownRows)} of ${count(total)} rows`
+            ? `${count(shownRows)} of ${count(total)} rows`
             : `${count(shownRows)} ${shownRows === 1 ? 'row' : 'rows'}`);
     }
     if (!jobStats) {
@@ -58,6 +95,9 @@ export function jobStatsParts(jobStats: JobStats | null | undefined, shownRows?:
     }
     if (jobStats.jobCostMeta) {
         parts.push(`${jobStats.jobCostMeta} billed`);
+    }
+    if (viewBilled) {
+        parts.push(`${viewBilled} billed to sort and filter`);
     }
     if (jobStats.cacheHit) {
         parts.push('cache hit');
