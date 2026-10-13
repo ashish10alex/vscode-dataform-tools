@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
+import { Eye } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
 import { Declarations } from '../types';
 import { vscode as vsCodeApi } from '../utils/vscode';
+import { ROW_BUTTON } from './SummaryRow';
 
 interface DeclarationsViewProps {
   /** Only where each table is matters here */
@@ -10,6 +12,7 @@ interface DeclarationsViewProps {
 }
 
 type DeclarationRow = {
+  target: Declarations['target'];
   source: string;
   project: string;
   dataset: string;
@@ -20,6 +23,7 @@ type DeclarationRow = {
 export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations }) => {
   const data = useMemo<DeclarationRow[]>(() =>
     declarations.map(d => ({
+      target: d.target,
       source: `${d.target.database}.${d.target.schema}.${d.target.name}`,
       project: d.target.database,
       dataset: d.target.schema,
@@ -38,16 +42,30 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
         a.original.dataset.localeCompare(b.original.dataset) ||
         a.original.name.localeCompare(b.original.name) ||
         a.original.project.localeCompare(b.original.project),
+      // One cell for both, so that a long name wraps beside its button and never under the next column
       cell: ({ row }) => (
-        <button
-          className="text-[var(--vscode-textLink-foreground)] hover:underline text-left"
-          onClick={e => {
-            e.stopPropagation();
-            vsCodeApi.postMessage({ command: 'openExternal', url: row.original.link });
-          }}
-        >
-          {row.original.source}
-        </button>
+        <div className="flex items-start gap-3">
+          <button
+            className={`${ROW_BUTTON} shrink-0`}
+            title="Show the first rows. A table is read without a query, which costs nothing; a view is queried."
+            onClick={e => {
+              e.stopPropagation();
+              vsCodeApi.postMessage({ command: 'dataform.previewDeclaration', target: row.original.target });
+            }}
+          >
+            <Eye className="w-3 h-3" /> Preview
+          </button>
+          <button
+            className="min-w-0 break-all leading-6 text-[var(--vscode-textLink-foreground)] hover:underline text-left"
+            title="Open in the BigQuery console"
+            onClick={e => {
+              e.stopPropagation();
+              vsCodeApi.postMessage({ command: 'openExternal', url: row.original.link });
+            }}
+          >
+            {row.original.source}
+          </button>
+        </div>
       ),
     },
   ], []);

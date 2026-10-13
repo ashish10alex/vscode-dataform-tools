@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
-import { getBigQueryClientFor, checkAuthentication, handleBigQueryError } from './bigqueryClient';
+import { getBigQueryClient, getBigQueryClientFor, checkAuthentication, handleBigQueryError } from './bigqueryClient';
 import type { JobPlace } from './bigquery/jobPlace';
-import { Job, QueryResultsOptions } from '@google-cloud/bigquery';
+import { Job, QueryResultsOptions, Table } from '@google-cloud/bigquery';
+import type { Target } from './shared/compiledGraph';
 import { getBigQueryTimeoutMs } from './constants';
 import { formatBytes } from './utils';
 import { RESULT_CHUNK_ROWS, type JobStats, type ResultFilter, type ResultSort } from './shared/queryResultsView';
@@ -453,5 +454,40 @@ export async function cancelBigQueryJob() {
     } else {
         vscode.window.showInformationMessage(`Was unable to cancel job, please check for your job in BigQuery console`);
         return { cancelled: undefined, bigQueryJobId: undefined };
+    }
+}
+
+/** Calls BigQuery about a table, once more with a new client after an authentication error */
+async function withTable<T>(target: Target, call: (table: Table) => Promise<T>, alreadyRetried = false): Promise<T> {
+    await checkAuthentication();
+    const bigquery = getBigQueryClient();
+    if (!bigquery) {
+        throw new Error('Error creating BigQuery client Please check your authentication.');
+    }
+    try {
+        return await call(bigquery.dataset(target.schema, { projectId: target.database }).table(target.name));
+    } catch (error: any) {
+        await handleBigQueryError(error, alreadyRetried);
+        return withTable(target, call, true);
+    }
+}
+
+/** The `type` of the table's metadata: `TABLE`, `VIEW`, `MATERIALIZED_VIEW`, `EXTERNAL`, ... */
+export async function getTableType(target: Target): Promise<string | undefined> {
+    return withTable(target, async (table) => (await table.getMetadata())[0]?.type);
+}
+
+/**
+ * Reads the first rows of a base table without a query job, so nothing is billed. The result has no more rows
+ * than the view can hold, and the view sorts and filters it by itself.
+ */
+export async function openTableRows(target: Target): Promise<{result: QueryResult | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined}> {
+    try {
+        const [rows] = await withTable(target, (table) => table.getRows({ maxResults: RESULT_CHUNK_ROWS, autoPaginate: false }));
+        const first = processQueryResults(rows);
+        const result = new QueryResult(first.results.length, first.columns, async () => [], first.results);
+        return { result, jobStats: { totalRows: first.results.length, jobCostMeta: formatBytes(0) }, errorMessage: undefined };
+    } catch (error: any) {
+        return { result: undefined, jobStats: undefined, errorMessage: error?.message ?? String(error) };
     }
 }

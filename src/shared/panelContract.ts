@@ -467,7 +467,9 @@ export type DataformPanelMessage =
     | { command: 'dataform.loadLineage' }
     /** `elementName` is the panel's key for the element, `<graph target>::<element name>`; `table` is what backs it */
     | { command: 'dataform.loadPropertyGraphElementSchema'; elementName: string; table: Target }
-    | { command: 'dataform.runGeneratedQuery'; query: string; kind?: string };
+    | { command: 'dataform.runGeneratedQuery'; query: string; kind?: string }
+    /** Previews a declared table: it has no section to preview, so the table itself is read */
+    | { command: 'dataform.previewDeclaration'; target: Target };
 
 /** Messages only a dbt Project's panel sends. Each is named as dbt's */
 export type DbtPanelMessage =

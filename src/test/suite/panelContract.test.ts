@@ -49,14 +49,14 @@ suite('panel contract', () => {
             'dataform.clearWorkflowUrls': true, 'dataform.refreshWorkflowStatuses': true, 'dataform.cancelWorkflowInvocation': true,
             'dataform.loadWorkflowJobStats': true, 'dataform.exportWorkflowActionsCsv': true, 'dataform.openExecutedSql': true,
             'dataform.openBigQueryJob': true, 'dataform.showDependencyInspector': true, 'dataform.showColumnLineage': true,
-            'dataform.loadLineage': true, 'dataform.loadPropertyGraphElementSchema': true, 'dataform.runGeneratedQuery': true,
+            'dataform.loadLineage': true, 'dataform.loadPropertyGraphElementSchema': true, 'dataform.runGeneratedQuery': true, 'dataform.previewDeclaration': true,
             'dbt.setTarget': true, 'dbt.compileWithHooks': true, 'dbt.chooseExecutable': true, 'dbt.lookForDbtAgain': true,
             'dbt.computeChangedActions': true, 'dbt.runChangedActions': true,
             'dbt.toggleDeferToProd': true, 'dbt.deferToProdActions': true, 'dbt.openDeferToProdSettings': true, 'dbt.retryDeferral': true,
         };
         const names = Object.keys(commands);
         assert.strictEqual(names.filter((name) => !name.includes('.')).length, 20);
-        assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 32);
+        assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 33);
         assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 10);
     });
 

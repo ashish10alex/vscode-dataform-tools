@@ -45,7 +45,7 @@ export type ViewOpener = (sorting: ResultSort[], filters: ResultFilter[]) => Pro
 /** Types BigQuery cannot ORDER BY */
 const NOT_ORDERABLE = new Set(['RECORD', 'STRUCT', 'JSON', 'GEOGRAPHY']);
 
-const quoted = (name: string) => `\`${name.replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\``;
+export const quoted = (name: string) => `\`${name.replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\``;
 const orderable = (field: SchemaField) => !!field.name && field.mode !== 'REPEATED' && !NOT_ORDERABLE.has(field.type ?? '');
 
 /**

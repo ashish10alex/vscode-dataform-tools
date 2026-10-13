@@ -6,6 +6,8 @@ import { queryDryRun } from './bigqueryDryRun';
 import { countDeferred, Deferral, handleAccessDenied, resolveDeferralForActions } from './defer';
 import { applyDeferralToAction } from './defer/deferRules';
 import { previewQuery } from './bigquery/preview';
+import { declarationPreviewSql, previewMethod, tableName } from './bigquery/tablePreview';
+import { getTableType } from './bigqueryRunQuery';
 import { compiledGraph, compiledJson } from './project';
 import { resolveDataformOptions } from './project/dataformOptions';
 import { Kind, Target, actionsInFile, isMadeUpTarget, previewSection, targetId } from './shared/compiledGraph';
@@ -74,21 +76,56 @@ async function checkDeferredPreview<Preview extends DeferredPreview>(preview: Pr
     }
 
     const deferred = countDeferred(preview.deferral);
-    const thresholdGiB = extensionConfiguration().get<number>('deferPreviewScanWarningGiB') ?? 10;
-    const bytes = dryRun.statistics?.totalBytesProcessed ?? 0;
-    if (deferred > 0 && thresholdGiB > 0 && !dryRun.error?.hasError && bytes > thresholdGiB * (1024 ** 3)) {
-        const cost = dryRun.statistics?.cost;
-        const costText = cost ? ` (~${cost.value.toFixed(2)} ${cost.currency})` : "";
-        const choice = await vscode.window.showWarningMessage(
-            `This preview scans ${formatGiB(bytes)}${costText}. ${deferred} upstream table${deferred === 1 ? " is" : "s are"} read from prod. Run it?`,
-            { modal: true },
-            "Run",
-        );
-        if (choice !== "Run") {
-            return undefined;
-        }
+    if (deferred > 0 && !await confirmLargeScan(dryRun, `${deferred} upstream table${deferred === 1 ? " is" : "s are"} read from prod.`)) {
+        return undefined;
     }
     return preview;
+}
+
+/**
+ * Asks before a preview whose dry run scans more than `deferPreviewScanWarningGiB`, saying `why` the scan can be
+ * large. False when the user chose not to run it.
+ */
+async function confirmLargeScan(dryRun: Awaited<ReturnType<typeof queryDryRun>>, why: string): Promise<boolean> {
+    const thresholdGiB = extensionConfiguration().get<number>('deferPreviewScanWarningGiB') ?? 10;
+    const bytes = dryRun.statistics?.totalBytesProcessed ?? 0;
+    if (thresholdGiB <= 0 || dryRun.error?.hasError || bytes <= thresholdGiB * (1024 ** 3)) {
+        return true;
+    }
+    const cost = dryRun.statistics?.cost;
+    const costText = cost ? ` (~${cost.value.toFixed(2)} ${cost.currency})` : "";
+    const choice = await vscode.window.showWarningMessage(
+        `This preview scans ${formatGiB(bytes)}${costText}. ${why} Run it?`,
+        { modal: true },
+        "Run",
+    );
+    return choice === "Run";
+}
+
+/**
+ * Previews a declared table, which has no SQL of its own. The first rows of a base table are read without a
+ * query job, which costs nothing. A view or an external table needs a query: its scan is checked first, as a
+ * LIMIT does not make it smaller.
+ */
+export async function previewDeclaration(target: Target, queryResultsViewProvider: CustomViewProvider) {
+    let tableType: string | undefined;
+    try {
+        tableType = await getTableType(target);
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Could not read ${tableName(target)}: ${error?.message ?? error}`);
+        return;
+    }
+    if (previewMethod(tableType) === 'rows') {
+        const query = `-- The first rows of ${tableName(target)}, read without a query job`;
+        await runQueryInPanel({ query, type: 'table', table: target }, queryResultsViewProvider);
+        return;
+    }
+    const query = declarationPreviewSql(target, queryLimit);
+    // A query the dry run finds an error in is still run: the results view is where the error is shown
+    if (!await confirmLargeScan(await queryDryRun(query), 'It reads a view or an external table, which a LIMIT does not make cheaper.')) {
+        return;
+    }
+    await runQueryInPanel({ query, type: 'table' }, queryResultsViewProvider);
 }
 
 export async function previewQueryResults(queryResultsViewProvider: CustomViewProvider) {
