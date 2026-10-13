@@ -76,6 +76,9 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
 
   return (
     <div className="h-full flex flex-col">
+      <p className="m-0 mb-2 pl-2 py-0.5 border-l-2 border-[var(--vscode-editorWarning-foreground)] text-xs text-[var(--vscode-descriptionForeground)]">
+        Preview reads the first rows of a table without a query, at no cost. A view or an external table is queried with a LIMIT, which is billed for the full scan; a large scan asks first.
+      </p>
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
