@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.19.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.18.1...v1.19.0) (2026-10-13)
+
+
+### Features
+
+* dbt support and UI revamp ([#493](https://github.com/ashish10alex/vscode-dataform-tools/issues/493)) ([478b7af](https://github.com/ashish10alex/vscode-dataform-tools/commit/478b7af7dcb95a13f099dddeb92f8cbf4228a3d4)), closes [#448](https://github.com/ashish10alex/vscode-dataform-tools/issues/448) [#521](https://github.com/ashish10alex/vscode-dataform-tools/issues/521)
+
+
+### Documentation
+
+* **adr:** dbt compile loop differs by engine ([1390ecc](https://github.com/ashish10alex/vscode-dataform-tools/commit/1390eccb741bb3b7c4fd46b4ac12cf21f06f5a76))
+* **adr:** one Compiled Graph behind a VS Code-free Backend seam ([209b199](https://github.com/ashish10alex/vscode-dataform-tools/commit/209b199476e2419c3027cf68511fddcf07ec0a2d))
+* build plan for Dataform and dbt behind one Backend seam ([a085c28](https://github.com/ashish10alex/vscode-dataform-tools/commit/a085c289dc6ebe72c208f0ac414ff305555ddfc5))
+* **glossary:** add backend-neutral terms for Dataform and dbt ([2d3e1c5](https://github.com/ashish10alex/vscode-dataform-tools/commit/2d3e1c5718e78f8ded0cb7592871c60423f6a13f))
+
+
+### Tests
+
+* record what the compiled query panel is sent for the test workspace ([d65817b](https://github.com/ashish10alex/vscode-dataform-tools/commit/d65817b4506b44ad756defa5c89a8dc038f6c4de))
+
+
+### CI
+
+* run type-check, lint and tests on pull requests ([3351fa3](https://github.com/ashish10alex/vscode-dataform-tools/commit/3351fa334b310502ae9b88777b1dd2e5b58fa283))
+
 ### [1.18.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.18.0...v1.18.1) (2026-10-05)
 
 
