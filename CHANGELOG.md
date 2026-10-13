@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.19.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.19.0...v1.19.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* make the extension icon 1024x1024, the Marketplace's limit ([#523](https://github.com/ashish10alex/vscode-dataform-tools/issues/523)) ([b5ad362](https://github.com/ashish10alex/vscode-dataform-tools/commit/b5ad36253a05bd4dff710cbde0535af9b5b496ef))
+
 ## [1.19.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.18.1...v1.19.0) (2026-10-13)
 
 
