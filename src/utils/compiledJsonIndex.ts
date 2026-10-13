@@ -1,4 +1,5 @@
 import { DataformCompiledJson, Table, Assertion, Operation, Notebook, Target } from '../types';
+import { slashPath } from '../shared/compiledGraph';
 
 export let declarationsAndTargets: string[] = [];
 
@@ -6,7 +7,7 @@ type CompiledNode = Table | Assertion | Operation | Notebook;
 
 /** Lookups over a compiled graph, built once per compile */
 export interface CompiledIndices {
-    /** Actions by the file that defines them */
+    /** Actions by the file that defines them, its path with forward slashes (see `slashPath`) */
     fileNodeMap: Map<string, CompiledNode[]>;
     /** For a target (`database.schema.name`), the targets of the actions that depend on it */
     targetDependentsMap: Map<string, Target[]>;
@@ -28,7 +29,8 @@ export function computeIndices(compiledJson: DataformCompiledJson): CompiledIndi
 
     // Helper to add node to newFileNodeMap
     const addNodeToFileMap = (node: Table | Assertion | Operation | Notebook) => {
-        const fileName = node.fileName;
+        // Dataform prints backslashes on Windows; the map holds one style so a path of either style finds its actions
+        const fileName = slashPath(node.fileName ?? '');
         if (!newFileNodeMap.has(fileName)) {
             newFileNodeMap.set(fileName, []);
         }
