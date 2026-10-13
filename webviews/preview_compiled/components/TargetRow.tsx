@@ -132,7 +132,7 @@ export function TargetAction({ separated, head, lastUpdated, dryRun, error, erro
 export function TargetRow({ children }: { children?: ReactNode }) {
   const empty = React.Children.toArray(children).length === 0;
   return (
-    <div className={clsx("flex gap-2 px-3 py-1.5 border-b border-[var(--vscode-widget-border)] text-[12.5px]", empty && "opacity-50")}>
+    <div className={clsx("flex gap-2 px-3 py-1.5 border-b border-[var(--vscode-widget-border)] text-xs", empty && "opacity-50")}>
       <span className={clsx(ROW_LABEL, "leading-[22px]")}>Target</span>
       <div className="flex-1 min-w-0 space-y-2">
         {empty ? <span className="leading-[22px]">—</span> : children}

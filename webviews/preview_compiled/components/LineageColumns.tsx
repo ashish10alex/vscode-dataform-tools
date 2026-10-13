@@ -39,7 +39,7 @@ function once(given: Table[]): Table[] {
   return given.filter((table) => !seen.has(table.id) && !!seen.add(table.id));
 }
 
-const TAG = "flex-shrink-0 px-1 rounded border text-[9.5px] font-mono uppercase tracking-wider leading-4";
+const TAG = "flex-shrink-0 px-1 rounded border text-[10px] font-mono uppercase tracking-wider leading-4";
 const ICON_BUTTON = "grid place-items-center w-5 h-5 rounded bg-transparent border-0 text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)]";
 const MUTED = "text-[var(--vscode-descriptionForeground)]";
 
@@ -112,7 +112,7 @@ function Lists({ lists }: { lists: LineageList[] }) {
                 ) : <span className={clsx("min-w-0 truncate font-mono text-xs", own ? MUTED : "text-[var(--vscode-foreground)]")}>{table.name}</span>}
                 {table.tags?.map((tag) => <span key={tag.text} className={clsx(TAG, MUTED, "border-[var(--vscode-widget-border)]")} title={tag.title}>{tag.text}</span>)}
                 {/* A word, not a badge: it is the least of what the list has to say */}
-                {own && <span className={clsx("flex-shrink-0 text-[11px] whitespace-nowrap", MUTED)} title="Built by the file on show">this file</span>}
+                {own && <span className={clsx("flex-shrink-0 text-xs whitespace-nowrap", MUTED)} title="Built by the file on show">this file</span>}
                 {isExternal && <span className={clsx(TAG, MUTED, "border-[var(--vscode-widget-border)]")} title="Not built by this Project: Dataplex knows of it">external</span>}
               </span>
               {table.url && (
@@ -120,11 +120,11 @@ function Lists({ lists }: { lists: LineageList[] }) {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               )}
-              {dataset && <span title={table.dataset} className={clsx("flex-shrink-0 max-w-[42%] truncate font-mono text-[11px] text-right", MUTED)}>{dataset}</span>}
+              {dataset && <span title={table.dataset} className={clsx("flex-shrink-0 max-w-[42%] truncate font-mono text-xs text-right", MUTED)}>{dataset}</span>}
             </div>
           );
         })}
-        {shown.footer && <div className={clsx("px-3 pt-1.5 text-[11px]", MUTED)}>{shown.footer}</div>}
+        {shown.footer && <div className={clsx("px-3 pt-1.5 text-xs", MUTED)}>{shown.footer}</div>}
       </div>
     </div>
   );

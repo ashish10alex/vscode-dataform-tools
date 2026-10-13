@@ -99,7 +99,7 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
 
     return (
         <div ref={banner} className={fullWidth ? 'fixed inset-0 z-50 flex flex-col overflow-auto bg-[var(--vscode-editor-background)] pt-3' : 'flex flex-col'}>
-            <div className={clsx('flex flex-col gap-0.5 pb-1.5 text-[11.5px]', MUTED, fullWidth && 'px-3')}>
+            <div className={clsx('flex flex-col gap-0.5 pb-1.5 text-xs', MUTED, fullWidth && 'px-3')}>
                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                     {/* Full width covers the row, which has how the run ended and the button that stops it */}
                     {fullWidth && <>{getStatusIcon(latest.state)}<span className="text-[var(--vscode-foreground)]">{latest.state || 'UNKNOWN'}</span><CancelWorkflowButton entry={latest} /><span>·</span></>}

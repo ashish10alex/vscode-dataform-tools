@@ -161,7 +161,7 @@ export function CompileModeToken({ info, mode: selected, recompiling }: { info?:
             </button>
           )}
           {current && (
-            <div className="mt-1 px-2 pt-1.5 pb-1 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))] whitespace-pre-wrap break-words text-[11px] text-[var(--vscode-descriptionForeground)]">
+            <div className="mt-1 px-2 pt-1.5 pb-1 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))] whitespace-pre-wrap break-words text-xs text-[var(--vscode-descriptionForeground)]">
               {compilationInfoTooltip(current)}
             </div>
           )}
