@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, Cloud, Terminal } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import clsx from 'clsx';
+import { AlertCircle, Check, ChevronDown, ChevronUp, Cloud, Copy, RefreshCw, Terminal } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { vscode } from '../utils/vscode';
 import { PanelState, CompilationErrorType } from '../types';
@@ -28,6 +29,103 @@ const SwitchBackendButton: React.FC<{ to: 'cli' | 'api' }> = ({ to }) => (
   </button>
 );
 
+const PRIMARY_BUTTON = "flex items-center px-3 py-1.5 rounded text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]";
+const SECONDARY_BUTTON = "flex items-center px-3 py-1.5 rounded text-sm bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] disabled:opacity-60";
+const BOX = "rounded border border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]";
+const MUTED = "text-[var(--vscode-descriptionForeground)]";
+/** A problem is said in the panel's own colours: only its icon is red */
+const CALM_BOX = clsx(BOX, "p-4 mb-4");
+/** As the host runs them for "Install in terminal": in the Project when the dataformCliScope setting is local */
+const INSTALL_COMMAND = { global: "npm i -g @dataform/cli", local: "npm i -D @dataform/cli" };
+/** How long "Look again" says it is looking: the host answers only by compiling, when the CLI is there */
+const LOOK_AGAIN_MS = 1500;
+
+/**
+ * The Dataform CLI was not found. The host looks for it again every few seconds while this is on show, and compiles
+ * once it is there, so the page goes away by itself after an install.
+ */
+const DataformCliMissing: React.FC<{ lookedIn: string[]; local: boolean }> = ({ lookedIn, local }) => {
+  const installCommand = local ? INSTALL_COMMAND.local : INSTALL_COMMAND.global;
+  const [look, setLook] = useState<'idle' | 'looking' | 'not found'>('idle');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (look !== 'looking') {
+      return;
+    }
+    const timer = setTimeout(() => setLook('not found'), LOOK_AGAIN_MS);
+    return () => clearTimeout(timer);
+  }, [look]);
+
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+    const timer = setTimeout(() => setCopied(false), LOOK_AGAIN_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  return (
+    <div className="mb-4 space-y-4" data-testid="dataform-cli-missing">
+      <div>
+        <h2 className="text-lg font-semibold m-0">The Dataform CLI was not found</h2>
+        <p className={clsx("mt-1 mb-0 text-sm", MUTED)}>It compiles your project on this machine. Install it and this page goes away by itself.</p>
+      </div>
+
+      <div className={clsx(BOX, "p-3 space-y-3")}>
+        <div className="text-sm font-medium">{local ? "Install it in this project with npm" : "Install it with npm"} <span className={clsx("font-normal", MUTED)}>(needs <a href="https://nodejs.org/en/download" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline">Node.js</a>)</span></div>
+        <div className="flex items-center gap-2">
+          <pre className="m-0 flex-1 px-2 py-1.5 text-xs font-mono whitespace-pre-wrap rounded bg-[var(--vscode-textCodeBlock-background)]">{installCommand}</pre>
+          <button
+            type="button"
+            title="Copy the command"
+            aria-label="Copy the command"
+            className={SECONDARY_BUTTON}
+            onClick={() => { vscode.postMessage({ command: 'copyToClipboard', text: installCommand }); setCopied(true); }}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={PRIMARY_BUTTON} onClick={() => vscode.postMessage({ command: 'dataform.installCli' })}>
+            <Terminal className="w-3.5 h-3.5 mr-1.5" /> Install in terminal
+          </button>
+          <button type="button" className={SECONDARY_BUTTON} disabled={look === 'looking'} onClick={() => { setLook('looking'); vscode.postMessage({ command: 'dataform.lookForCliAgain' }); }}>
+            <RefreshCw className={clsx("w-3.5 h-3.5 mr-1.5", look === 'looking' && "animate-spin")} /> Look again
+          </button>
+          {look === 'not found' && <span className={clsx("text-xs", MUTED)}>Still not found</span>}
+        </div>
+      </div>
+
+      {lookedIn.length > 0 && (
+        <div>
+          <div className="text-sm mb-1.5">Looked in, in this order:</div>
+          <ol className={clsx("text-xs font-mono space-y-1 list-none p-0 m-0", MUTED)}>
+            {lookedIn.map((place, index) => (
+              <li key={index}>✕&nbsp;&nbsp;{place}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      <div>
+        <div className="text-sm mb-2">Already installed, or would rather not install it?</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={SECONDARY_BUTTON} onClick={() => vscode.postMessage({ command: 'dataform.chooseExecutable' })}>
+            Choose a dataform executable…
+          </button>
+          <button type="button" className={SECONDARY_BUTTON} onClick={() => vscode.postMessage({ command: 'dataform.switchCompilationMode', compilationMode: 'api' })}>
+            <Cloud className="w-3.5 h-3.5 mr-1.5" /> Compile with the Dataform API instead (beta)
+          </button>
+        </div>
+        <p className={clsx("mt-2 mb-0 text-xs", MUTED)}>
+          If Node.js itself is new on this machine, VS Code may not have its folder on PATH yet: reload the window, or choose the executable.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 interface AccordionSectionProps {
   label: string;
   count: number;
@@ -48,14 +146,14 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
   onToggle,
   errors,
 }) => (
-  <div className="mb-2 border border-[var(--vscode-inputValidation-errorBorder)] rounded overflow-hidden">
+  <div className="mb-2 border border-[var(--vscode-widget-border)] rounded overflow-hidden">
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-3 py-2 text-left text-sm font-medium text-[var(--vscode-inputValidation-errorForeground)] bg-[var(--vscode-editor-background)] hover:opacity-80 transition-opacity"
+      className="w-full flex items-center justify-between px-3 py-2 text-left text-sm font-medium text-[var(--vscode-foreground)] bg-[var(--vscode-editor-background)] hover:opacity-80 transition-opacity"
     >
       <span>{label}</span>
       <div className="flex items-center gap-2">
-        <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-[var(--vscode-inputValidation-errorBorder)] text-[var(--vscode-inputValidation-errorForeground)] opacity-80">
+        <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]">
           {count}
         </span>
         {isOpen ? (
@@ -66,15 +164,15 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
       </div>
     </button>
     {isOpen && (
-      <ul className="list-none m-0 p-0 divide-y divide-[var(--vscode-inputValidation-errorBorder)]">
+      <ul className="list-none m-0 p-0 divide-y divide-[var(--vscode-widget-border)]">
         {errors.map((e, i) => (
           <li
             key={i}
-            className="px-3 py-2 text-xs text-[var(--vscode-inputValidation-errorForeground)]"
+            className="px-3 py-2 text-xs text-[var(--vscode-foreground)]"
           >
             <div className="font-medium opacity-90 leading-relaxed">{e.error}</div>
             {e.sourceContext && (
-              <pre className="mt-2 mb-1 p-2 text-[11px] font-mono bg-[var(--vscode-editor-background)] opacity-80 rounded border border-[var(--vscode-inputValidation-errorBorder)] overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+              <pre className="mt-2 mb-1 p-2 text-[11px] font-mono bg-[var(--vscode-editor-background)] opacity-80 rounded border border-[var(--vscode-widget-border)] overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
                 {e.sourceContext}
               </pre>
             )}
@@ -132,63 +230,29 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
   const isBigQueryClientError = errorMessage && errorMessage.includes("Error creating BigQuery client");
 
   if (missingExecutables && missingExecutables.length > 0) {
-    return (
-      <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
-        <div className="flex items-start">
-          <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className="mt-0 mb-2 text-lg font-semibold text-[var(--vscode-inputValidation-errorForeground)]">Missing Required {missingExecutables.length > 1 ? 'CLIs' : 'CLI'}</h3>
-            <p className="mt-0 mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-90">The following mandatory {missingExecutables.length > 1 ? 'CLIs are' : 'CLI is'} not installed or not found in your system PATH: <b className="font-mono bg-[var(--vscode-editor-background)] opacity-50 px-1 rounded">{missingExecutables.join(', ')}</b></p>
-            <p className="mt-0 mb-4 text-[var(--vscode-inputValidation-errorForeground)] opacity-90"><a href="https://github.com/ashish10alex/vscode-dataform-tools?tab=readme-ov-file#installation" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">Installation steps on GitHub</a></p>
-
-            <ol className="mt-0 list-decimal list-inside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-3">
-              {missingExecutables.includes('dataform') && (
-                <li>
-                  <b className="text-[var(--vscode-inputValidation-errorForeground)]">Dataform CLI</b> (requires Node.js)
-                  <ul className="mt-2 ml-6 pl-3 border-l-2 border-[var(--vscode-inputValidation-errorBorder)] list-none space-y-2">
-                    <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">npm i -g @dataform/cli</code></li>
-                    <li>Run <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> from the root of your project to verify</li>
-                    <li>Or skip the CLI and compile with the Dataform API: <SwitchBackendButton to="api" /></li>
-                  </ul>
-                </li>
-              )}
-              {missingExecutables.includes('gcloud') && (
-                <li>
-                  <b className="text-[var(--vscode-inputValidation-errorForeground)]">Google Cloud CLI</b> (<a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)]">Installation Documentation</a>)
-                  <ul className="mt-2 ml-6 pl-3 border-l-2 border-[var(--vscode-inputValidation-errorBorder)] list-none space-y-2">
-                    <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud init</code></li>
-                    <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud auth application-default login</code></li>
-                    <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud config set project &lt;project_id&gt;</code></li>
-                  </ul>
-                </li>
-              )}
-            </ol>
-            <p className="mt-5 mb-0 text-sm italic text-[var(--vscode-inputValidation-errorForeground)] opacity-80">Note: You may need to restart VS Code after installing these tools so they are picked up in the system PATH.</p>
-          </div>
-        </div>
-      </div>
-    );
+    const status = state.compile?.status === 'compiling' ? state.settled : state.compile;
+    return <DataformCliMissing lookedIn={status?.status === 'tool not found' ? status.lookedIn : []} local={state.dataform.cliScopeLocal === true} />;
   }
 
   if (isBigQueryClientError) {
     return (
-      <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+      <div className={CALM_BOX}>
         <div className="flex items-start">
-          <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-3 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-[var(--vscode-errorForeground)] mt-0.5 mr-3 flex-shrink-0" />
           <div>
             {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
-            <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto mb-3" dangerouslySetInnerHTML={{__html: sanitizedError}} />
+            <div className="text-[var(--vscode-foreground)] opacity-90 text-sm overflow-auto mb-3" dangerouslySetInnerHTML={{__html: sanitizedError}} />
 
-            <h4 className="mt-0 mb-2 text-md font-semibold text-[var(--vscode-inputValidation-errorForeground)]">Possible fix:</h4>
-            <p className="mt-0 mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-90">
+            <h4 className="mt-0 mb-2 text-md font-semibold text-[var(--vscode-foreground)]">Possible fix:</h4>
+            <p className="mt-0 mb-3 text-[var(--vscode-foreground)] opacity-90">
               <a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline hover:text-[var(--vscode-textLink-activeForeground)] font-medium">Install gcloud cli</a>
             </p>
-            <p className="mt-0 mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-90">After gcloud cli is installed run the following in the terminal in order:</p>
+            <p className="mt-0 mb-3 text-[var(--vscode-foreground)] opacity-90">After gcloud cli is installed run the following in the terminal in order:</p>
 
-            <ol className="mt-0 ml-5 list-decimal list-outside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-2">
-              <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud init</code></li>
-              <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud auth application-default login</code></li>
-              <li><code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud config set project your-project-id</code> <span className="opacity-70 italic text-sm"># replace with your gcp project id</span></li>
+            <ol className="mt-0 ml-5 list-decimal list-outside text-[var(--vscode-foreground)] opacity-90 space-y-2">
+              <li><code className="px-1.5 py-0.5 bg-[var(--vscode-textCodeBlock-background)] rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud init</code></li>
+              <li><code className="px-1.5 py-0.5 bg-[var(--vscode-textCodeBlock-background)] rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud auth application-default login</code></li>
+              <li><code className="px-1.5 py-0.5 bg-[var(--vscode-textCodeBlock-background)] rounded font-mono text-sm border border-[var(--vscode-widget-border)]">gcloud config set project your-project-id</code> <span className="opacity-70 italic text-sm"># replace with your gcp project id</span></li>
             </ol>
           </div>
         </div>
@@ -198,12 +262,12 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
 
   if (errorType === CompilationErrorType.FILE_NOT_FOUND) {
     return (
-      <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+      <div className={CALM_BOX}>
         <div className="flex items-start">
-          <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-3 flex-shrink-0" />
-          <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto">
+          <AlertCircle className="w-5 h-5 text-[var(--vscode-errorForeground)] mt-0.5 mr-3 flex-shrink-0" />
+          <div className="text-[var(--vscode-foreground)] opacity-90 text-sm overflow-auto">
             <p className="mt-0 mb-2">
-              File <b className="font-mono bg-[var(--vscode-editor-background)] opacity-50 px-1 rounded">"{relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b className="font-mono bg-[var(--vscode-editor-background)] opacity-50 px-1 rounded">"{workspaceFolder}"</b>
+              File <b className="font-mono bg-[var(--vscode-textCodeBlock-background)] px-1 rounded">"{relativeFilePath}"</b> not found in Dataform compiled json with workspace folder <b className="font-mono bg-[var(--vscode-textCodeBlock-background)] px-1 rounded">"{workspaceFolder}"</b>
             </p>
             <p className="mt-0 mb-3 opacity-90">Ignore the error if the file you are in is not expected to produce a sql output</p>
 
@@ -234,7 +298,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
                 </a>
               </li>
               {cliCompileFailed && (
-                <li>Check if running <code className="px-1.5 py-0.5 bg-[var(--vscode-editor-background)] opacity-50 rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> throws an error</li>
+                <li>Check if running <code className="px-1.5 py-0.5 bg-[var(--vscode-textCodeBlock-background)] rounded font-mono text-sm border border-[var(--vscode-widget-border)]">dataform compile</code> throws an error</li>
               )}
               <li>
                 Check if case of the file has been changed and the case does not match what is being shown in the error message above,
@@ -279,17 +343,17 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
 
     return (
       <>
-        <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+        <div className={CALM_BOX}>
           <div className="flex items-center mb-3">
-            <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mr-2 flex-shrink-0" />
-            <h3 className="m-0 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
+            <AlertCircle className="w-5 h-5 text-[var(--vscode-errorForeground)] mr-2 flex-shrink-0" />
+            <h3 className="m-0 text-sm font-semibold text-[var(--vscode-foreground)]">
               Error compiling Dataform
             </h3>
-            <span className="ml-auto text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60">
+            <span className="ml-auto text-xs text-[var(--vscode-foreground)] opacity-60">
               {compilationErrors.length} error{compilationErrors.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <CompilationInfoBadge info={compilationInfo} mode={mode} className="mb-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+          <CompilationInfoBadge info={compilationInfo} mode={mode} className="mb-3 text-[var(--vscode-foreground)] opacity-80" />
 
           <div className="space-y-1">
             {groups.map((group) => (
@@ -305,9 +369,9 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
           </div>
 
           {cliCompileFailed && (
-          <p className="mt-3 mb-0 text-xs text-[var(--vscode-inputValidation-errorForeground)] opacity-60 italic">
+          <p className="mt-3 mb-0 text-xs text-[var(--vscode-foreground)] opacity-60 italic">
             Run{' '}
-            <code className="px-1 py-0.5 bg-[var(--vscode-editor-background)] opacity-70 rounded font-mono border border-[var(--vscode-widget-border)]">
+            <code className="px-1 py-0.5 bg-[var(--vscode-textCodeBlock-background)] rounded font-mono border border-[var(--vscode-widget-border)]">
               dataform compile
             </code>{' '}
             in the terminal for the full error output.
@@ -317,11 +381,11 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
           <SwitchBackendButton to={otherBackend} />
 
           {possibleResolutions && possibleResolutions.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-[var(--vscode-inputValidation-errorBorder)]">
-              <h4 className="mt-0 mb-2 text-sm font-semibold text-[var(--vscode-inputValidation-errorForeground)]">
+            <div className="mt-3 pt-3 border-t border-[var(--vscode-widget-border)]">
+              <h4 className="mt-0 mb-2 text-sm font-semibold text-[var(--vscode-foreground)]">
                 Possible fixes:
               </h4>
-              <ol className="mt-0 ml-4 list-decimal list-outside text-[var(--vscode-inputValidation-errorForeground)] opacity-90 space-y-1 text-sm">
+              <ol className="mt-0 ml-4 list-decimal list-outside text-[var(--vscode-foreground)] opacity-90 space-y-1 text-sm">
                 {possibleResolutions.map((resolution, i) => (
                   <li
                     key={i}
@@ -348,15 +412,15 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
     const offerSwitch = errorType !== CompilationErrorType.UNSUPPORTED_FILE_TYPE && errorType !== CompilationErrorType.NOT_A_DATAFORM_WORKSPACE;
     return (
       <>
-        <div className="bg-[var(--vscode-inputValidation-errorBackground)] border-l-4 border-[var(--vscode-inputValidation-errorBorder)] p-4 mb-4 rounded-r shadow-sm">
+        <div className={CALM_BOX}>
           <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-[var(--vscode-inputValidation-errorForeground)] mt-0.5 mr-2 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-[var(--vscode-errorForeground)] mt-0.5 mr-2 flex-shrink-0" />
             {/* eslint-disable-next-line react/no-danger -- sanitizedError is strongly sanitized via DOMPurify with strict allowlist */}
-            <div className="text-[var(--vscode-inputValidation-errorForeground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
+            <div className="text-[var(--vscode-foreground)] opacity-90 text-sm overflow-auto" dangerouslySetInnerHTML={{__html: sanitizedError}} />
           </div>
           {offerSwitch && (
             <>
-              <CompilationInfoBadge info={compilationInfo} mode={mode} className="mt-3 text-[var(--vscode-inputValidation-errorForeground)] opacity-80" />
+              <CompilationInfoBadge info={compilationInfo} mode={mode} className="mt-3 text-[var(--vscode-foreground)] opacity-80" />
               <SwitchBackendButton to={otherBackend} />
             </>
           )}
