@@ -22,7 +22,7 @@ export const FULL_REFRESH_RING: React.CSSProperties = { boxShadow: `0 0 0 1px va
  */
 export function RunRow({ off, children }: { off?: string; children?: ReactNode }) {
   return (
-    <div className={clsx("border-b border-[var(--vscode-widget-border)] text-[12.5px]", off && "opacity-50")}>
+    <div className={clsx("border-b border-[var(--vscode-widget-border)] text-xs", off && "opacity-50")}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-h-[30px] px-3 py-[3px]">
         <span className={ROW_LABEL}>Run</span>
         {off ? <span className="text-[var(--vscode-foreground)]">{off}</span> : children}

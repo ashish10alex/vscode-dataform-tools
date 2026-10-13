@@ -28,7 +28,7 @@ export function HeaderTab({ active, onClick, title, children }: { active: boolea
       aria-selected={active}
       role="tab"
       className={clsx(
-        "flex items-center flex-shrink-0 px-2.5 py-0.5 rounded text-[12.5px] whitespace-nowrap border-0 transition-colors",
+        "flex items-center flex-shrink-0 px-2.5 py-0.5 rounded text-xs whitespace-nowrap border-0 transition-colors",
         active
           ? "bg-[var(--vscode-list-inactiveSelectionBackground,var(--vscode-toolbar-hoverBackground))] text-[var(--vscode-foreground)]"
           : "bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
@@ -91,7 +91,7 @@ export function HeaderMenu({ snoozeTimeLeft, onStartSnooze, onStopSnooze, shortc
         aria-label="More actions"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={clsx(iconButtonClass, snoozeTimeLeft && "px-1.5 text-[11px] tabular-nums opacity-100 bg-[var(--vscode-inputValidation-warningBackground,rgba(255,200,0,0.1))] border border-[var(--vscode-inputValidation-warningBorder,var(--vscode-widget-border))]")}
+        className={clsx(iconButtonClass, snoozeTimeLeft && "px-1.5 text-xs tabular-nums opacity-100 bg-[var(--vscode-inputValidation-warningBackground,rgba(255,200,0,0.1))] border border-[var(--vscode-inputValidation-warningBorder,var(--vscode-widget-border))]")}
       >
         {snoozeTimeLeft && (
           <>
@@ -118,7 +118,7 @@ export function HeaderMenu({ snoozeTimeLeft, onStartSnooze, onStopSnooze, shortc
           {shortcuts.map((shortcut) => (
             <button key={shortcut.hint} role="menuitem" className={menuItemClass} onClick={select(shortcut.onSelect)}>
               {shortcut.label}
-              <kbd className="ml-auto pl-4 font-mono text-[11px] text-[var(--vscode-descriptionForeground)]">{shortcut.hint}</kbd>
+              <kbd className="ml-auto pl-4 font-mono text-xs text-[var(--vscode-descriptionForeground)]">{shortcut.hint}</kbd>
             </button>
           ))}
         </div>

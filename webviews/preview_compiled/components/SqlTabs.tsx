@@ -51,7 +51,7 @@ export function SqlTabs({ blocks, shown, onShow, labelOf, dimmed }: SqlTabsProps
             onClick={() => onShow(block.key)}
             title={block.failed ? `${block.target}: its dry run failed` : block.target}
             className={clsx(
-              "flex items-center gap-1.5 flex-shrink-0 h-6 px-2 rounded text-[12.5px] whitespace-nowrap border-0 transition-colors",
+              "flex items-center gap-1.5 flex-shrink-0 h-6 px-2 rounded text-xs whitespace-nowrap border-0 transition-colors",
               block === shown
                 ? "bg-[var(--vscode-list-inactiveSelectionBackground,var(--vscode-toolbar-hoverBackground))] text-[var(--vscode-foreground)]"
                 : "bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
@@ -59,16 +59,16 @@ export function SqlTabs({ blocks, shown, onShow, labelOf, dimmed }: SqlTabsProps
           >
             {block.failed && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-errorForeground,#f14c4c)]" />}
             {labelOf(block)}
-            {block.note && <span title={block.note.title} className="px-1 rounded border border-[var(--vscode-widget-border)] text-[9.5px] font-mono uppercase tracking-wider leading-4 text-[var(--vscode-descriptionForeground)]">{block.note.text}</span>}
+            {block.note && <span title={block.note.title} className="px-1 rounded border border-[var(--vscode-widget-border)] text-[10px] font-mono uppercase tracking-wider leading-4 text-[var(--vscode-descriptionForeground)]">{block.note.text}</span>}
           </button>
         ))}
-        <span className="ml-2 min-w-0 truncate text-[11px] font-mono text-[var(--vscode-descriptionForeground)] opacity-60">{shown.target}</span>
+        <span className="ml-2 min-w-0 truncate text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60">{shown.target}</span>
       </div>
       <div role="tabpanel" className={clsx("-mx-4", dimmed && "opacity-50")}>
         {shown.code ? (
           <CodeBlock key={shown.key} code={shown.code} language="sql" showLineNumbers errorAnnotations={shown.annotations} />
         ) : (
-          <p className="px-4 py-3 text-sm text-[var(--vscode-descriptionForeground)] italic">{shown.none}</p>
+          <p className="px-4 py-3 text-xs text-[var(--vscode-descriptionForeground)] italic">{shown.none}</p>
         )}
       </div>
     </>

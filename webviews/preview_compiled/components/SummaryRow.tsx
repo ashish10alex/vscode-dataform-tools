@@ -36,7 +36,7 @@ export function RowChip({ tone = "calm", title, children }: { tone?: RowTone; ti
   return (
     <span
       title={title}
-      className={clsx("inline-flex items-center gap-1 align-middle mr-1.5 px-1.5 h-[18px] rounded border font-mono text-[10.5px] whitespace-nowrap", !color && "border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]")}
+      className={clsx("inline-flex items-center gap-1 align-middle mr-1.5 px-1.5 h-[18px] rounded border font-mono text-[10px] whitespace-nowrap", !color && "border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]")}
       style={color ? { color, borderColor: `color-mix(in srgb, ${color} 50%, transparent)`, background: `color-mix(in srgb, ${color} 10%, transparent)` } : undefined}
     >
       {children}
@@ -100,7 +100,7 @@ export function SummaryRow({ label, tone = "calm", summary, openSummary, actions
 
   return (
     <div
-      className={clsx("relative border-b border-[var(--vscode-widget-border)] text-[12.5px]", off && "opacity-50")}
+      className={clsx("relative border-b border-[var(--vscode-widget-border)] text-xs", off && "opacity-50")}
       style={color && tone !== "busy" ? { background: `color-mix(in srgb, ${color} 7%, transparent)` } : undefined}
     >
       {color && <span aria-hidden="true" className="absolute left-0 inset-y-0 w-0.5" style={{ background: color }} />}

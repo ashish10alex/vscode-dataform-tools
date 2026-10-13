@@ -72,7 +72,7 @@ const FileHeading: React.FC<{ fileName: string }> = ({ fileName }) => {
   return (
     <div className="flex items-baseline gap-2 min-w-0" title={fileName}>
       <span className="font-semibold text-[var(--vscode-foreground)] break-all">{base}</span>
-      {dir && <span className="text-[11px] text-[var(--vscode-descriptionForeground)] truncate">{dir}</span>}
+      {dir && <span className="text-xs text-[var(--vscode-descriptionForeground)] truncate">{dir}</span>}
     </div>
   );
 };
@@ -133,7 +133,7 @@ const ChangedFileGroup: React.FC<{
           {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           <FileHeading fileName={fileName} />
           <span className="flex items-center gap-1 whitespace-nowrap">
-            <span className="text-[11px] text-[var(--vscode-descriptionForeground)]">{describeTypeCounts(countTypeNames(actions.map((a) => a.type)))}</span>
+            <span className="text-xs text-[var(--vscode-descriptionForeground)]">{describeTypeCounts(countTypeNames(actions.map((a) => a.type)))}</span>
             {reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
           </span>
         </button>
@@ -343,7 +343,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
       >
         {compact ? <Play className="w-3 h-3" /> : <GitCompare className="w-4 h-4 mr-1.5" />} {compact ? "Changed" : "Run Changed"}
         {status === "ready" && (
-          <span className={clsx(!compact && "ml-1.5", "text-[11px] leading-none px-1.5 py-0.5 rounded-full")} style={{ background: "color-mix(in srgb, currentColor 22%, transparent)" }}>
+          <span className={clsx(!compact && "ml-1.5", "text-[10px] leading-none px-1.5 py-0.5 rounded-full")} style={{ background: "color-mix(in srgb, currentColor 22%, transparent)" }}>
             {changed.length}
           </span>
         )}
@@ -392,7 +392,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
 
           <div className="mb-3 pb-3 border-b border-[var(--vscode-widget-border)]">
             {flags.length > 0 && (
-              <p className="mb-2 text-[11px] text-[var(--vscode-descriptionForeground)]">
+              <p className="mb-2 text-xs text-[var(--vscode-descriptionForeground)]">
                 With {flags.join(", ")}{depsHint && <> · {depsHint}</>}
               </p>
             )}

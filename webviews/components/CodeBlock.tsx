@@ -48,12 +48,12 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
   return (
     <div className={`relative group w-full ${className || ''}`}>
-      <div className="relative w-full bg-[var(--vscode-editor-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden font-mono text-sm text-[var(--vscode-editor-foreground)]">
+      <div className="relative w-full bg-[var(--vscode-editor-background)] rounded-lg border border-[var(--vscode-widget-border)] overflow-hidden text-[length:var(--vscode-editor-font-size,13px)] leading-normal text-[var(--vscode-editor-foreground)]">
         
         {/* Copy Button */}
         <button
           onClick={handleCopy}
-          className="absolute top-3 right-3 p-1.5 rounded bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md border border-[var(--vscode-widget-border)] flex items-center justify-center"
+          className="absolute top-2 right-2 p-1.5 rounded bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md border border-[var(--vscode-widget-border)] flex items-center justify-center"
           title="Copy code"
         >
           {copied ? (
@@ -74,7 +74,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
         >
           {({ className, style, tokens, getLineProps, getTokenProps }) => (
             <pre
-              className={`${className} overflow-x-auto p-4 pt-10 m-0 bg-transparent`}
+              className={`${className} overflow-x-auto p-3 m-0 font-[family-name:var(--vscode-editor-font-family,ui-monospace,monospace)] bg-transparent`}
               style={{ ...style, backgroundColor: 'transparent' }} // Force transparent to rely on VS Code theme
             >
               <div className="table w-full">
