@@ -437,6 +437,12 @@ export type DataformPanelMessage =
     | { command: 'dataform.updateCompilerOptions'; compilerOptions: string }
     | { command: 'dataform.switchCompilationMode'; compilationMode: CompilationMode }
     | { command: 'dataform.compileRemotely' }
+    /** The Dataform CLI was not found: look for it now, and compile when it is there */
+    | { command: 'dataform.lookForCliAgain' }
+    /** Pick the Dataform CLI's file, which sets dataformExecutablePath for the workspace */
+    | { command: 'dataform.chooseExecutable' }
+    /** Install the Dataform CLI with npm, in a terminal the user can watch */
+    | { command: 'dataform.installCli' }
     | { command: 'dataform.startSnooze' }
     | { command: 'dataform.stopSnooze' }
     | { command: 'dataform.runTests' }

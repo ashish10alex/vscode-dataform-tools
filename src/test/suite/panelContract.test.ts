@@ -41,6 +41,7 @@ suite('panel contract', () => {
             'exportSchema': true, 'selectProject': true, 'showDependencyGraph': true, 'formatFile': true, 'lintFile': true,
             'showLogs': true, 'openExternal': true, 'projectInfoShown': true, 'projectInfoHidden': true, 'refreshProjectInfo': true, 'followInfoLink': true,
             'dataform.updateCompilerOptions': true, 'dataform.switchCompilationMode': true, 'dataform.compileRemotely': true,
+            'dataform.lookForCliAgain': true, 'dataform.chooseExecutable': true, 'dataform.installCli': true,
             'dataform.startSnooze': true, 'dataform.stopSnooze': true, 'dataform.runTests': true, 'dataform.runApi': true,
             'dataform.runTagsApi': true, 'dataform.runWithOptions': true, 'dataform.setRunBackend': true, 'dataform.toggleDeferToProd': true,
             'dataform.deferToProdActions': true, 'dataform.openDeferToProdSettings': true, 'dataform.retryDeferral': true,
@@ -56,7 +57,7 @@ suite('panel contract', () => {
         };
         const names = Object.keys(commands);
         assert.strictEqual(names.filter((name) => !name.includes('.')).length, 20);
-        assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 33);
+        assert.strictEqual(names.filter((name) => name.startsWith('dataform.')).length, 36);
         assert.strictEqual(names.filter((name) => name.startsWith('dbt.')).length, 10);
     });
 

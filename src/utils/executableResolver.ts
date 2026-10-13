@@ -17,13 +17,19 @@ function cacheKeyFor(executableName: string, workspaceFolder?: string): string {
     return `${executableName}:${process.platform}:${workspaceFolder ?? ''}`;
 }
 
-/** A found path stays cached until a setting that affects it changes; a miss is retried after cacheDurationMs. */
+/**
+ * A found path stays cached while the file is still there and no setting that affects it changes: an uninstall is
+ * seen at the next lookup. A miss is retried after cacheDurationMs, or once the cache is cleared.
+ */
 function getCachedExecutable(cacheKey: string): ExecutablePathInfo | undefined {
     const cached = executablePathCache.get(cacheKey);
-    if (cached && (cached.path !== null || (Date.now() - cached.timestamp) < cacheDurationMs)) {
-        return cached;
+    if (!cached) {
+        return undefined;
     }
-    return undefined;
+    if (cached.path !== null) {
+        return isValidExecutablePath(cached.path) ? cached : undefined;
+    }
+    return (Date.now() - cached.timestamp) < cacheDurationMs ? cached : undefined;
 }
 
 function rememberExecutable(cacheKey: string, foundPath: string | null, foundBy?: ExecutableSource): ExecutablePathInfo {
@@ -70,6 +76,30 @@ export function resolveExecutable(name: string, workspaceFolder?: string): { pat
     }
     const { path: foundPath, foundBy } = lookUpExecutable(name, workspaceFolder);
     return { path: foundPath, foundBy };
+}
+
+/**
+ * Looks for an executable now, whatever the cache says, without blocking the extension host: for a tool that was
+ * missing and may have been installed since.
+ */
+export async function lookForExecutableAgain(name: string, workspaceFolder?: string): Promise<boolean> {
+    executablePathCache.delete(cacheKeyFor(name, workspaceFolder));
+    await prefetchExecutablePath(name, workspaceFolder);
+    return resolveExecutable(name, workspaceFolder).path !== null;
+}
+
+/** Where resolveExecutable looks for an executable, in order and in words, for a page that says it was not found */
+export function executableSearchPlaces(name: string, workspaceFolder?: string): string[] {
+    const configuration = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    if (name === 'dataform' && workspaceFolder && configuration.get('dataformCliScope') === 'local') {
+        return [`${path.join(workspaceFolder, 'node_modules', '.bin')}, as the dataformCliScope setting is local`];
+    }
+    const configured = configuration.get<string>(`${name}ExecutablePath`);
+    return [
+        `the ${name}ExecutablePath setting: ${configured ? `no executable at ${configured}` : 'not set'}`,
+        'PATH, as VS Code had it when it started',
+        'common install locations, such as /opt/homebrew/bin, /usr/local/bin and ~/.local/bin',
+    ];
 }
 
 export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false, workspaceFolder?: string): boolean {
@@ -294,7 +324,7 @@ function isValidExecutablePath(filePath: string): boolean {
     }
 }
 
-// Clear cache when needed (for testing or configuration changes)
+// Clear cache when needed (for testing, configuration changes, or a Refresh of the Project tab)
 export function clearExecutablePathCache(): void {
     executablePathCache.clear();
 }

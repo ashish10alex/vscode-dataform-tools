@@ -23,7 +23,7 @@ import type { PanelSlices } from '../shared/panelState';
 import { applyDeferralToAction } from '../defer/deferRules';
 import type { Tool } from '../project/tools';
 import * as vscode from 'vscode';
-import { snoozeManager, getFileNameFromDocument, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
+import { snoozeManager, getFileNameFromDocument, compiledQueryWtDryRun, dryRunAndShowDiagnostics, gatherQueryAutoCompletionMeta, getCurrentFileMetadata, getNonce, getTableSchema, getWorkspaceFolder, handleSemicolonPrePostOps, selectWorkspaceFolder, openFileOnLeftEditorPane, findModelFromTarget, getPostionOfSourceDeclaration, showLoadingProgress, executableIsAvailable, executableSearchPlaces, lookForExecutableAgain, readDataformCoreVersion, getRelativePath, isCompilationStale, ensureFreshCompilation, setOnStartupCompileSettled } from "../utils";
 import path from "path";
 import { getLiniageMetadata } from "../getLineageMetadata";
 import { runActions } from "../runActions";
@@ -73,6 +73,9 @@ import { extensionConfiguration } from '../project/settings';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
+
+const MISSING_TOOL_LOOK_INTERVAL_MS = 3000;
+const INSTALL_DATAFORM_CLI = 'npm i -g @dataform/cli';
 
 /** Redraws the panel from the cached compile, e.g. after defer to prod is switched on or off */
 export async function refreshCompiledQueryPanel() {
@@ -587,6 +590,8 @@ export class CompiledQueryPanel {
     private _cachedResults?: CachedResults;
     /** Bumped by every render, so a render still waiting on defer to prod can tell it has been replaced */
     private renderSeq = 0;
+    /** Runs while the panel says a tool is missing */
+    private missingToolWatch?: vscode.Disposable;
     private static readonly viewType = "CenterPanel";
     private constructor(public readonly webviewPanel: WebviewPanel, private readonly _extensionUri: Uri, public extensionContext: ExtensionContext, forceShowVerticalSplit:boolean, currentFileMetadata:any, freshCompilation: boolean = true, renderDataform = true) {
         this.info = new ProjectInfoWatch(extensionContext, (slice) => this.slices.send('project info', slice));
@@ -1265,6 +1270,7 @@ export class CompiledQueryPanel {
 
         panel.webviewPanel.onDidDispose(() => {
                 panel.centerPanelDisposed = true;
+                panel.missingToolWatch?.dispose();
                 panel.info.dispose();
                 if(this.centerPanel === panel){
                     this.centerPanel = undefined;
@@ -1460,6 +1466,26 @@ export class CompiledQueryPanel {
               case 'showLogs':
                 logger.show();
                 return;
+              case 'dataform.lookForCliAgain':
+                await panel.lookForMissingTool?.();
+                return;
+              case 'dataform.chooseExecutable': {
+                const [chosen] = (await vscode.window.showOpenDialog({ canSelectMany: false, canSelectFiles: true, canSelectFolders: false, openLabel: 'Use this dataform', title: 'Choose a dataform executable' })) ?? [];
+                if (chosen) {
+                    const root = currentDataformRoot();
+                    // The setting's change clears what was found before, so the look below is a new one
+                    await extensionConfiguration(root ? Uri.file(root) : undefined).update('dataformExecutablePath', chosen.fsPath, vscode.ConfigurationTarget.Workspace);
+                    await panel.lookForMissingTool?.();
+                }
+                return;
+              }
+              case 'dataform.installCli': {
+                // In a terminal, so the user sees npm's own output and can answer it
+                const terminal = vscode.window.createTerminal({ name: 'Install Dataform CLI' });
+                terminal.show();
+                terminal.sendText(INSTALL_DATAFORM_CLI);
+                return;
+              }
               case 'dataform.switchCompilationMode': {
                 try {
                   await setCompilationMode(message.compilationMode === 'api' ? 'api' : 'cli');
@@ -1793,9 +1819,17 @@ export class CompiledQueryPanel {
               case 'projectInfoHidden':
                 panel.info.hide();
                 return;
-              case 'refreshProjectInfo':
+              case 'refreshProjectInfo': {
+                const project = panel.infoProject();
+                const needed = project?.backend === 'dataform' ? requiredTools('dataform', { compilationMode: isRemoteMode() ? 'api' : 'cli' }) : [];
+                const wasMissing = needed.some((executable) => !executableIsAvailable(executable, false, project?.root));
                 panel.info.refresh();
+                // The panel said a tool was missing and it is installed now: compile, so the page says so too
+                if (wasMissing && needed.every((executable) => executableIsAvailable(executable, false, project?.root))) {
+                    await recompileActiveDocument?.();
+                }
                 return;
+              }
               case 'followInfoLink':
                 await panel.info.follow(message.link);
                 return;
@@ -1865,16 +1899,19 @@ export class CompiledQueryPanel {
         }
 
         if (missingExecutables.length > 0) {
+            const missingTool = { tool: missingExecutables[0] as Tool, lookedIn: executableSearchPlaces(missingExecutables[0], workspaceFolder) };
+            this.watchForMissingTool(missingTool.tool, workspaceFolder);
             if(this.webviewPanel.webview.html === ""){
                 this.hasPage = true;
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool: missingExecutables[0] as Tool, compilerOptions, dataformCoreVersion });
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool, compilerOptions, dataformCoreVersion });
             } else {
-                this.sendCompileStatus({ missingTool: { tool: missingExecutables[0] as Tool, lookedIn: [] } });
+                this.sendCompileStatus({ missingTool });
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
                 this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
             }
             return;
         }
+        this.missingToolWatch?.dispose();
 
         if(this.webviewPanel.webview.html === ""){
             this.hasPage = true;
@@ -2268,7 +2305,7 @@ export class CompiledQueryPanel {
      * The panel's page. It is given the slices the panel starts with, so that its first paint is right before any
      * message: the `dataform` block and how the compile stands.
      */
-    private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: Tool; compilerOptions?: string; dataformCoreVersion?: string | null }) {
+    private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: { tool: Tool; lookedIn: string[] }; compilerOptions?: string; dataformCoreVersion?: string | null }) {
         const compilationInfo = getCompilationInfo(currentDataformRoot());
         this.dataformBlock = {
             ...this.dataformBlock,
@@ -2282,12 +2319,59 @@ export class CompiledQueryPanel {
         const compile = compileStatusSlice({
             inProject: true,
             errors: [],
-            ...(first.missingTool ? { missingTool: { tool: first.missingTool, lookedIn: [] } } : {}),
+            ...(first.missingTool ? { missingTool: first.missingTool } : {}),
             ...(first.compiling ? { compiling: { showingPrevious: false, startedAt: Date.now() } } : {}),
             ...(compilationInfo ? { compiled: { compiledAt: compilationInfo.compiledAt } } : {}),
         }, compileNumber());
         return this.pageWith(webview, { dataform: this.dataformBlock, compile });
     }
+
+    /**
+     * The panel says `tool` is missing. It is looked for again every few seconds while the user can see the panel,
+     * and when the window gets the focus back, as it does after an install in another terminal. Once it is there the
+     * file is compiled, which takes the page away.
+     */
+    private watchForMissingTool(tool: string, workspaceFolder: string | undefined) {
+        this.missingToolWatch?.dispose();
+        let looking = false;
+        const look = async (always = false): Promise<boolean> => {
+            if (looking || this.centerPanelDisposed || !(always || (this.webviewPanel.visible && vscode.window.state.focused))) {
+                return false;
+            }
+            looking = true;
+            try {
+                if (!(await lookForExecutableAgain(tool, workspaceFolder))) {
+                    return false;
+                }
+                this.missingToolWatch?.dispose();
+                await recompileActiveDocument?.();
+                return true;
+            } catch (error) {
+                logger.debug(`Looking for ${tool} again failed: ${error}`);
+                return false;
+            } finally {
+                looking = false;
+            }
+        };
+        const timer = setInterval(() => void look(), MISSING_TOOL_LOOK_INTERVAL_MS);
+        const onFocus = vscode.window.onDidChangeWindowState((state) => state.focused && void look());
+        const watch = {
+            look,
+            dispose: () => {
+                clearInterval(timer);
+                onFocus.dispose();
+                if (this.missingToolWatch === watch) {
+                    this.missingToolWatch = undefined;
+                    this.lookForMissingTool = undefined;
+                }
+            },
+        };
+        this.missingToolWatch = watch;
+        this.lookForMissingTool = () => look(true);
+    }
+
+    /** Looks now for the tool the panel says is missing. Undefined when none is */
+    private lookForMissingTool?: () => Promise<boolean>;
 
     /** The panel's page, starting with the slices given */
     private pageWith(webview: vscode.Webview, initialState: Partial<PanelSlices>) {

@@ -9,7 +9,7 @@ import { GitInfo, INFO_SETTINGS, ProjectInfoInput, SettingInfo, SettingsFiles, T
 import type { InfoLink, ProjectInfoSlice } from '../shared/panelContract';
 import type { ExecutableSource } from '../types';
 import { readDataformCoreVersion } from '../utils/dataformHelpers';
-import { getSqlfluffConfigPathFromSettings, resolveExecutable } from '../utils/executableResolver';
+import { clearExecutablePathCache, getSqlfluffConfigPathFromSettings, resolveExecutable } from '../utils/executableResolver';
 import { Credentials, GCLOUD_SIGN_IN_COMMAND, GcloudAccount, JobProject, SIGN_IN_COMMAND, gcloudLoginExpired, lookUpCredentials, lookUpGcloud, lookUpJobProject } from '../utils/googleAccounts';
 import { dbtSettings } from './dbtCompile';
 import { dbtToolNow } from './dbtTool';
@@ -112,7 +112,10 @@ function toolsOf(project: ProjectState, apiMode: boolean, read: Map<string, stri
     const found = (name: string, optional?: string): ToolInfo => {
         const { path: toolPath, foundBy } = resolveExecutable(name, root);
         if (!toolPath) {
-            return { name, ...(optional ? { optional } : {}) };
+            // The default of sqlfluffExecutablePath is the bare name, which is no path to be missing
+            const configured = extensionConfiguration(vscode.Uri.file(root)).get<string>(`${name}ExecutablePath`);
+            const problem = configured && configured !== name ? `the ${name}ExecutablePath setting is ${configured}, and no executable is there` : undefined;
+            return { name, ...(optional ? { optional } : {}), ...(problem ? { problem } : {}) };
         }
         return withVersion({ name, path: toolPath, ...(foundBy ? { foundBy: foundBy === 'setting' ? `the ${name}ExecutablePath setting` : FOUND_BY[foundBy] } : {}) });
     };
@@ -232,6 +235,8 @@ export class ProjectInfoWatch {
     refresh() {
         if (this.known) {
             versions.clear();
+            // A tool installed since it was last looked for is found now, not when the cached miss runs out
+            clearExecutablePathCache();
             this.start(this.known.project);
         }
     }
