@@ -352,6 +352,8 @@ export interface QueryWtType {
     type: string;
     /** Where the query's job runs, when that is not the BigQuery client's own project and location */
     place?: { projectId?: string; location?: string };
+    /** A base table whose first rows are read without a query job. `query` is then only what the view shows */
+    table?: { database: string; schema: string; name: string };
 }
 
 export interface TableBigQueryConfig {

@@ -3,7 +3,7 @@ import {  Uri } from "vscode";
 import path from 'path';
 import os from 'os';
 import { getCurrentFileMetadata, getNonce, saveCsvFile } from '../utils';
-import { cancelBigQueryJob, openQueryResult } from '../bigqueryRunQuery';
+import { cancelBigQueryJob, openQueryResult, openTableRows } from '../bigqueryRunQuery';
 import type { QueryResult } from '../bigquery/queryResult';
 import { RESULT_CHUNK_ROWS, fullJobId, type JobStats, type ResultPaging, type ResultViewRequest } from '../shared/queryResultsView';
 import { getQueryStringForPreview } from '../previewQueryResults';
@@ -81,6 +81,8 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     private _query?:string;
     /** Where the query's job runs, see `QueryWtType.place` */
     private _place?: QueryWtType['place'];
+    /** The table whose rows are read instead, see `QueryWtType.table` */
+    private _table?: QueryWtType['table'];
     private _lastRenderPayload?: any;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
@@ -103,7 +105,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
       if (this._invokedByCommand){
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         if(this._query){
-          await this.updateContent({query: this._query, type:this.queryType, place: this._place});
+          await this.updateContent({query: this._query, type:this.queryType, place: this._place, table: this._table});
         }
       }else {
         let curFileMeta = await getCurrentFileMetadata(false);
@@ -148,7 +150,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
                         "queryLimit": queryLimit
                     });
                 } else if (this._query) {
-                    await this.updateContent({query: this._query, type: this.queryType, place: this._place});
+                    await this.updateContent({query: this._query, type: this.queryType, place: this._place, table: this._table});
                 } else {
                     let curFileMeta = await getCurrentFileMetadata(false);
                     if (curFileMeta?.fileMetadata) {
@@ -257,6 +259,7 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
     public focusWebview(queryWtType:QueryWtType) {
       this._query = queryWtType.query;
       this._place = queryWtType.place;
+      this._table = queryWtType.table;
       this._invokedByCommand = true;
       this.queryType = queryWtType.type;
       vscode.commands.executeCommand('queryResultsView.focus');
@@ -282,8 +285,9 @@ export class CustomViewProvider implements vscode.WebviewViewProvider {
           
           for (let i = 0; i < allQueries.length; i++) {
             const singleQuery = allQueries[i];
-            const queryOutput = openQueryResult(singleQuery, queryWtType.place);
-            const job = await waitForBigQueryJob(queryOutput);
+            const queryOutput = queryWtType.table ? openTableRows(queryWtType.table) : openQueryResult(singleQuery, queryWtType.place);
+            // Rows read from a table have no job to wait for
+            const job = queryWtType.table ? null : await waitForBigQueryJob(queryOutput);
 
             if (this?._view?.webview && job) {
               this._lastRenderPayload = {"showLoadingMessage": true, "incrementalCheckBox": incrementalCheckBox, "queryLimit":  queryLimit, "bigQueryJobId": fullJobId(job) };

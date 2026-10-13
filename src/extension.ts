@@ -23,7 +23,7 @@ import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
 import { initRemoteCompiler } from './utils/remoteCompiler';
 import { clearRemoteCompileCache } from './utils/remoteCompileCache';
-import { getQueryStringForPreview, previewQueryResults, runQueryInPanel } from './previewQueryResults';
+import { getQueryStringForPreview, previewDeclaration, previewQueryResults, runQueryInPanel } from './previewQueryResults';
 import { runTag } from './runTag';
 import { runTests } from './runTests';
 import { searchTableColumns } from './searchTableColumns';
@@ -187,6 +187,15 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
             await runQueryInPanel({ query: query, type: type || "table", ...(place ? { place } : {}) }, queryResultsViewProvider);
+        })
+    );
+
+    // Previews a declared table from the row of it in the compiled query panel
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-dataform-tools.previewDeclaration', async (target: QueryWtType['table']) => {
+            if (target?.name) {
+                await previewDeclaration(target, queryResultsViewProvider);
+            }
         })
     );
 

@@ -16,7 +16,7 @@ import { affectsCompile } from '../backend';
 import { DBT_COMPILE_FILES, listDbtTargets } from '../backend/dbt';
 import { ProjectInfoWatch } from '../project/projectInfo';
 import { toDryRunResult } from '../bigquery/dryRunService';
-import { ActionId, dryRunScripts, homeAction, slashPath, targetId } from '../shared/compiledGraph';
+import { ActionId, actionsInFile, dryRunScripts, homeAction, slashPath, targetId } from '../shared/compiledGraph';
 import { definitionLine } from '../backend/dbt/locate';
 import { fileModels } from '../shared/panelFileView';
 import type { PanelSlices } from '../shared/panelState';
@@ -145,6 +145,12 @@ async function validatePropertyGraphs(send: (validations: PropertyGraphValidatio
 const schemaFetches = new WeakMap<object, Promise<SchemaMetadata[]>>();
 /** The file whose schemas completions should show: a slower fetch for a file shown before must not replace them */
 let latestSchemaRequest: object | undefined;
+
+/** Whether the file declares tables made elsewhere, in the compile on show */
+function fileDeclares(file: string | undefined): boolean {
+    const graph = compiledGraph();
+    return !!graph && !!file && actionsInFile(graph, slashPath(file)).some((action) => action.kind === 'declaration');
+}
 
 function updateSchemaAutoCompletions(currentFileMetadata:any): Promise<void> {
     const fileMetadata = currentFileMetadata?.fileMetadata;
@@ -828,6 +834,17 @@ export class CompiledQueryPanel {
      * @param problem What is wrong with the file. Left out when the reason is the compile's, which the compile status
      * sent before this has given: the file is in no Project, the tool was not found, or the compile left errors
      */
+    /** Shows the file as the list of the tables it declares */
+    private showDeclarations(file: string | undefined) {
+        if (diagnosticCollection) {
+            diagnosticCollection.clear();
+        }
+        this.sendCompileStatus();
+        this.sendFileSlice(file);
+        this.sendProject();
+        this.updateDataformBlock({ propertyGraphs: null });
+    }
+
     private sendNoActions(file?: string, problem?: FileProblem) {
         this.slices.send('file', { compile: compileNumber(), file: file ? slashPath(file) : '', role: 'not compiled', actions: [], ...(problem ? { problem } : {}) });
         // And BigQuery has said nothing of it
@@ -1761,6 +1778,9 @@ export class CompiledQueryPanel {
                     message.kind ?? "table",
                 );
                 return;
+              case 'dataform.previewDeclaration':
+                await vscode.commands.executeCommand('vscode-dataform-tools.previewDeclaration', message.target);
+                return;
               case 'openExternal':
                 if(message.url){
                     vscode.env.openExternal(vscode.Uri.parse(message.url));
@@ -1902,6 +1922,11 @@ export class CompiledQueryPanel {
             this.sendProject();
             this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
         } else if ((curFileMeta?.errors?.fileNotFoundError===true || curFileMeta?.fileMetadata?.tables?.length === 0) && curFileMeta?.pathMeta?.relativeFilePath && curFileMeta?.pathMeta?.extension === "sqlx"){
+            // A declaration has no SQL, and is listed as the declarations of a JavaScript file are
+            if (fileDeclares(curFileMeta.pathMeta.relativeFilePath)) {
+                this.showDeclarations(curFileMeta.pathMeta.relativeFilePath);
+                return;
+            }
             this.sendCompileStatus();
             this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath, { kind: 'no action' });
             this.sendProject();
@@ -2019,22 +2044,11 @@ export class CompiledQueryPanel {
             if(CompiledQueryPanel && CompiledQueryPanel.centerPanel){
                 const compiled = compiledJson();
                 if(compiled){
-                    if (compiled.declarations) { 
-                        const filteredDeclarations = compiled.declarations
-                            .filter((declaration) => declaration.fileName === curFileMeta.pathMeta?.relativeFilePath);
-
-                        if (filteredDeclarations.length > 0) {
-                            if(diagnosticCollection){
-                                diagnosticCollection.clear();
-                            }
-                            this.sendCompileStatus();
-                            this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath);
-                            this.sendProject();
-                            this.updateDataformBlock({ propertyGraphs: null });
-                            return;
-                        }
+                    if (fileDeclares(curFileMeta.pathMeta?.relativeFilePath)) {
+                        this.showDeclarations(curFileMeta.pathMeta?.relativeFilePath);
+                        return;
                     }
-                    
+
                     // If it's a JS file but has no tables and no declarations, it's a helper file
                     this.sendCompileStatus();
                     this.sendFileSlice(curFileMeta.pathMeta?.relativeFilePath, { role: 'helper' });

@@ -613,7 +613,7 @@
                     "type": "number",
                     "default": 10,
                     "minimum": 0,
-                    "markdownDescription": "Ask before running a preview that reads upstream tables from prod and scans more than this many GiB. `0` turns the check off."
+                    "markdownDescription": "Ask before running a preview that scans more than this many GiB, when it reads upstream tables from prod or previews a declared view or external table. `0` turns the check off."
                 },
                 "vscode-dataform-tools.scratchQueryWarnScanGiB": {
                     "type": "number",

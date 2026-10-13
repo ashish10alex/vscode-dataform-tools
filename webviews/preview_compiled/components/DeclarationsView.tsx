@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
+import { Eye } from 'lucide-react';
 import { DataTable } from '../../components/ui/data-table';
 import { Declarations } from '../types';
 import { vscode as vsCodeApi } from '../utils/vscode';
+import { ROW_BUTTON } from './SummaryRow';
 
 interface DeclarationsViewProps {
   /** Only where each table is matters here */
@@ -10,6 +12,7 @@ interface DeclarationsViewProps {
 }
 
 type DeclarationRow = {
+  target: Declarations['target'];
   source: string;
   project: string;
   dataset: string;
@@ -20,6 +23,7 @@ type DeclarationRow = {
 export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations }) => {
   const data = useMemo<DeclarationRow[]>(() =>
     declarations.map(d => ({
+      target: d.target,
       source: `${d.target.database}.${d.target.schema}.${d.target.name}`,
       project: d.target.database,
       dataset: d.target.schema,
@@ -38,16 +42,30 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
         a.original.dataset.localeCompare(b.original.dataset) ||
         a.original.name.localeCompare(b.original.name) ||
         a.original.project.localeCompare(b.original.project),
+      // One cell for both, so that a long name wraps beside its button and never under the next column
       cell: ({ row }) => (
-        <button
-          className="text-[var(--vscode-textLink-foreground)] hover:underline text-left"
-          onClick={e => {
-            e.stopPropagation();
-            vsCodeApi.postMessage({ command: 'openExternal', url: row.original.link });
-          }}
-        >
-          {row.original.source}
-        </button>
+        <div className="flex items-start gap-3">
+          <button
+            className={`${ROW_BUTTON} shrink-0`}
+            title="Show the first rows. A table is read without a query, which costs nothing; a view is queried."
+            onClick={e => {
+              e.stopPropagation();
+              vsCodeApi.postMessage({ command: 'dataform.previewDeclaration', target: row.original.target });
+            }}
+          >
+            <Eye className="w-3 h-3" /> Preview
+          </button>
+          <button
+            className="min-w-0 break-all leading-6 text-[var(--vscode-textLink-foreground)] hover:underline text-left"
+            title="Open in the BigQuery console"
+            onClick={e => {
+              e.stopPropagation();
+              vsCodeApi.postMessage({ command: 'openExternal', url: row.original.link });
+            }}
+          >
+            {row.original.source}
+          </button>
+        </div>
       ),
     },
   ], []);
@@ -58,6 +76,9 @@ export const DeclarationsView: React.FC<DeclarationsViewProps> = ({ declarations
 
   return (
     <div className="h-full flex flex-col">
+      <p className="m-0 mb-2 pl-2 py-0.5 border-l-2 border-[var(--vscode-editorWarning-foreground)] text-xs text-[var(--vscode-descriptionForeground)]">
+        Preview reads the first rows of a table without a query, at no cost. A view or an external table is queried with a LIMIT, which is billed for the full scan; a large scan asks first.
+      </p>
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
