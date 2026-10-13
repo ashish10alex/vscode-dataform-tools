@@ -89,7 +89,20 @@ async function checkDeferredPreview<Preview extends DeferredPreview>(preview: Pr
 async function confirmLargeScan(dryRun: Awaited<ReturnType<typeof queryDryRun>>, why: string): Promise<boolean> {
     const thresholdGiB = extensionConfiguration().get<number>('deferPreviewScanWarningGiB') ?? 10;
     const bytes = dryRun.statistics?.totalBytesProcessed ?? 0;
-    if (thresholdGiB <= 0 || dryRun.error?.hasError || bytes <= thresholdGiB * (1024 ** 3)) {
+    // A query with an error is not billed, and running it is what shows the error
+    if (thresholdGiB <= 0 || dryRun.error?.hasError) {
+        return true;
+    }
+    // BigQuery cannot tell the scan of some external tables, and reports no bytes for them
+    if (dryRun.statistics?.totalBytesProcessedAccuracy === 'UNKNOWN') {
+        const choice = await vscode.window.showWarningMessage(
+            `BigQuery cannot estimate how much this preview scans. ${why} Run it?`,
+            { modal: true },
+            "Run",
+        );
+        return choice === "Run";
+    }
+    if (bytes <= thresholdGiB * (1024 ** 3)) {
         return true;
     }
     const cost = dryRun.statistics?.cost;

@@ -483,7 +483,17 @@ export async function getTableType(target: Target): Promise<string | undefined> 
  */
 export async function openTableRows(target: Target): Promise<{result: QueryResult | undefined, jobStats: JobStats | undefined, errorMessage: string | undefined}> {
     try {
-        const [rows] = await withTable(target, (table) => table.getRows({ maxResults: RESULT_CHUNK_ROWS, autoPaginate: false }));
+        // BigQuery ends a page early when its rows are large, so pages are read until there are enough rows
+        const rows = await withTable(target, async (table) => {
+            const read: any[] = [];
+            let pageToken: string | undefined;
+            do {
+                const [page, next] = await table.getRows({ maxResults: RESULT_CHUNK_ROWS - read.length, autoPaginate: false, ...(pageToken ? { pageToken } : {}) });
+                read.push(...page);
+                pageToken = next?.pageToken;
+            } while (pageToken && read.length < RESULT_CHUNK_ROWS);
+            return read;
+        });
         const first = processQueryResults(rows);
         const result = new QueryResult(first.results.length, first.columns, async () => [], first.results);
         return { result, jobStats: { totalRows: first.results.length, jobCostMeta: formatBytes(0) }, errorMessage: undefined };
