@@ -233,6 +233,12 @@ suite('project registry', () => {
             assert.strictEqual(indices.targetNameMap.get('report')?.length, 1);
         });
 
+        test('a file Dataform named with backslashes, as on Windows, is indexed by its path with forward slashes', () => {
+            setCompiled(dataformRoot, compiledWith({ name: 'orders', fileName: 'definitions\\staging\\orders.sqlx' }));
+            const indices = compiledIndices(dataformRoot);
+            assert.strictEqual(indices.fileNodeMap.get('definitions/staging/orders.sqlx')?.length, 1);
+        });
+
         test('each new compile result gets the next number, for its Project alone', () => {
             const before = compileNumber(dataformRoot);
             const otherBefore = compileNumber(sharedRoot);

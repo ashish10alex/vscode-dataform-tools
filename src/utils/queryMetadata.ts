@@ -5,6 +5,7 @@ import { logger } from '../logger';
 import { DataformCompiledJson, TablesWtFullQuery, Table, Operation, Assertion, Notebook } from '../types';
 import type { TableQueryEntry, IncrementalQueryEntry, AssertionQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
 import { extensionConfiguration } from '../project/settings';
+import { slashPath } from '../shared/compiledGraph';
 
 function createQueryMetaErrorString(modelObj: Table | Operation | Assertion, relativeFilePath: string, modelObjType: string, isJsFile: boolean) {
     return isJsFile
@@ -72,7 +73,7 @@ export async function getQueryMetaForCurrentFile(relativeFilePath: string, compi
     }
 
     // O(1) Lookup from cache
-    const fileNodes = compiledIndices(workspaceFolder).fileNodeMap.get(relativeFilePath) || [];
+    const fileNodes = compiledIndices(workspaceFolder).fileNodeMap.get(slashPath(relativeFilePath)) || [];
 
     if (fileNodes.length > 0) {
         // 1. Tables/Views/Incremental
