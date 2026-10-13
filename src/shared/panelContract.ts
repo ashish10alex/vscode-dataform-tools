@@ -209,6 +209,8 @@ export interface RunStatusSlice extends Slice {
 export interface DataformBlock extends Slice {
     projectConfig?: ProjectConfig;
     dataformCoreVersion?: string;
+    /** The dataformCliScope setting is `local`: the CLI is the Project's own, in its node_modules */
+    cliScopeLocal?: boolean;
     packageJson?: { name?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
     /** The compiler options setting, as typed */
     compilerOptions: string;

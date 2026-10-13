@@ -75,7 +75,8 @@ import { extensionConfiguration } from '../project/settings';
 let recompileActiveDocument: (() => Promise<void>) | undefined;
 
 const MISSING_TOOL_LOOK_INTERVAL_MS = 3000;
-const INSTALL_DATAFORM_CLI = 'npm i -g @dataform/cli';
+/** Is the Dataform CLI the Project's own, as the dataformCliScope setting says */
+const cliScopeIsLocal = (root: string | undefined) => extensionConfiguration(root ? Uri.file(root) : undefined).get('dataformCliScope') === 'local';
 
 /** Redraws the panel from the cached compile, e.g. after defer to prod is switched on or off */
 export async function refreshCompiledQueryPanel() {
@@ -910,8 +911,9 @@ export class CompiledQueryPanel {
         panel.projectWithoutFile = undefined;
         // What BigQuery said of the last file, or of the last compile, is not for this one
         panel.sendDbtBigQuery(++panel.dbtDryRunSeq, project.compileNumber, { results: [], dryRunning: [], tables: {} });
-        // Any Dataform render still in flight is no longer wanted
+        // Any Dataform render still in flight is no longer wanted, nor is a look for the Dataform CLI
         panel.renderSeq++;
+        panel.missingToolWatch?.dispose();
         const compiling = compileDbtProject(project, file, reason);
         if (!panel.hasPage) {
             panel.hasPage = true;
@@ -1473,17 +1475,26 @@ export class CompiledQueryPanel {
                 const [chosen] = (await vscode.window.showOpenDialog({ canSelectMany: false, canSelectFiles: true, canSelectFolders: false, openLabel: 'Use this dataform', title: 'Choose a dataform executable' })) ?? [];
                 if (chosen) {
                     const root = currentDataformRoot();
+                    const configuration = extensionConfiguration(root ? Uri.file(root) : undefined);
+                    // A local scope looks only in the Project's node_modules, so the path chosen would never be used
+                    if (cliScopeIsLocal(root)) {
+                        await configuration.update('dataformCliScope', 'global', vscode.ConfigurationTarget.Workspace);
+                        vscode.window.showInformationMessage('The dataformCliScope setting is now global for this workspace, so that the executable you chose is used.');
+                    }
                     // The setting's change clears what was found before, so the look below is a new one
-                    await extensionConfiguration(root ? Uri.file(root) : undefined).update('dataformExecutablePath', chosen.fsPath, vscode.ConfigurationTarget.Workspace);
+                    await configuration.update('dataformExecutablePath', chosen.fsPath, vscode.ConfigurationTarget.Workspace);
                     await panel.lookForMissingTool?.();
                 }
                 return;
               }
               case 'dataform.installCli': {
-                // In a terminal, so the user sees npm's own output and can answer it
-                const terminal = vscode.window.createTerminal({ name: 'Install Dataform CLI' });
+                // In a terminal, so the user sees npm's own output and can answer it. A local scope finds the CLI
+                // only in the Project's node_modules: it is installed there
+                const root = currentDataformRoot();
+                const local = root !== undefined && cliScopeIsLocal(root);
+                const terminal = vscode.window.createTerminal({ name: 'Install Dataform CLI', ...(local ? { cwd: root } : {}) });
                 terminal.show();
-                terminal.sendText(INSTALL_DATAFORM_CLI);
+                terminal.sendText(local ? 'npm i -D @dataform/cli' : 'npm i -g @dataform/cli');
                 return;
               }
               case 'dataform.switchCompilationMode': {
@@ -1903,11 +1914,11 @@ export class CompiledQueryPanel {
             this.watchForMissingTool(missingTool.tool, workspaceFolder);
             if(this.webviewPanel.webview.html === ""){
                 this.hasPage = true;
-                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool, compilerOptions, dataformCoreVersion });
+                this.webviewPanel.webview.html = this._getHtmlForWebview(webview, { compiling: false, missingTool, cliScopeLocal: cliScopeIsLocal(workspaceFolder), compilerOptions, dataformCoreVersion });
             } else {
                 this.sendCompileStatus({ missingTool });
                 this.sendNoActions(curFileMeta?.pathMeta?.relativeFilePath);
-                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined });
+                this.updateDataformBlock({ projectConfig: undefined, packageJson: undefined, cliScopeLocal: cliScopeIsLocal(workspaceFolder) });
             }
             return;
         }
@@ -2305,11 +2316,12 @@ export class CompiledQueryPanel {
      * The panel's page. It is given the slices the panel starts with, so that its first paint is right before any
      * message: the `dataform` block and how the compile stands.
      */
-    private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: { tool: Tool; lookedIn: string[] }; compilerOptions?: string; dataformCoreVersion?: string | null }) {
+    private _getHtmlForWebview(webview: vscode.Webview, first: { compiling: boolean; missingTool?: { tool: Tool; lookedIn: string[] }; cliScopeLocal?: boolean; compilerOptions?: string; dataformCoreVersion?: string | null }) {
         const compilationInfo = getCompilationInfo(currentDataformRoot());
         this.dataformBlock = {
             ...this.dataformBlock,
             compilerOptions: first.compilerOptions ?? '',
+            ...(first.cliScopeLocal ? { cliScopeLocal: true } : {}),
             compilationMode: isRemoteMode() ? "api" : "cli",
             dataformCoreVersion: first.dataformCoreVersion ?? undefined,
             snoozeEndTime: snoozeManager.getSnoozeEndTime() ?? null,
@@ -2334,13 +2346,15 @@ export class CompiledQueryPanel {
     private watchForMissingTool(tool: string, workspaceFolder: string | undefined) {
         this.missingToolWatch?.dispose();
         let looking = false;
+        // Set once the watch is over: a look still in flight then must not compile
+        let stopped = false;
         const look = async (always = false): Promise<boolean> => {
-            if (looking || this.centerPanelDisposed || !(always || (this.webviewPanel.visible && vscode.window.state.focused))) {
+            if (stopped || looking || this.centerPanelDisposed || !(always || (this.webviewPanel.visible && vscode.window.state.focused))) {
                 return false;
             }
             looking = true;
             try {
-                if (!(await lookForExecutableAgain(tool, workspaceFolder))) {
+                if (!(await lookForExecutableAgain(tool, workspaceFolder)) || stopped || this.centerPanelDisposed) {
                     return false;
                 }
                 this.missingToolWatch?.dispose();
@@ -2358,6 +2372,7 @@ export class CompiledQueryPanel {
         const watch = {
             look,
             dispose: () => {
+                stopped = true;
                 clearInterval(timer);
                 onFocus.dispose();
                 if (this.missingToolWatch === watch) {

@@ -35,7 +35,8 @@ const BOX = "rounded border border-[var(--vscode-widget-border)] bg-[var(--vscod
 const MUTED = "text-[var(--vscode-descriptionForeground)]";
 /** A problem is said in the panel's own colours: only its icon is red */
 const CALM_BOX = clsx(BOX, "p-4 mb-4");
-const INSTALL_COMMAND = "npm i -g @dataform/cli";
+/** As the host runs them for "Install in terminal": in the Project when the dataformCliScope setting is local */
+const INSTALL_COMMAND = { global: "npm i -g @dataform/cli", local: "npm i -D @dataform/cli" };
 /** How long "Look again" says it is looking: the host answers only by compiling, when the CLI is there */
 const LOOK_AGAIN_MS = 1500;
 
@@ -43,7 +44,8 @@ const LOOK_AGAIN_MS = 1500;
  * The Dataform CLI was not found. The host looks for it again every few seconds while this is on show, and compiles
  * once it is there, so the page goes away by itself after an install.
  */
-const DataformCliMissing: React.FC<{ lookedIn: string[] }> = ({ lookedIn }) => {
+const DataformCliMissing: React.FC<{ lookedIn: string[]; local: boolean }> = ({ lookedIn, local }) => {
+  const installCommand = local ? INSTALL_COMMAND.local : INSTALL_COMMAND.global;
   const [look, setLook] = useState<'idle' | 'looking' | 'not found'>('idle');
   const [copied, setCopied] = useState(false);
 
@@ -71,15 +73,15 @@ const DataformCliMissing: React.FC<{ lookedIn: string[] }> = ({ lookedIn }) => {
       </div>
 
       <div className={clsx(BOX, "p-3 space-y-3")}>
-        <div className="text-sm font-medium">Install it with npm <span className={clsx("font-normal", MUTED)}>(needs <a href="https://nodejs.org/en/download" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline">Node.js</a>)</span></div>
+        <div className="text-sm font-medium">{local ? "Install it in this project with npm" : "Install it with npm"} <span className={clsx("font-normal", MUTED)}>(needs <a href="https://nodejs.org/en/download" target="_blank" rel="noopener noreferrer" className="text-[var(--vscode-textLink-foreground)] underline">Node.js</a>)</span></div>
         <div className="flex items-center gap-2">
-          <pre className="m-0 flex-1 px-2 py-1.5 text-xs font-mono whitespace-pre-wrap rounded bg-[var(--vscode-textCodeBlock-background)]">{INSTALL_COMMAND}</pre>
+          <pre className="m-0 flex-1 px-2 py-1.5 text-xs font-mono whitespace-pre-wrap rounded bg-[var(--vscode-textCodeBlock-background)]">{installCommand}</pre>
           <button
             type="button"
             title="Copy the command"
             aria-label="Copy the command"
             className={SECONDARY_BUTTON}
-            onClick={() => { vscode.postMessage({ command: 'copyToClipboard', text: INSTALL_COMMAND }); setCopied(true); }}
+            onClick={() => { vscode.postMessage({ command: 'copyToClipboard', text: installCommand }); setCopied(true); }}
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
@@ -229,7 +231,7 @@ export const CompilationError: React.FC<CompilationErrorProps> = ({ state }) => 
 
   if (missingExecutables && missingExecutables.length > 0) {
     const status = state.compile?.status === 'compiling' ? state.settled : state.compile;
-    return <DataformCliMissing lookedIn={status?.status === 'tool not found' ? status.lookedIn : []} />;
+    return <DataformCliMissing lookedIn={status?.status === 'tool not found' ? status.lookedIn : []} local={state.dataform.cliScopeLocal === true} />;
   }
 
   if (isBigQueryClientError) {
