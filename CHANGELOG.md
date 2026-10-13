@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.19.1...v2.0.0) (2026-10-13)
+
+
+### Bug Fixes
+
+* find a file's actions on Windows when rerunning the last run ([#524](https://github.com/ashish10alex/vscode-dataform-tools/issues/524)) ([a808348](https://github.com/ashish10alex/vscode-dataform-tools/commit/a8083487d33ae94b7b2c826091b0b4532309b07d))
+* run gcloud on Windows when its path has a space ([#525](https://github.com/ashish10alex/vscode-dataform-tools/issues/525)) ([c46cd70](https://github.com/ashish10alex/vscode-dataform-tools/commit/c46cd70bac571014907dc55688dd96ff8c4704aa))
+
 ### [1.19.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.19.0...v1.19.1) (2026-10-13)
 
 
