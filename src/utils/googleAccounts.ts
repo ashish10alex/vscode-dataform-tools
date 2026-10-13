@@ -177,8 +177,10 @@ function definedOnly<T extends object>(value: T): T {
 
 function runGcloud(binary: string, args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-        // A `.cmd` file, as gcloud is on Windows, is not run without a shell
-        execFile(binary, args, { timeout: TIMEOUT_MS, windowsHide: true, shell: process.platform === 'win32' }, (error, stdout, stderr) => {
+        // A `.cmd` file, as gcloud is on Windows, is not run without a shell. The shell is given one command line, so
+        // the path is quoted: gcloud installs into "Cloud SDK", and cmd would run the part before the space
+        const onWindows = process.platform === 'win32';
+        execFile(onWindows ? `"${binary}"` : binary, args, { timeout: TIMEOUT_MS, windowsHide: true, shell: onWindows }, (error, stdout, stderr) => {
             if (error) {
                 reject(Object.assign(error, { stderr }));
             } else {
