@@ -4,7 +4,8 @@ import path from 'path';
 import { gcloudComputeRegions } from './constants';
 import fs from 'fs';
 import { logger } from './logger';
-import { isRemoteMode } from './utils/remoteCompiler';
+import { isRemoteMode } from './project/dataformOptions';
+import { quotedCli } from './backend/dataform/run';
 
 export async function createNewDataformProject(){
 
@@ -42,7 +43,7 @@ export async function createNewDataformProject(){
     }
 
     const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder=projectDir);
-    runCommandInTerminal(`${customDataformCliPath} init --project-dir "${projectDir}" --default-database "${gcpProjectId}" --default-location "${defaultLocation}"`);
+    runCommandInTerminal(`${quotedCli(customDataformCliPath)} init --project-dir "${projectDir}" --default-database "${gcpProjectId}" --default-location "${defaultLocation}"`);
     // NOTE: wait for half a second before a new vscode workspace at projectDir
     // NOTE: otherwise opening the folder make the terminal command not run as the terminal context is somehow lost
     await delay(2500); 

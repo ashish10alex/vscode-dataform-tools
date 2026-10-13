@@ -1,0 +1,11 @@
+name: xf_hooks
+version: "1.0.0"
+config-version: 2
+profile: xf_example
+
+# dbt v2 runs these when it compiles, not only when it runs, so xf parses
+# this project instead of compiling it (see README.md).
+on-run-start:
+  - "{{ create_cents_to_dollars_udf() }}"
+on-run-end:
+  - "insert into `{{ target.project }}.{{ target.dataset }}.audit_log` (run_at, model) values (current_timestamp(), 'xf_hooks')"

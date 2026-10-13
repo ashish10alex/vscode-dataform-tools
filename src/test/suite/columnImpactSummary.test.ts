@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import {
     ImpactCandidate, ImpactView, MARKDOWN_READERS, MARKDOWN_READER_LIST, ReaderContext, annotateReader, buildImpactSummary, impactMarkdown, impactSeverity, isLowImpact, mentions, rankReaders,
-    projectsOf, safeSummary, summaryCounts,
+    newNote, projectsOf, safeSummary, summaryCounts, unsetHint,
 } from '../../shared/columnLineage/impactSummary';
 import { CheckDeps, UNKNOWN_PROD_TARGET, changeSignature, checkChanged, checkDeleted, guessProdTarget } from '../../columnLineage/changeImpact';
 import { matchProdTargets, prodIndexOf } from '../../columnLineage/prodIndex';
@@ -140,6 +140,41 @@ suite('Column impact summary: build', () => {
         assert.ok(!source.calls.some((call) => call.includes('p.marts.daily')), 'no lookups for a safe table');
     });
 
+    test('lists a new action as new: with no table it has nothing to lose, and with one it is still compared', async () => {
+        const result = await buildImpactSummary([
+            // No table yet: not dry run, so no schemas
+            { table: 'p.marts.fresh', fileName: 'definitions/fresh.sqlx', type: 'table', new: true, noTable: true },
+            // A table is already there, e.g. a run of the branch built it: every column survives
+            { ...unchanged, table: 'p.marts.back', new: true },
+            // ...or one doesn't, and it is at risk like any other table
+            { ...orders, new: true },
+        ], fakeSource({}), context());
+
+        assert.ok(result);
+        assert.deepStrictEqual(result.new, [
+            { table: 'p.marts.back', fileName: unchanged.fileName, type: 'view', columns: [], added: ['orders'], new: true, exists: true },
+            { table: 'p.marts.fresh', fileName: 'definitions/fresh.sqlx', type: 'table', columns: [], new: true },
+        ]);
+        assert.deepStrictEqual(result.atRisk.map((entry) => [entry.table, entry.new]), [['p.marts.orders', true]]);
+        assert.deepStrictEqual([result.safe, result.unchecked], [[], []]);
+
+        const view: ImpactView = { status: 'ready', changedCount: 3, ...result, against: ['p'] };
+        assert.strictEqual(summaryCounts(view), '3 changed · 0 at risk · 1 low · 2 new');
+        assert.deepStrictEqual([newNote(result.new[0]), newNote(result.new[1])], ['table already in `p`, keeps every column and adds `orders`', 'nothing reads it yet']);
+        const lines = impactMarkdown(view).split('\n');
+        assert.ok(lines.includes('**Target model:** `marts.orders` (new on this branch)'));
+        const start = lines.indexOf('<details><summary>New (2)</summary>');
+        assert.deepStrictEqual(lines.slice(start + 2, start + 4), ['- `marts.back`: table already in `p`, keeps every column and adds `orders`', '- `marts.fresh`: nothing reads it yet']);
+    });
+
+    test('says when it compared with the default targets because prodCompilerOptions is not set', () => {
+        const view: ImpactView = { status: 'ready', changedCount: 0, atRisk: [], safe: [], new: [], unchecked: [], against: ['acme-dev'] };
+        assert.ok(!impactMarkdown(view).includes('<sub>'), 'no hint when the setting is set');
+        const hint = 'Compared with the project\'s default targets (`acme-dev`), which may be dev tables. Set `prodCompilerOptions` to compare with prod.';
+        assert.strictEqual(unsetHint({ ...view, unset: 'prodCompilerOptions' }), hint);
+        assert.ok(impactMarkdown({ ...view, unset: 'prodCompilerOptions' }).endsWith(`\n\n<sub>${hint}</sub>`));
+    });
+
     test('settles a deleted table read only by an assertion the branch deletes too, in prod and in a dev run', async () => {
         const source = fakeSource({}, {
             'p.marts.snap': [
@@ -166,8 +201,8 @@ suite('Column impact summary: build', () => {
         ], 'one row for both runs of the deleted assertion; an assertion still on the branch left out; an unknown dev reader kept');
         snap.readers = snap.readers!.filter((reader) => reader.deletedOnBranch);
         assert.strictEqual(isLowImpact(snap), true);
-        assert.strictEqual(summaryCounts({ changedCount: 1, atRisk: [snap], unchecked: [] }), '1 changed · 0 at risk · 1 low');
-        assert.ok(impactMarkdown({ status: 'ready', changedCount: 1, atRisk: [snap], safe: [], unchecked: [] })
+        assert.strictEqual(summaryCounts({ changedCount: 1, atRisk: [snap], new: [], unchecked: [] }), '1 changed · 0 at risk · 1 low');
+        assert.ok(impactMarkdown({ status: 'ready', changedCount: 1, atRisk: [snap], safe: [], new: [], unchecked: [] })
             .includes('| *whole table* | **TABLE DELETED** | ℹ️ LOW | none left (+1 deleted here) | — |'));
     });
 
@@ -226,6 +261,7 @@ suite('Column impact summary: Markdown', () => {
             { table: 'p.marts.daily', type: 'view', columns: [] },
             { table: 'p.marts.weekly', type: 'table', columns: [], added: ['channel', 'region'] },
         ],
+        new: [],
         unchecked: [{ table: 'p.marts.ops', reason: 'operation: a dry run of a script has no schema' }],
     };
 
@@ -266,6 +302,7 @@ suite('Column impact summary: Markdown', () => {
                 columns: [{ column: 'id', change: { kind: 'dropped' }, readers: [{ table: 'dev.scratch.copy', column: 'id', dependencyType: 'EXACT_COPY' }] }],
             }],
             safe: [],
+            new: [],
             unchecked: [],
         });
         assert.ok(markdown.includes('| `id` | **DROPPED** | 🚨 **CRITICAL** | 1 outside project | `dev.scratch.copy` *(outside)* |'));
@@ -291,6 +328,7 @@ suite('Column impact summary: Markdown', () => {
             changedCount: 1,
             atRisk: [{ table: 'p.marts.orders', type: 'table', columns: [{ column: 'a', change: { kind: 'dropped' }, readers: [...wide, ...many] }] }],
             safe: [],
+            new: [],
             unchecked: [],
         });
         assert.ok(markdown.includes('| `a` | `rep.wide` | `a`, `b`, `c`, +2 more | derived or filtered |  |'));
@@ -383,6 +421,18 @@ suite('Column impact summary: host helpers', () => {
         const markdown = impactMarkdown({ status: 'ready', changedCount: 3, ...result!, against: projectsOf(['prod.marts.orders']) });
         assert.ok(markdown.includes('**Evaluated against:** tables in `prod`'));
         assert.ok(markdown.includes('- `marts.scratch`: its prod table is unknown: nothing in the compile with prodCompilerOptions matches it'));
+    });
+
+    test('does not dry run an action the base does not have while it has no table', async () => {
+        let dryRuns = 0;
+        const fake = deps((dev) => dev.replace(/^dev\./, 'prod.'), { 'prod.marts.scratch': { columns: [{ name: 'order_id', type: 'INT64' }] } });
+        const counting: CheckDeps = { ...fake, dryRun: async (a) => { dryRuns++; return fake.dryRun(a); } };
+        const fresh = await checkChanged({ ...orders, reasons: ['new'] }, action, counting);
+        assert.deepStrictEqual(fresh, { table: 'prod.marts.orders', fileName: 'definitions/orders.sqlx', type: 'table', new: true, noTable: true });
+        assert.strictEqual(dryRuns, 0);
+        // Its table is already there: compared like any other
+        const built = await checkChanged({ ...scratch, reasons: ['new'] }, action, counting);
+        assert.deepStrictEqual([built.new, built.noTable, built.dev?.length, dryRuns], [true, undefined, 1, 1]);
     });
 
     test('names the project with no such table, and why a table could not be read', async () => {

@@ -1,7 +1,11 @@
-.vscode/**
-.vscode-test/**
-src/**
+# Largest folders first: vsce stops at the first pattern that matches a file
+.claude/**
+website/**
 packages/**
+.vscode-test/**
+
+.vscode/**
+src/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -40,14 +44,12 @@ node_modules/undici-types/**
 node_modules/@types/**
 node_modules/@emotion*/**
 node_modules/concurrently*/**
-website/**
 
 user_config.json
 
 # Agent & CI workflows/configs
 .agents/**
 .gemini/**
-.claude/**
 AGENTS.md
 justfile
 release-please-config.json
@@ -71,3 +73,4 @@ FUTURE_WORK.md
 postcss.config.js
 vite.config.ts
 snippets/README.md
+.devcontainer/**

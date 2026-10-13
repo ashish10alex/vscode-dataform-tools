@@ -1,14 +1,24 @@
 import React, { useMemo, useState } from 'react';
-import { WebviewState } from '../types';
+import { PanelState } from '../types';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef, ExpandedState } from '@tanstack/react-table';
 import { Download, Edit2, Copy, Check, ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 import type { ColumnMetadata } from '../../../src/types';
 import { buildColumnsConfig, formatAsUnquotedJson, pathKey } from '../../../src/utils/schemaTree';
+import { fileView } from '../utils/fileView';
+import { columnsOnShow } from '../utils/bigQueryView';
+import { ROW_BUTTON } from './SummaryRow';
 
 interface SchemaTabProps {
-  state: WebviewState;
+  state: PanelState;
+}
+
+interface SchemaTableProps {
+  /** The columns to show, as BigQuery gives a schema: nested ones under their parent */
+  fields: ColumnMetadata[];
+  /** The name of the file "Export JSON" offers */
+  exportName: string;
 }
 
 type SchemaRow = {
@@ -42,21 +52,30 @@ const buildRows = (
     };
   });
 
-const buttonClassName = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm justify-center";
-
+/** The Schema tab of a Dataform file: the columns of its first action, from the last dry runs that gave results */
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
+  const schema = columnsOnShow(state.columns);
+  const target = fileView(state.file).models[0]?.target;
+  return <SchemaTable fields={schema?.fields ?? NO_FIELDS} exportName={target ? `${target.database}_${target.schema}_${target.name}.json` : 'schema.json'} />;
+};
+
+const NO_FIELDS: ColumnMetadata[] = [];
+
+/**
+ * A table of columns with their types and descriptions, for either Backend: a filter on each column, nested columns
+ * that open, descriptions that can be edited, and the columns as JSON to copy or save.
+ */
+export const SchemaTable: React.FC<SchemaTableProps> = ({ fields, exportName }) => {
   const [editedDescriptions, setEditedDescriptions] = useState<Record<string, string>>({});
   const [isCopied, setIsCopied] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
-  const fields = state.compiledQuerySchema?.fields || [];
-
   const data = useMemo(
     () => buildRows(fields, editedDescriptions),
-    [state.compiledQuerySchema, editedDescriptions]
+    [fields, editedDescriptions]
   );
 
-  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [state.compiledQuerySchema]);
+  const hasNestedFields = useMemo(() => fields.some((field) => field.fields?.length), [fields]);
 
   const columns = useMemo<ColumnDef<SchemaRow>[]>(() => [
     {
@@ -139,7 +158,7 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   const handleCopyJson = () => {
     vscode.postMessage({
       command: 'copyToClipboard',
-      value: columnsConfigText()
+      text: columnsConfigText()
     });
     
     setIsCopied(true);
@@ -147,20 +166,14 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
   };
 
   const handleExportJson = () => {
-    let filename = 'schema.json';
-    const target = state.targetTablesOrViews?.[0]?.target || state.models?.[0]?.target;
-    if (target) {
-      filename = `${target.database}_${target.schema}_${target.name}.json`;
-    }
-
     vscode.postMessage({
       command: 'exportSchema',
-      value: columnsConfigText(),
-      filename: filename
+      content: columnsConfigText(),
+      fileName: exportName
     });
   };
 
-  if (!state.compiledQuerySchema || state.compiledQuerySchema.fields.length === 0) {
+  if (fields.length === 0) {
     return (
         <div className="p-8 text-center text-[var(--vscode-descriptionForeground)]">
             <p>No schema available.</p>
@@ -170,40 +183,40 @@ export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-end gap-2 p-2 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
+      <div className="flex flex-wrap justify-end gap-1.5 px-2 py-1.5 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBar-background)]">
         {hasNestedFields && (
           <>
-            <button onClick={() => setExpanded(true)} className={buttonClassName}>
-              <ChevronsUpDown className="w-3.5 h-3.5" />
+            <button onClick={() => setExpanded(true)} className={ROW_BUTTON}>
+              <ChevronsUpDown className="w-3 h-3" />
               Expand all
             </button>
-            <button onClick={() => setExpanded({})} className={buttonClassName}>
-              <ChevronsDownUp className="w-3.5 h-3.5" />
+            <button onClick={() => setExpanded({})} className={ROW_BUTTON}>
+              <ChevronsDownUp className="w-3 h-3" />
               Collapse all
             </button>
           </>
         )}
         <button
           onClick={handleCopyJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm w-28 justify-center"
+          className={ROW_BUTTON}
         >
           {isCopied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />
+              <Check className="w-3 h-3 text-[var(--vscode-extensionIcon-preReleaseForeground)]" />
               Copied!
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" />
+              <Copy className="w-3 h-3" />
               Copy JSON
             </>
           )}
         </button>
         <button
           onClick={handleExportJson}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--vscode-button-secondaryForeground)] bg-[var(--vscode-button-secondaryBackground)] border border-[var(--vscode-widget-border)] rounded-md hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors shadow-sm w-28 justify-center"
+          className={ROW_BUTTON}
         >
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-3 h-3" />
           Export JSON
         </button>
       </div>

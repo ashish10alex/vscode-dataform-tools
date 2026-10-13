@@ -1,3 +1,4 @@
+import { runPrepared } from '../runFeedback';
 import * as vscode from 'vscode';
 import { logger } from '../logger';
 import { LastRunRequest, Target } from '../types';
@@ -10,6 +11,7 @@ import { computeRunSet, DeferralEntry, targetId } from './deferRules';
 import { findLeftoverProxies, getDeferAvailability, isDeferEnabled, resolveDeferralForActions } from './index';
 import { ensureProxyViews, proxyViewsMayExist } from './proxyViews';
 import { clearTableExistenceCache, findMissingDevDatasets } from './tableExistence';
+import { resolveDataformOptions } from '../project/dataformOptions';
 
 /*
  * Defer to prod for runs. Dataform executes its own compiled SQL, so before a deferred run the extension
@@ -79,7 +81,7 @@ async function confirmLeftoverProxies(request: RunRequest): Promise<boolean> {
     if (!proxyViewsMayExist()) {
         return true;
     }
-    const graph = await getOrCompileDataformJson(request.workspaceFolder);
+    const graph = await getOrCompileDataformJson(request.workspaceFolder, resolveDataformOptions(request.workspaceFolder));
     if (!graph) {
         return true;
     }
@@ -146,7 +148,7 @@ async function confirmApiRunner(deferred: DeferralEntry[]): Promise<boolean> {
  * dispatched: the user cancelled, a run with dependencies was started instead, or the proxy views failed.
  */
 export async function beginRun(request: RunRequest): Promise<boolean> {
-    const record = (deferToProd: boolean) => recordLastRun({ ...request, deferToProd }).then(() => true);
+    const record = (deferToProd: boolean) => recordLastRun({ ...request, deferToProd }).then(() => { runPrepared(); return true; });
     const workspaceFolder = request.workspaceFolder;
     if (!(deferOverride ?? isDeferEnabled(workspaceFolder))) {
         return (await confirmLeftoverProxies(request)) ? record(false) : false;
@@ -157,7 +159,7 @@ export async function beginRun(request: RunRequest): Promise<boolean> {
         return record(false);
     }
 
-    const graph = await getOrCompileDataformJson(workspaceFolder);
+    const graph = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
     if (!graph) {
         return record(false);
     }

@@ -1,4 +1,7 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
 import { runCommandInTerminal } from '../../utils/vscodeUi';
@@ -58,6 +61,56 @@ suite('runCommandInTerminal', () => {
             assert.strictEqual(second.name, 'dataform');
         } finally {
             second.dispose();
+        }
+    });
+
+    test('the first command in a new terminal is not cancelled by a virtual environment activated in it (#497)', async function () {
+        if (process.platform === 'win32') {
+            this.skip();
+        }
+        this.timeout(40 * 1000);
+        for (const terminal of vscode.window.terminals.filter((t) => t.name === 'dataform')) {
+            terminal.dispose();
+        }
+        for (let i = 0; i < 50 && vscode.window.terminals.some((t) => t.name === 'dataform'); i++) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        // The command leaves a file when it has run to the end: what the shell reports of command lines is not reliable
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xf-497-'));
+        const ranFile = path.join(dir, 'ran');
+        // As the Python extension does in every new terminal of the user's: the activation, once the shell has started.
+        // VS Code sends Ctrl+C before it, and may hold both for seconds, so a wait on our side cannot be relied on
+        let shellStarted = false;
+        let activated = false;
+        const python = vscode.window.onDidChangeTerminalShellIntegration(({ terminal, shellIntegration }) => {
+            if (terminal.name !== 'dataform' || shellStarted) {
+                return;
+            }
+            shellStarted = true;
+            if ((terminal.creationOptions as vscode.TerminalOptions).hideFromUser) {
+                return;
+            }
+            activated = true;
+            shellIntegration.executeCommand('true');
+        });
+        let terminal: vscode.Terminal | undefined;
+        try {
+            // Long enough to be still running when a held activation arrives
+            terminal = runCommandInTerminal(`sleep 7 && touch '${ranFile}'`);
+            for (let i = 0; i < 300 && !fs.existsSync(ranFile); i++) {
+                await new Promise((r) => setTimeout(r, 100));
+            }
+            if (!shellStarted) {
+                // The shell has no shell integration here, so no activation could be imitated
+                this.skip();
+            }
+            assert.strictEqual(activated, false, 'a virtual environment was activated in the terminal');
+            assert.ok(fs.existsSync(ranFile), 'the command was cancelled');
+            assert.ok(vscode.window.terminals.includes(terminal), 'the terminal is not among the terminals of the window');
+        } finally {
+            python.dispose();
+            terminal?.dispose();
+            fs.rmSync(dir, { recursive: true, force: true });
         }
     });
 });

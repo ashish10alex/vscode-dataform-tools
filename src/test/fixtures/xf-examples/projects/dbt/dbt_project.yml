@@ -1,0 +1,31 @@
+name: xf_example
+version: "1.0.0"
+config-version: 2
+profile: xf_example
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+
+vars:
+  start_date: "2024-01-01"
+
+models:
+  xf_example:
+    staging:
+      +materialized: view
+      +tags: ["staging"]
+    intermediate:
+      +materialized: ephemeral
+    marts:
+      +materialized: table
+      +tags: ["marts"]
+    reporting:
+      +schema: reporting
+
+seeds:
+  xf_example:
+    +schema: reference

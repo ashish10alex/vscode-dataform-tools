@@ -6,14 +6,18 @@ import type { DataformCompiledJson, Target } from '../types';
 
 export type ActionTypeCounts = Partial<Record<ActionTypeKey, number>>;
 
-type ActionTypeKey = 'table' | 'incremental' | 'view' | 'assertion' | 'operation' | 'notebook' | 'propertyGraph' | 'other';
+/** `seed`, `snapshot` and `test` are a dbt Project's */
+type ActionTypeKey = 'table' | 'incremental' | 'view' | 'seed' | 'snapshot' | 'assertion' | 'test' | 'operation' | 'notebook' | 'propertyGraph' | 'other';
 
 /** Display order, with singular and plural labels. */
 const ACTION_TYPE_LABELS: [ActionTypeKey, string, string][] = [
     ['table', 'table', 'tables'],
     ['incremental', 'incremental', 'incremental'],
     ['view', 'view', 'views'],
+    ['seed', 'seed', 'seeds'],
+    ['snapshot', 'snapshot', 'snapshots'],
     ['assertion', 'assertion', 'assertions'],
+    ['test', 'test', 'tests'],
     ['operation', 'operation', 'operations'],
     ['notebook', 'notebook', 'notebooks'],
     ['propertyGraph', 'property graph', 'property graphs'],
@@ -22,7 +26,7 @@ const ACTION_TYPE_LABELS: [ActionTypeKey, string, string][] = [
 
 const targetKey = (target: Target) => `${target.database}.${target.schema}.${target.name}`;
 
-/** Maps a compiled action's `type` (`table`, `view`, `operations`, ...) to its breakdown key. */
+/** Maps a compiled action's `type` (`table`, `view`, `operations`, ...), or the Kind of a dbt Project's action, to its breakdown key. */
 function toActionTypeKey(type: string): ActionTypeKey {
     switch (type) {
         case 'table':
@@ -31,7 +35,14 @@ function toActionTypeKey(type: string): ActionTypeKey {
         case 'assertion':
         case 'notebook':
         case 'propertyGraph':
+        case 'seed':
+        case 'snapshot':
+        case 'test':
             return type;
+        case 'unit test':
+            return 'test';
+        case 'materialized view':
+            return 'view';
         case 'operation':
         case 'operations':
             return 'operation';

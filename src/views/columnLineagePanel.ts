@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../logger';
@@ -210,12 +211,12 @@ export class ColumnLineagePanel {
         }
         const run = ++this.impactRun;
         const current = () => run === this.impactRun;
-        const empty = { changedCount: 0, atRisk: [], safe: [], unchecked: [] };
+        const empty = { changedCount: 0, atRisk: [], safe: [], new: [], unchecked: [] };
         this.impactSource = undefined;
         this.setImpact({ ...empty, status: 'running', progress: { phase: 'Working out changed actions', done: 0, total: 0 } });
         try {
             result ??= await prepareChangedActions(workspaceFolder);
-            const head = CACHED_COMPILED_DATAFORM_JSON;
+            const head = compiledJson();
             if (!current()) {
                 return;
             }

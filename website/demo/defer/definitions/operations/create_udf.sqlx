@@ -1,0 +1,8 @@
+config {
+  type: "operations",
+  tags: ["setup"],
+  description: "Creates the UDF the reports use."
+}
+
+CREATE OR REPLACE FUNCTION `${dataform.projectConfig.defaultDatabase}.${dataform.projectConfig.defaultSchema}.cents_to_dollars`(cents INT64)
+RETURNS FLOAT64 AS (ROUND(cents / 100, 2))

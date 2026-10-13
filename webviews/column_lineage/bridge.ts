@@ -72,6 +72,7 @@ function standaloneBridge(): Bridge {
             changedCount: candidates.length,
             atRisk: [],
             safe: [],
+            new: [],
             unchecked: [],
         };
         const summary = await buildImpactSummary(

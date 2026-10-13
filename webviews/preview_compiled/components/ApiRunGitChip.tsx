@@ -2,6 +2,7 @@ import { AlertTriangle, GitBranch, XCircle } from "lucide-react";
 import clsx from "clsx";
 import type { ApiRunGitState } from "../../../src/shared/apiRunGitState";
 import { describeApiRunGitState } from "../../../src/shared/apiRunGitState";
+import { API_COLOR } from "./RunBackendSwitch";
 
 const TONE_CLASSES = {
   muted: "text-[var(--vscode-descriptionForeground)]",
@@ -25,7 +26,8 @@ export function ApiRunGitChip({ state }: { state?: ApiRunGitState }) {
       title={summary.tooltip}
       className={clsx("inline-flex items-center gap-1 text-xs cursor-default", TONE_CLASSES[summary.tone])}
     >
-      <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />
+      {/* In the colour of the API in the row above, where the note is no warning: it is of the same thing */}
+      <Icon className="w-3 h-3 shrink-0" style={summary.tone === "muted" ? { color: API_COLOR } : undefined} aria-hidden="true" />
       {summary.label}
     </span>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -12,9 +12,25 @@ import {
   ColumnFiltersState,
   ExpandedState,
   OnChangeFn,
+  PaginationState,
+  Updater,
   Column,
 } from '@tanstack/react-table';
 import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+
+/**
+ * A table whose rows are held elsewhere: `data` is one page of them, and paging, sorting and filtering are asked
+ * of the holder through `onChange`, which is given what changed.
+ */
+export interface ServerTable {
+  /** Rows there are in all, once filtered */
+  rowCount: number
+  pageIndex: number
+  pageSize: number
+  sorting: SortingState
+  columnFilters: ColumnFiltersState
+  onChange: (change: Partial<Pick<ServerTable, 'pageIndex' | 'pageSize' | 'sorting' | 'columnFilters'>>) => void
+}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -36,10 +52,25 @@ interface DataTableProps<TData, TValue> {
   onExpandedChange?: OnChangeFn<ExpandedState>
   /** Where the row built from the columns' `footer` defs goes. Defaults to 'bottom'. */
   footerPosition?: 'top' | 'bottom'
+  /** Keeps the first column in view while the table is scrolled sideways: for a table whose first column names the row */
+  stickyFirstColumn?: boolean
+  /** Shown at the start of the bar under the table, which is then drawn even when there is a single page */
+  status?: ReactNode
+  /** Given when `data` is one page of rows held elsewhere */
+  server?: ServerTable
 }
 
-function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, unknown>; shouldAutoFocus: boolean }) {
+function ColumnFilterInput({ column, shouldAutoFocus, applyOnEnter }: { column: Column<any, unknown>; shouldAutoFocus: boolean; applyOnEnter: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const applied = (column.getFilterValue() ?? '') as string;
+  // What is typed is held here until Enter or leaving the field, when each filter asked for is a query to run
+  const [draft, setDraft] = useState(applied);
+  useEffect(() => setDraft(applied), [applied]);
+  const apply = () => {
+    if (applyOnEnter && draft !== applied) {
+      column.setFilterValue(draft);
+    }
+  };
 
   useEffect(() => {
     // Only take focus when the webview already has it. The panel is opened with
@@ -54,14 +85,18 @@ function ColumnFilterInput({ column, shouldAutoFocus }: { column: Column<any, un
     <input
       ref={inputRef}
       type="text"
-      value={(column.getFilterValue() ?? '') as string}
-      onChange={(e) => column.setFilterValue(e.target.value)}
+      value={applyOnEnter ? draft : applied}
+      onChange={(e) => applyOnEnter ? setDraft(e.target.value) : column.setFilterValue(e.target.value)}
+      onBlur={apply}
       onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          apply();
+        }
         if (e.key === 'Escape') {
           e.currentTarget.blur();
         }
       }}
-      placeholder={`Filter...`}
+      placeholder={applyOnEnter ? 'Filter, then Enter' : `Filter...`}
       className="w-full px-2 py-1 text-xs border rounded bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)] focus:outline-none focus:ring-1 focus:ring-[var(--vscode-focusBorder)] text-[var(--vscode-input-foreground)] placeholder:text-[var(--vscode-input-placeholderForeground)]"
       onClick={(e) => e.stopPropagation()} // Prevent sorting when clicking input
     />
@@ -79,9 +114,27 @@ export function DataTable<TData, TValue>({
   expanded,
   onExpandedChange,
   footerPosition = 'bottom',
+  stickyFirstColumn = false,
+  status,
+  server,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>(initialSorting);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [ownSorting, setOwnSorting] = useState<SortingState>(initialSorting);
+  const [ownColumnFilters, setOwnColumnFilters] = useState<ColumnFiltersState>([]);
+  const sorting = server ? server.sorting : ownSorting;
+  const columnFilters = server ? server.columnFilters : ownColumnFilters;
+  const resolve = <T,>(updater: Updater<T>, current: T): T => typeof updater === 'function' ? (updater as (old: T) => T)(current) : updater;
+  const setSorting: OnChangeFn<SortingState> = server
+    ? (updater) => server.onChange({ sorting: resolve(updater, server.sorting) })
+    : setOwnSorting;
+  const setColumnFilters: OnChangeFn<ColumnFiltersState> = server
+    ? (updater) => server.onChange({ columnFilters: resolve(updater, server.columnFilters) })
+    : setOwnColumnFilters;
+  const setPagination: OnChangeFn<PaginationState> | undefined = server
+    ? (updater) => {
+        const next = resolve(updater, { pageIndex: server.pageIndex, pageSize: server.pageSize });
+        server.onChange(next.pageSize !== server.pageSize ? { pageSize: next.pageSize, pageIndex: 0 } : { pageIndex: next.pageIndex });
+      }
+    : undefined;
   const [globalFilter, setGlobalFilter] = useState('');
   const isTree = expanded !== undefined;
   const isFiltering = globalFilter !== '' || columnFilters.some((f) => f.value !== undefined && f.value !== '');
@@ -108,11 +161,19 @@ export function DataTable<TData, TValue>({
       // Ignore toggles while filtering so the stored state is restored when filters are cleared.
       onExpandedChange: isFiltering ? () => {} : onExpandedChange,
     } : {}),
+    ...(server ? {
+      manualPagination: true,
+      manualSorting: true,
+      manualFiltering: true,
+      rowCount: server.rowCount,
+      onPaginationChange: setPagination,
+    } : {}),
     state: {
       sorting,
       columnFilters,
       globalFilter,
       expanded: isTree && !isFiltering ? expanded : true,
+      ...(server ? { pagination: { pageIndex: server.pageIndex, pageSize: server.pageSize } } : {}),
     },
     columnResizeMode: 'onChange',
     initialState: {
@@ -122,6 +183,12 @@ export function DataTable<TData, TValue>({
     }
   });
 
+  // A cell that stays put is drawn over the ones that scroll under it, so it has a background of its own; the row's
+  // hover colour, which may be see-through, is laid over that
+  const stuck = (index: number, background: string) => stickyFirstColumn && index === 0
+    ? ` sticky left-0 z-[5] ${background} group-hover/row:[background-image:linear-gradient(var(--vscode-list-hoverBackground),var(--vscode-list-hoverBackground))]`
+    : '';
+  const hasPager = paginated && table.getPageCount() > 1;
   const hasFooter = table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer));
 
   return (
@@ -131,12 +198,12 @@ export function DataTable<TData, TValue>({
           <thead className="text-xs uppercase bg-[var(--vscode-sideBarSectionHeader-background)] text-[var(--vscode-foreground)] shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
+                {headerGroup.headers.map((header, index) => {
                   return (
                     <th 
                       key={header.id} 
                       className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] group bg-[var(--vscode-sideBarSectionHeader-background)]"
-                      style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10 }}
+                      style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10, ...(stickyFirstColumn && index === 0 ? { left: 0, zIndex: 11 } : {}) }}
                     >
                       {header.isPlaceholder ? null : (
                         <div className="space-y-2">
@@ -164,6 +231,7 @@ export function DataTable<TData, TValue>({
                                     <ColumnFilterInput
                                         column={header.column}
                                         shouldAutoFocus={header.column.id === autoFocusColumnId}
+                                        applyOnEnter={!!server}
                                     />
                                 </div>
                             ) : null}
@@ -187,8 +255,8 @@ export function DataTable<TData, TValue>({
           <tbody className="divide-y divide-[var(--vscode-widget-border)]">
             {hasFooter && footerPosition === 'top' && table.getFooterGroups().map((footerGroup) => (
               <tr key={footerGroup.id} className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)]">
-                {footerGroup.headers.map((header) => (
-                  <td key={header.id} className="px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]">
+                {footerGroup.headers.map((header, index) => (
+                  <td key={header.id} className={`px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]${stuck(index, 'bg-[var(--vscode-sideBarSectionHeader-background)]')}`}>
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.footer, header.getContext())}
                   </td>
                 ))}
@@ -199,14 +267,14 @@ export function DataTable<TData, TValue>({
                 <tr
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
-                  className={`bg-[var(--vscode-editor-background)] transition-colors ${
+                  className={`group/row bg-[var(--vscode-editor-background)] transition-colors ${
                     onRowClick ? 'cursor-pointer hover:bg-[var(--vscode-list-hoverBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
                   }`}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map((cell, index) => (
                     <td 
                       key={cell.id} 
-                      className="px-4 py-2 break-words align-top border-r border-[var(--vscode-widget-border)]"
+                      className={`px-4 py-2 break-words align-top border-r border-[var(--vscode-widget-border)]${stuck(index, 'bg-[var(--vscode-editor-background)]')}`}
                       style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -244,8 +312,11 @@ export function DataTable<TData, TValue>({
       </div>
 
        {/* Pagination */}
-       {paginated && table.getPageCount() > 1 && (
-        <div className="flex items-center justify-between px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] text-xs text-[var(--vscode-foreground)]">
+       {(hasPager || status) && (
+        <div className={`flex items-center justify-between px-2 py-2 border-t border-[var(--vscode-widget-border)] bg-[var(--vscode-sideBarSectionHeader-background)] text-xs text-[var(--vscode-foreground)]${status ? ' flex-wrap gap-x-4 gap-y-1' : ''}`}>
+          {status}
+          {hasPager && (
+          <div className={status ? 'flex items-center gap-x-4 ml-auto' : 'contents'}>
              <div className="flex items-center space-x-2">
                 <span className="flex items-center gap-1">
                     <div>Page</div>
@@ -312,6 +383,8 @@ export function DataTable<TData, TValue>({
                     <ChevronsRight className="h-4 w-4" />
                 </button>
             </div>
+          </div>
+          )}
         </div>
       )}
 

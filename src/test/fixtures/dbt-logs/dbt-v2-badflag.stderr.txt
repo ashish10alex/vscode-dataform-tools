@@ -1,0 +1,4 @@
+error: unexpected argument '--no-such-flag' found
+
+
+For more information, try 'dbt parse --project-dir --help'.

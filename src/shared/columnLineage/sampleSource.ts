@@ -165,6 +165,15 @@ export const SAMPLE_IMPACT: { candidates: ImpactCandidate[]; changed: Set<string
         },
         { table: `${PROJECT}.ml.customer_ltv_features`, fileName: FILES['ml.customer_ltv_features'], type: 'incremental', uncheckedReason: 'dry run failed: Unrecognized name: revenue_usd at [12:5]' },
         { table: `${PROJECT}.staging.fx_backfill`, type: 'operations', uncheckedReason: 'operation: a dry run of a script has no schema' },
+        // New on the branch: one with no table yet, one whose table a run of the branch already built
+        { table: `${PROJECT}.marts.dim_currency`, type: 'table', new: true, noTable: true },
+        {
+            table: `${PROJECT}.marts.fct_daily_revenue_eur`,
+            type: 'table',
+            new: true,
+            prod: [{ name: 'order_date', type: 'DATE' }, { name: 'revenue_eur', type: 'NUMERIC' }],
+            dev: [{ name: 'order_date', type: 'DATE' }, { name: 'revenue_eur', type: 'NUMERIC' }],
+        },
     ],
     changed: new Set([`${PROJECT}.reporting.revenue_dashboard`, `${PROJECT}.reporting.exec_summary`, `${PROJECT}.ml.customer_ltv_features`]),
     sql: {

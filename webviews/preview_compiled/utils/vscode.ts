@@ -1,4 +1,5 @@
 import type { WebviewApi } from "vscode-webview";
+import type { PanelMessage } from "../../../src/shared/panelContract";
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
@@ -13,10 +14,11 @@ class VSCodeAPIWrapper {
   }
 
   /**
-   * Post a message to the extension
+   * Post a message to the extension. Only the messages of the panel contract can be sent, so a message the host
+   * has no case for does not type-check.
    * @param message The message to send
    */
-  public postMessage(message: unknown) {
+  public postMessage(message: PanelMessage) {
     if (this.vsCodeApi) {
       this.vsCodeApi.postMessage(message);
     } else {

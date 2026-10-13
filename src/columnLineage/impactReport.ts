@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import path from 'path';
 import { getWorkspaceFolder } from '../utils';
 import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
@@ -43,12 +44,13 @@ export function forgetDryRunSchema(document: vscode.TextDocument, curFileMeta: a
 
 /** The Prod Target of the one table the file defines. Throws with a message for the panel otherwise. */
 async function locate(document: vscode.TextDocument): Promise<{ table: string; index: Map<string, GraphAction>; toProd: (table: string) => string; operation: boolean }> {
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    const compiled = compiledJson();
+    if (!compiled) {
         throw new Error('Compile the project first.');
     }
     const workspaceFolder = await getWorkspaceFolder();
     const fileName = workspaceFolder && path.relative(workspaceFolder, document.uri.fsPath).split(path.sep).join('/');
-    const devIndex = indexGraph(CACHED_COMPILED_DATAFORM_JSON);
+    const devIndex = indexGraph(compiled);
     const actions = tableActions([...devIndex.values()].filter((action) => action.fileName === fileName));
     if (actions.length !== 1) {
         throw new Error('Column lineage works for files that define one table, view, incremental table or operation with hasOutput.');

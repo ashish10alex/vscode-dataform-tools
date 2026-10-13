@@ -1,0 +1,20 @@
+// A dev container that holds a dbt Project, to try a release of the extension in before it ships (xf#49: remote
+// hosts are supported, and each release is tried in one). See README.md beside this file.
+{
+    "name": "dbt Project, to try the extension in",
+    "image": "mcr.microsoft.com/devcontainers/python:3.12",
+    "features": {
+        // For `gcloud auth application-default login`, which BigQuery's dry runs and previews need
+        "ghcr.io/dhoeric/features/google-cloud-cli:1": {}
+    },
+    // The window opens at the example dbt Project, as a user opens a Project at its own folder
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/src/test/fixtures/xf-examples/projects/dbt",
+    "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/.devcontainer/dbt/setup.sh",
+    "customizations": {
+        "vscode": {
+            // The latest release from the Marketplace. To try a build that is not published yet, install its
+            // .vsix over this one: Extensions view, "...", "Install from VSIX..."
+            "extensions": ["ashishalex.dataform-lsp-vscode"]
+        }
+    }
+}

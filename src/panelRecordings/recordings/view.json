@@ -1,107 +1,99 @@
 {
-  "actionTypes": [
-    "view"
-  ],
-  "assertionQuery": "",
-  "compilerOptions": "",
-  "dataformCoreVersion": "3.0.39",
-  "dataformTags": [
-    "FOOTY",
-    "OPS_TAG",
-    "new_tag",
-    "tag2"
-  ],
-  "declarations": null,
-  "dependents": [
-    {
-      "database": "drawingfire-b72a8",
-      "name": "0100_CLUBS_ASSER",
-      "schema": "dataform_assertions"
-    },
-    {
-      "database": "drawingfire-b72a8",
-      "name": "test_one",
-      "schema": "dataform"
-    }
-  ],
-  "errorMessage": null,
-  "errorType": null,
-  "expectedOutputQuery": "",
-  "incrementalPreOpsQuery": "",
-  "incrementalQuery": "",
-  "isHelperFile": false,
-  "lineageMetadata": null,
-  "models": [
-    {
-      "actionDescriptor": {
-        "description": "data for club"
-      },
-      "dependencyTargets": [
-        {
-          "database": "drawingfire-b72a8",
-          "name": "CLUBS",
-          "schema": "football_data"
-        }
-      ],
-      "fileName": "definitions/0100_CLUBS.sqlx",
-      "incrementalPreOps": [],
-      "incrementalQuery": "",
-      "query": "\n\nselect * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
-      "tags": [
-        "FOOTY"
-      ],
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0100_CLUBS",
-        "schema": "dataform"
-      },
-      "type": "view"
-    }
-  ],
-  "modelType": "view",
-  "nonIncrementalQuery": "",
-  "operationsQuery": "",
-  "packageJsonContent": null,
-  "postOperations": "",
-  "preOperations": "",
-  "projectConfig": {
-    "assertionSchema": "dataform_assertions",
-    "defaultDatabase": "drawingfire-b72a8",
-    "defaultLocation": "europe-west2",
-    "defaultSchema": "dataform",
-    "warehouse": "bigquery"
+  "compile": {
+    "errors": [],
+    "status": "compiled"
   },
-  "propertyGraphs": null,
-  "recompiling": false,
-  "relativeFilePath": "definitions/0100_CLUBS.sqlx",
-  "tableOrViewQuery": "select * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"\n;",
-  "targetTablesOrViews": [
-    {
-      "actionDescriptor": {
-        "description": "data for club"
-      },
-      "dependencyTargets": [
-        {
+  "dataform": {
+    "compilerOptions": "",
+    "dataformCoreVersion": "3.0.39",
+    "lineage": null,
+    "projectConfig": {
+      "assertionSchema": "dataform_assertions",
+      "defaultDatabase": "drawingfire-b72a8",
+      "defaultLocation": "europe-west2",
+      "defaultSchema": "dataform",
+      "warehouse": "bigquery"
+    },
+    "propertyGraphs": null
+  },
+  "file": {
+    "actions": [
+      {
+        "buildsNothing": false,
+        "buildsTable": true,
+        "dependencies": [
+          {
+            "fileName": "definitions/sources.js",
+            "kind": "declaration",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "CLUBS",
+              "schema": "football_data"
+            }
+          }
+        ],
+        "dependents": [
+          {
+            "fileName": "definitions/notebooks/test_one.ipynb",
+            "kind": "notebook",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "test_one",
+              "schema": "dataform"
+            }
+          },
+          {
+            "fileName": "definitions/assertions/0100_CLUBS_ASSER.sqlx",
+            "kind": "assertion",
+            "target": {
+              "database": "drawingfire-b72a8",
+              "name": "0100_CLUBS_ASSER",
+              "schema": "dataform_assertions"
+            }
+          }
+        ],
+        "description": "data for club",
+        "disabled": false,
+        "fileName": "definitions/0100_CLUBS.sqlx",
+        "id": "drawingfire-b72a8.dataform.0100_CLUBS",
+        "kind": "view",
+        "runnable": true,
+        "sections": [
+          {
+            "compiled": true,
+            "dryRun": [
+              "query"
+            ],
+            "sql": "select * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
+            "title": "query"
+          }
+        ],
+        "sqlPresent": true,
+        "tags": [
+          "FOOTY"
+        ],
+        "target": {
           "database": "drawingfire-b72a8",
-          "name": "CLUBS",
-          "schema": "football_data"
+          "name": "0100_CLUBS",
+          "schema": "dataform"
         }
-      ],
-      "fileName": "definitions/0100_CLUBS.sqlx",
-      "incrementalPreOps": [],
-      "incrementalQuery": "",
-      "query": "\n\nselect * from \n`drawingfire-b72a8.football_data.CLUBS` WHERE 1=1\n-- AND LOWER(name)  LIKE \"%manchester%\"",
-      "tags": [
-        "FOOTY"
-      ],
-      "target": {
-        "database": "drawingfire-b72a8",
-        "name": "0100_CLUBS",
-        "schema": "dataform"
-      },
-      "type": "view"
-    }
-  ],
-  "testQuery": "",
-  "workspaceFolder": "<workspace>"
+      }
+    ],
+    "file": "definitions/0100_CLUBS.sqlx",
+    "role": "actions"
+  },
+  "project": {
+    "backend": "dataform",
+    "parts": {
+      "changes": false,
+      "runner": true
+    },
+    "root": "<workspace>",
+    "tags": [
+      "FOOTY",
+      "OPS_TAG",
+      "new_tag",
+      "tag2"
+    ]
+  }
 }

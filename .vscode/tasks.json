@@ -28,6 +28,20 @@
             "regexp": "✘ \\[ERROR\\] (.+)$",
             "message": 1
           }
+        },
+        // The webviews are built by Vite, which takes longer than esbuild: a host started before it ends
+        // opens panels whose script is not there yet
+        {
+          "owner": "vite",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "build started\\.\\.\\.",
+            "endsPattern": "built in \\d"
+          },
+          "pattern": {
+            "regexp": "^error during build:\\s*(.+)$",
+            "message": 1
+          }
         }
       ]
     }

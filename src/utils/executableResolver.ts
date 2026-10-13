@@ -6,61 +6,74 @@ import util from 'util';
 import { logger } from '../logger';
 import { perfCount } from '../perf';
 import { cacheDurationMs } from '../constants';
-import { ExecutablePathCache, ExecutablePathInfo } from '../types';
+import { ExecutablePathCache, ExecutablePathInfo, ExecutableSource } from '../types';
+import { extensionConfiguration } from '../project/settings';
 
 const executablePathCache: ExecutablePathCache = new Map<string, ExecutablePathInfo>();
 const execFilePromise = util.promisify(execFile);
 
+/** Lookups differ per Project: a path setting can be set for one workspace folder only */
+function cacheKeyFor(executableName: string, workspaceFolder?: string): string {
+    return `${executableName}:${process.platform}:${workspaceFolder ?? ''}`;
+}
+
 /** A found path stays cached until a setting that affects it changes; a miss is retried after cacheDurationMs. */
-function getCachedExecutablePath(cacheKey: string): string | null | undefined {
+function getCachedExecutable(cacheKey: string): ExecutablePathInfo | undefined {
     const cached = executablePathCache.get(cacheKey);
     if (cached && (cached.path !== null || (Date.now() - cached.timestamp) < cacheDurationMs)) {
-        return cached.path;
+        return cached;
     }
     return undefined;
 }
 
-function rememberExecutablePath(cacheKey: string, foundPath: string | null): string | null {
-    executablePathCache.set(cacheKey, { path: foundPath, timestamp: Date.now() });
-    return foundPath;
+function rememberExecutable(cacheKey: string, foundPath: string | null, foundBy?: ExecutableSource): ExecutablePathInfo {
+    const info: ExecutablePathInfo = { path: foundPath, foundBy: foundPath ? foundBy : undefined, timestamp: Date.now() };
+    executablePathCache.set(cacheKey, info);
+    return info;
 }
 
 /**
  * Resolves an executable like findExecutableInPaths, but searches PATH without blocking the extension host.
  * Called at activation so later synchronous lookups hit the cache.
  */
-export async function prefetchExecutablePath(executableName: string): Promise<string | null> {
-    const cacheKey = `${executableName}:${process.platform}`;
-    const cached = getCachedExecutablePath(cacheKey);
+export async function prefetchExecutablePath(executableName: string, workspaceFolder?: string): Promise<string | null> {
+    const cacheKey = cacheKeyFor(executableName, workspaceFolder);
+    const cached = getCachedExecutable(cacheKey);
     if (cached !== undefined) {
-        return cached;
+        return cached.path;
     }
-    const specificPath = getSpecificExecutablePath(executableName);
+    const specificPath = getSpecificExecutablePath(executableName, workspaceFolder);
     if (specificPath) {
-        return rememberExecutablePath(cacheKey, specificPath);
+        return rememberExecutable(cacheKey, specificPath, 'setting').path;
     }
     try {
         const command = isRunningOnWindows ? 'where' : 'which';
         const { stdout } = await execFilePromise(command, [executableName], { encoding: 'utf8', timeout: 5000, windowsHide: true });
         const firstPath = stdout.trim().split('\n')[0]?.trim();
         if (firstPath && isValidExecutablePath(firstPath)) {
-            return rememberExecutablePath(cacheKey, firstPath);
+            return rememberExecutable(cacheKey, firstPath, 'path').path;
         }
     } catch (error) {
         logger.debug(`System PATH search failed for ${executableName}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    return rememberExecutablePath(cacheKey, findExecutableInCommonLocations(executableName));
+    return rememberExecutable(cacheKey, findExecutableInCommonLocations(executableName), 'commonLocation').path;
+}
+
+/**
+ * The executable a Project would run, and which step of the lookup found it: the Project's own
+ * `node_modules/.bin` for a `local` dataformCliScope, else the path setting, PATH, then common install locations.
+ */
+export function resolveExecutable(name: string, workspaceFolder?: string): { path: string | null, foundBy?: ExecutableSource } {
+    if (name === 'dataform' && workspaceFolder && extensionConfiguration(vscode.Uri.file(workspaceFolder)).get('dataformCliScope') === 'local') {
+        const localPath = path.join(workspaceFolder, 'node_modules', '.bin', isRunningOnWindows ? 'dataform.cmd' : 'dataform');
+        return isValidExecutablePath(localPath) ? { path: localPath, foundBy: 'projectLocal' } : { path: null };
+    }
+    const { path: foundPath, foundBy } = lookUpExecutable(name, workspaceFolder);
+    return { path: foundPath, foundBy };
 }
 
 export function executableIsAvailable(name: string, showErrorOnNotFound: boolean = false, workspaceFolder?: string): boolean {
-    let foundPath: string | null;
-    if (name === 'dataform' && workspaceFolder) {
-        // Check the CLI a run would actually use, so a `local` dataformCliScope finds node_modules/.bin/dataform
-        const resolvedPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-        foundPath = isValidExecutablePath(resolvedPath) ? resolvedPath : null;
-    } else {
-        foundPath = findExecutableInPaths(name);
-    }
+    const foundPath = resolveExecutable(name, workspaceFolder).path;
 
     if (!foundPath && showErrorOnNotFound) {
         vscode.window.showErrorMessage(`${name} cli not found`, "Installation Guide").then(selection => {
@@ -76,7 +89,7 @@ export function executableIsAvailable(name: string, showErrorOnNotFound: boolean
 /** The Dataform CLI to run for a workspace: `<workspace>/node_modules/.bin/dataform` when dataformCliScope is `local`, otherwise the one found on PATH or in common locations. */
 export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
     const dataformCliBase = isRunningOnWindows ? 'dataform.cmd' : 'dataform';
-    const dataformCliScope: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('dataformCliScope');
+    const dataformCliScope: string | undefined = extensionConfiguration(vscode.Uri.file(workspaceFolder)).get('dataformCliScope');
     logger.debug(`Dataform CLI scope setting: ${dataformCliScope || 'not set (using global)'}`);
 
     if (dataformCliScope === 'local') {
@@ -85,36 +98,38 @@ export function getDataformCliCmdBasedOnScope(workspaceFolder: string): string {
         return fullLocalPath;
     }
 
-    const resolvedPath = findExecutableInPaths('dataform') || dataformCliBase;
+    const resolvedPath = findExecutableInPaths('dataform', workspaceFolder) || dataformCliBase;
     logger.debug(`Using global dataform CLI: ${resolvedPath}`);
     return resolvedPath;
 }
 
 // Find executable using built-in detection + user overrides
-export function findExecutableInPaths(executableName: string): string | null {
-    const cacheKey = `${executableName}:${process.platform}`;
-    const cached = getCachedExecutablePath(cacheKey);
+export function findExecutableInPaths(executableName: string, workspaceFolder?: string): string | null {
+    return lookUpExecutable(executableName, workspaceFolder).path;
+}
+
+function lookUpExecutable(executableName: string, workspaceFolder?: string): ExecutablePathInfo {
+    const cacheKey = cacheKeyFor(executableName, workspaceFolder);
+    const cached = getCachedExecutable(cacheKey);
     if (cached !== undefined) {
-        logger.debug(`Binary path cache hit for ${executableName}: ${cached}`);
+        logger.debug(`Binary path cache hit for ${executableName}: ${cached.path}`);
         return cached;
     }
 
     logger.debug(`Binary path cache miss for ${executableName}, searching...`);
 
     // 1. Check user-specified exact path first (highest priority)
-    const specificPath = getSpecificExecutablePath(executableName);
+    const specificPath = getSpecificExecutablePath(executableName, workspaceFolder);
     if (specificPath) {
         logger.debug(`Found ${executableName} via user config: ${specificPath}`);
-        executablePathCache.set(cacheKey, { path: specificPath, timestamp: Date.now() });
-        return specificPath;
+        return rememberExecutable(cacheKey, specificPath, 'setting');
     }
 
     // 2. Check system PATH with enhanced detection
     const systemPath = findExecutableInSystemPath(executableName);
     if (systemPath) {
         logger.debug(`Found ${executableName} via system PATH: ${systemPath}`);
-        executablePathCache.set(cacheKey, { path: systemPath, timestamp: Date.now() });
-        return systemPath;
+        return rememberExecutable(cacheKey, systemPath, 'path');
     }
 
     // 3. Check common tool manager and installation locations
@@ -124,14 +139,13 @@ export function findExecutableInPaths(executableName: string): string | null {
     } else {
         logger.debug(`${executableName} not found in any location`);
     }
-    executablePathCache.set(cacheKey, { path: commonPath, timestamp: Date.now() });
-    return commonPath;
+    return rememberExecutable(cacheKey, commonPath, 'commonLocation');
 }
 
 // Get user-specified exact path for executable
-function getSpecificExecutablePath(executableName: string): string | null {
+function getSpecificExecutablePath(executableName: string, workspaceFolder?: string): string | null {
     try {
-        const vscodeConfig = vscode.workspace.getConfiguration('vscode-dataform-tools');
+        const vscodeConfig = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
         const configKey = `${executableName}ExecutablePath`;
         const specificPath = vscodeConfig.get<string>(configKey);
 
@@ -294,8 +308,8 @@ export function debugExecutablePaths(): void {
     const results: string[] = [];
 
     executables.forEach(exe => {
-        const foundPath = findExecutableInPaths(exe);
-        results.push(`${exe}: ${foundPath || 'Not found'}`);
+        const { path: foundPath, foundBy } = resolveExecutable(exe);
+        results.push(`${exe}: ${foundPath ? `${foundPath} (${foundBy})` : 'Not found'}`);
     });
 
     // Show concise results to user
@@ -309,7 +323,7 @@ export function debugExecutablePaths(): void {
 
 export function getSqlfluffConfigPathFromSettings() {
     let defaultSqlfluffConfigPath = ".vscode-dataform-tools/.sqlfluff";
-    let sqlfluffConfigPath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffConfigPath');
+    let sqlfluffConfigPath: string | undefined = extensionConfiguration().get('sqlfluffConfigPath');
     if (sqlfluffConfigPath) {
         if (isRunningOnWindows) {
             sqlfluffConfigPath = path.win32.normalize(sqlfluffConfigPath);
@@ -324,7 +338,7 @@ export function getSqlfluffConfigPathFromSettings() {
 
 export function getSqlfluffExecutablePathFromSettings() {
     let defaultSqlfluffExecutablePath = "sqlfluff";
-    let sqlfluffExecutablePath: string | undefined = vscode.workspace.getConfiguration('vscode-dataform-tools').get('sqlfluffExecutablePath');
+    let sqlfluffExecutablePath: string | undefined = extensionConfiguration().get('sqlfluffExecutablePath');
     logger.debug(`sqlfluffExecutablePath: ${sqlfluffExecutablePath}`);
     if (sqlfluffExecutablePath !== defaultSqlfluffExecutablePath && sqlfluffExecutablePath !== undefined) {
         if (isRunningOnWindows) {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { HostEvent } from "../../../src/shared/panelContract";
 import { Loader2, RotateCcw, X } from 'lucide-react';
 import { ExecutionMode, LastRunView, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
@@ -51,7 +52,7 @@ function StatusIndicator({ status }: { status: RunStatus }) {
     }
 }
 
-function formatAgo(timestamp: number, now: number): string {
+export function formatAgo(timestamp: number, now: number): string {
     const minutes = Math.floor(Math.max(0, now - timestamp) / 60000);
     if (minutes < 1) { return 'just now'; }
     if (minutes < 60) { return `${minutes}m ago`; }
@@ -70,17 +71,11 @@ interface LastRunCardProps {
 }
 
 /**
- * Shows "Starting…" from the click until the extension records the rerun (the last run timestamp changes),
- * reports that it was aborted (cancelled confirmation, missing files, ...), or a safety timeout passes.
+ * Repeats the last run. `starting` is true from the click until the extension records the rerun (the last run
+ * timestamp changes), reports that it was aborted (cancelled confirmation, missing files, ...), or a safety timeout passes.
  */
-export function LastRunCard({ lastRun, latestApiRun, disabled, onRerunDispatched }: LastRunCardProps) {
-    const [now, setNow] = useState(Date.now());
+export function useRerun(lastRun: LastRunView | null | undefined, onRerunDispatched?: (executionMode: ExecutionMode) => void): { starting: boolean; rerun: () => void } {
     const [rerunFromTimestamp, setRerunFromTimestamp] = useState<number | null>(null);
-
-    useEffect(() => {
-        const interval = setInterval(() => setNow(Date.now()), 30000);
-        return () => clearInterval(interval);
-    }, []);
 
     useEffect(() => {
         if (rerunFromTimestamp === null || !lastRun) { return; }
@@ -90,7 +85,7 @@ export function LastRunCard({ lastRun, latestApiRun, disabled, onRerunDispatched
             return;
         }
         const handleMessage = (event: MessageEvent) => {
-            if (event.data?.rerunAborted) {
+            if ((event.data as HostEvent | undefined)?.event === 'rerun aborted') {
                 setRerunFromTimestamp(null);
             }
         };
@@ -102,13 +97,26 @@ export function LastRunCard({ lastRun, latestApiRun, disabled, onRerunDispatched
         };
     }, [rerunFromTimestamp, lastRun, onRerunDispatched]);
 
-    if (!lastRun) { return null; }
-
-    const starting = rerunFromTimestamp !== null;
-    const handleRerun = () => {
-        setRerunFromTimestamp(lastRun.timestamp);
-        vscode.postMessage({ command: 'rerunLastExecution' });
+    return {
+        starting: rerunFromTimestamp !== null,
+        rerun: () => {
+            if (!lastRun) { return; }
+            setRerunFromTimestamp(lastRun.timestamp);
+            vscode.postMessage({ command: 'repeatLastRun' });
+        },
     };
+}
+
+export function LastRunCard({ lastRun, latestApiRun, disabled, onRerunDispatched }: LastRunCardProps) {
+    const [now, setNow] = useState(Date.now());
+    const { starting, rerun: handleRerun } = useRerun(lastRun, onRerunDispatched);
+
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    if (!lastRun) { return null; }
 
     const status = starting ? 'starting' : resolveStatus(lastRun, latestApiRun);
 

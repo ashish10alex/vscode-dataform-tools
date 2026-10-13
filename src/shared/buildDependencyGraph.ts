@@ -1,4 +1,5 @@
 import { Assertion, DataformCompiledJson, Declarations, DependancyModelMetadata, Operation, PropertyGraph, Table } from "../types";
+import { CompiledGraph, actionsInFile, buildsTable, isExternalKind, isTestKind } from "./compiledGraph";
 
 export interface GraphEdge {
     id: string;
@@ -164,4 +165,65 @@ export function buildDependencyGraph(
         datasetColorMap: state.datasetColorMap,
         focusNodeId: state.focusNodeId,
     };
+}
+
+export interface BuildCompiledGraphDependencyGraphOptions {
+    /** The file on show, relative to the Project root with forward slashes. The graph centres on its first action */
+    focusFile?: string;
+}
+
+/**
+ * The same node/edge representation from a Backend's Compiled Graph, for a dbt Project. Every action that is not
+ * disabled is a node; tests and unit tests are marked as assertions, so the graph hides them the same way, and
+ * sources are coloured by schema as declarations are. Each node carries its action's ID, which the host needs to
+ * find where a YAML-defined action is declared.
+ *
+ * No I/O, no VS Code APIs.
+ */
+export function buildDependencyGraphFromCompiledGraph(
+    graph: CompiledGraph,
+    options: BuildCompiledGraphDependencyGraphOptions = {}
+): BuildDependencyGraphResult {
+    const actions = Object.values(graph.actions).filter((action) => !action.disabled);
+    const idxOf = new Map(actions.map((action, idx) => [action.id, String(idx)]));
+    const datasetColorMap = new Map<string, string>();
+    for (const action of actions) {
+        if (isExternalKind(action.kind) && !datasetColorMap.has(action.target.schema)) {
+            datasetColorMap.set(action.target.schema, datasetColors[datasetColorMap.size % datasetColors.length]);
+        }
+    }
+
+    const nodes: DependancyModelMetadata[] = [];
+    const edges: GraphEdge[] = [];
+    for (const action of actions) {
+        const id = idxOf.get(action.id)!;
+        const isExternalSource = isExternalKind(action.kind);
+        nodes.push({
+            id,
+            type: "tableNode",
+            data: {
+                modelName: action.target.name,
+                datasetId: action.target.schema,
+                projectId: action.target.database,
+                type: action.kind,
+                tags: action.tags,
+                datasetColor: (isExternalSource && datasetColorMap.get(action.target.schema)) || "grey",
+                fileName: action.fileName,
+                isExternalSource,
+                isAssertion: isTestKind(action.kind),
+                fullTableName: action.id,
+                actionId: action.id,
+                noTable: !buildsTable(action),
+            },
+        });
+        for (const dependency of graph.dependencies[action.id] ?? []) {
+            const source = idxOf.get(dependency);
+            if (source !== undefined) {
+                edges.push({ id: `e${source}-${id}`, source, target: id, tags: action.tags });
+            }
+        }
+    }
+
+    const focus = options.focusFile ? actionsInFile(graph, options.focusFile).find((action) => !action.disabled) : undefined;
+    return { nodes, edges, datasetColorMap, focusNodeId: focus ? idxOf.get(focus.id) ?? null : null };
 }

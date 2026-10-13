@@ -17,15 +17,20 @@ interface NodeData {
   tags: string[];
   fileName: string;
   datasetColor: string;
-  type: 'view' | 'table' | 'operation' | 'operations' | 'source' | 'assertions' | 'propertyGraphs';
+  // A Dataform action type, or the Kind of an action from a Compiled Graph (a dbt Project's)
+  type: string;
   onNodeClick: (nodeId: string) => void;
   isExternalSource: boolean;
   isAssertion: boolean;
   fullTableName: string;
+  // Set for a dbt Project's action: the host finds where it is defined by it
+  actionId?: string;
+  // The action builds no table (a dbt test, exposure or ephemeral model), so there is none to link to
+  noTable?: boolean;
 }
 
 const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
-  const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, isAssertion, fullTableName, fileName } = data;
+  const { modelName, datasetId, projectId, datasetColor, type, onNodeClick, isExternalSource, isAssertion, fullTableName, fileName, actionId, noTable } = data;
   const [isHovered, setIsHovered] = React.useState(false);
   const [showNotification, setShowNotification] = React.useState(false);
 
@@ -123,6 +128,7 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
                 modelName: modelName,
                 filePath: fileName,
                 type: type,
+                actionId,
               }
             });
           }}
@@ -136,24 +142,26 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
         </button>
       )}
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          getTransport().postMessage({
-            type: 'goToBigQuery',
-            value: {
-              url: getUrlToNavigateToTableInBigQuery(projectId, datasetId, modelName)
-            }
-          });
-        }}
-        className={`absolute ${iconBtnBottom} ${BIGQUERY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
-        title="Open in BigQuery"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 13a5.001 5.001 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      {!noTable && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            getTransport().postMessage({
+              type: 'goToBigQuery',
+              value: {
+                url: getUrlToNavigateToTableInBigQuery(projectId, datasetId, modelName)
+              }
+            });
+          }}
+          className={`absolute ${iconBtnBottom} ${BIGQUERY_BTN_RIGHT} p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200 shadow-sm group`}
+          title="Open in BigQuery"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 13a5.001 5.001 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M14 11a5.001 5.001 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
 
 
       <button
@@ -177,18 +185,20 @@ const TableNode: React.FC<{ data: NodeData; id: string }> = ({ data, id }) => {
 
 
 
-      <button
-        onClick={handleShowSchema}
-        className="absolute left-0 right-0 bottom-0 px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-50 hover:bg-gray-200 border-t border-gray-200 rounded-b-md transition-colors duration-150 flex items-center justify-center gap-1"
-        title="Show schema (BigQuery)"
-      >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="12" cy="5" rx="8" ry="3" stroke="#000" strokeWidth="2" />
-          <path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <span>schema</span>
-      </button>
+      {!noTable && (
+        <button
+          onClick={handleShowSchema}
+          className="absolute left-0 right-0 bottom-0 px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-50 hover:bg-gray-200 border-t border-gray-200 rounded-b-md transition-colors duration-150 flex items-center justify-center gap-1"
+          title="Show schema (BigQuery)"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="12" cy="5" rx="8" ry="3" stroke="#000" strokeWidth="2" />
+            <path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span>schema</span>
+        </button>
+      )}
 
       <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
 

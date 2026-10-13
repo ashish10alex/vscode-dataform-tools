@@ -1,0 +1,11 @@
+config {
+  type: "table",
+  schema: "reporting",
+  name: "revenue_report",
+  description: "Revenue by country, in its own dataset under its own name."
+}
+
+SELECT c.country_code, SUM(o.amount) AS revenue
+FROM ${ref("fct_orders")} AS o
+JOIN ${ref("dim_customers")} AS c USING (customer_id)
+GROUP BY 1

@@ -1,4 +1,6 @@
 import fs from "fs";
+import { extensionConfiguration } from './project/settings';
+import { currentDataformRoot } from './project';
 import path from 'path';
 import * as vscode from 'vscode';
 import { exec, execFile } from 'child_process';
@@ -14,11 +16,11 @@ export class GitService {
     private projectRoot: string;
 
     constructor() {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders?.length) {
+        const root = currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!root) {
             throw new Error("No workspace folder open.");
         }
-        this.projectRoot = workspaceFolders ? workspaceFolders[0].uri.fsPath : "";
+        this.projectRoot = root;
     }
 
     private async execCmd(command: string): Promise<string> {
@@ -50,8 +52,7 @@ export class GitService {
             // git rev-parse --abbrev-ref HEAD works correctly in worktrees
             const gitBranch = await this.execCmd('git rev-parse --abbrev-ref HEAD') || undefined;
 
-            const overrideRepoName = vscode.workspace
-                .getConfiguration('vscode-dataform-tools')
+            const overrideRepoName = extensionConfiguration(vscode.Uri.file(this.projectRoot))
                 .get<string>('gitRepoName')
                 ?.trim();
             if (overrideRepoName) {
@@ -245,6 +246,20 @@ export class GitService {
         } catch (error) {
             return undefined;
         }
+    }
+
+    /** The top directory of the git repository the Project is in, or undefined when it is in none */
+    public async getTopLevel(): Promise<string | undefined> {
+        try {
+            return await this.execCmd("git rev-parse --show-toplevel") || undefined;
+        } catch (error) {
+            return undefined;
+        }
+    }
+
+    /** The directory git is run in: the root of the Project */
+    public get root(): string {
+        return this.projectRoot;
     }
 
     public async getHeadSha(): Promise<string | undefined> {

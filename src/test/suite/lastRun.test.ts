@@ -31,6 +31,14 @@ suite('lastRun.summarizeLastRun', () => {
         assert.strictEqual(label, 'tag daily · +dependencies · CLI');
     });
 
+    test('names the actions of a run of actions, which have no file to check for', () => {
+        const actions = request({ kind: 'actions', items: ['p.d.orders', 'p.d.orders_graph'] });
+        const { label, detail } = summarizeLastRun(actions, 'cli');
+        assert.strictEqual(label, '2 actions: p.d.orders, p.d.orders_graph · CLI');
+        assert.ok(detail.includes('Actions: p.d.orders, p.d.orders_graph'));
+        assert.deepStrictEqual(findMissingItems(actions, undefined, () => false), []);
+    });
+
     test('uses file names in the label and full paths in the detail', () => {
         const { label, detail } = summarizeLastRun(
             request({ kind: 'currentFile', items: ['definitions/marts/orders.sqlx'], fullRefresh: true }),
@@ -126,6 +134,11 @@ suite('lastRun.planReplay', () => {
     test('routes file runs to the matching runner', () => {
         assert.strictEqual(planReplay(request({ kind: 'currentFile', items: ['a.sqlx'] }), false).runner, 'currentFile');
         assert.strictEqual(planReplay(request({ kind: 'files', items: ['a.sqlx'] }), false).runner, 'files');
+    });
+
+    test('routes a run of actions to the runner that takes them', () => {
+        assert.strictEqual(planReplay(request({ kind: 'actions', items: ['p.d.orders'] }), false).runner, 'actions');
+        assert.strictEqual(planReplay(request({ kind: 'actions', items: ['p.d.orders'] }), true).executionMode, 'api');
     });
 
     test('routes changed-actions runs to the recomputing runner', () => {

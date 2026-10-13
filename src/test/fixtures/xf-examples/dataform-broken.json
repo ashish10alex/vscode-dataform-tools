@@ -1,0 +1,90 @@
+{
+    "tables": [
+        {
+            "type": "table",
+            "target": {
+                "schema": "xf_example",
+                "name": "order_totals",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\n-- Deliberately broken: no action is called order_lines.\nSELECT o.order_id, COUNT(*) AS lines\nFROM `alex-personal-dev-01.xf_example.orders` AS o\nJOIN  AS l USING (order_id)\nGROUP BY 1\n",
+            "disabled": false,
+            "fileName": "definitions/order_totals.sqlx",
+            "dependencyTargets": [
+                {
+                    "schema": "xf_example",
+                    "name": "orders",
+                    "database": "alex-personal-dev-01"
+                }
+            ],
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "order_totals",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        },
+        {
+            "type": "table",
+            "target": {
+                "schema": "xf_example",
+                "name": "orders",
+                "database": "alex-personal-dev-01"
+            },
+            "query": "\n\nSELECT 1 AS order_id\n",
+            "disabled": false,
+            "fileName": "definitions/orders.sqlx",
+            "hermeticity": "NON_HERMETIC",
+            "canonicalTarget": {
+                "schema": "xf_example",
+                "name": "orders",
+                "database": "alex-personal-dev-01"
+            },
+            "enumType": "TABLE"
+        }
+    ],
+    "projectConfig": {
+        "warehouse": "bigquery",
+        "defaultSchema": "xf_example",
+        "assertionSchema": "xf_example_assertions",
+        "defaultDatabase": "alex-personal-dev-01",
+        "defaultLocation": "EU"
+    },
+    "graphErrors": {
+        "compilationErrors": [
+            {
+                "fileName": "definitions/order_totals.sqlx",
+                "message": "Could not resolve \"order_lines\"",
+                "stack": "Error: Could not resolve \"order_lines\"\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}"
+            },
+            {
+                "fileName": "definitions/order_totals.sqlx",
+                "message": "Missing dependency detected: Action \"alex-personal-dev-01.xf_example.order_totals\" depends on \"{\"name\":\"order_lines\",\"includeDependentAssertions\":false}\" which does not exist",
+                "stack": "Error: Missing dependency detected: Action \"alex-personal-dev-01.xf_example.order_totals\" depends on \"{\"name\":\"order_lines\",\"includeDependentAssertions\":false}\" which does not exist\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}\n    at CallSite {}",
+                "actionName": "alex-personal-dev-01.xf_example.order_totals",
+                "actionTarget": {
+                    "schema": "xf_example",
+                    "name": "order_totals",
+                    "database": "alex-personal-dev-01"
+                }
+            }
+        ]
+    },
+    "dataformCoreVersion": "3.0.71",
+    "targets": [
+        {
+            "schema": "xf_example",
+            "name": "order_totals",
+            "database": "alex-personal-dev-01"
+        },
+        {
+            "schema": "xf_example",
+            "name": "orders",
+            "database": "alex-personal-dev-01"
+        }
+    ],
+    "jitData": {}
+}
+
+

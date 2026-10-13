@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
 import { logger } from '../logger';
-import { getNonce, getPostionOfSourceDeclaration, getWorkspaceFolder } from '../utils';
+import { getNonce, getPostionOfSourceDeclaration, getVSCodeDocument, getWorkspaceFolder } from '../utils';
 import { generateDependancyTreeMetadata } from '../dependancyTreeNodeMeta';
 import { fetchTableMetadata } from '../hoverProvider';
+import { ProjectState, projects } from '../project';
+import { dbtDependencyGraph, openDbtAction } from '../project/dbtDependencyGraph';
 import path from 'path';
+import { extensionConfiguration } from '../project/settings';
 
 function normalizeSchemaFields(raw: any[]): Array<{ name: string; type: string; mode?: string; description?: string; fields?: any[] }> {
     if (!Array.isArray(raw)) {return [];}
@@ -71,9 +74,21 @@ export function getWebViewHtmlContent(context: vscode.ExtensionContext, webview:
   }
 
 
+async function dbtGraphMetadata(project: ProjectState) {
+    const result = await dbtDependencyGraph(project, (getVSCodeDocument() || activeDocumentObj)?.uri?.fsPath);
+    return result && {
+        dependancyTreeMetadata: result.nodes,
+        initialEdgesStatic: result.edges,
+        datasetColorMap: result.datasetColorMap,
+        currentActiveEditorIdx: result.focusNodeId ?? "0",
+    };
+}
+
 export async function createDependencyGraphPanel(context: vscode.ExtensionContext, viewColumn: vscode.ViewColumn = vscode.ViewColumn.Beside) {
     logger.info('Creating dependency graph panel');
-    const output = await generateDependancyTreeMetadata();
+    // The active Project's graph: a dbt Project's from its latest compile, else the Dataform one as before
+    const dbtProject = projects.active?.backend === 'dbt' ? projects.active : undefined;
+    const output = dbtProject ? await dbtGraphMetadata(dbtProject) : await generateDependancyTreeMetadata();
     logger.info(`output.currentActiveEditorIdx: ${output?.currentActiveEditorIdx}`);
     if(!output){
         logger.error('No dependency graph data found');
@@ -114,11 +129,16 @@ export async function createDependencyGraphPanel(context: vscode.ExtensionContex
                             initialEdgesStatic: output.initialEdgesStatic,
                             datasetColorMap: Object.fromEntries(output.datasetColorMap),
                             currentActiveEditorIdx: output.currentActiveEditorIdx,
-                            showAssertions: vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('showAssertionsInDependencyGraph', false),
+                            showAssertions: extensionConfiguration().get<boolean>('showAssertionsInDependencyGraph', false),
+                            backend: dbtProject ? 'dbt' : 'dataform',
                         }
                     });
                     break;
                 case 'nodeFileName':
+                    if (dbtProject) {
+                        await openDbtAction(dbtProject, message.value.actionId, message.value.filePath);
+                        return;
+                    }
                     const filePath = message.value.filePath;
                     const type = message.value.type;
                     if (filePath) {

@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import type { ImpactColumn, ImpactReader, ImpactSeverity, ImpactTable, ImpactView } from '../../src/shared/columnLineage/impactSummary';
 import {
-    LINK_LABELS, describeChange, impactSeverity, isSettled, openReaders, otherProject, safeSummary, shortTable, summaryCounts,
+    LINK_LABELS, NEW_TAG, describeChange, impactSeverity, isSettled, newNote, openReaders, otherProject, safeSummary, shortTable, summaryCounts, unsetHint,
 } from '../../src/shared/columnLineage/impactSummary';
 import type { Bridge } from './bridge';
 
@@ -17,6 +17,7 @@ const OPEN_UP_TO = 25;
 /** Keys of the parts that collapse: a column's readers, a deleted table's readers, and the lists after the tables */
 const groupKey = (table: string, column = '') => `${table}#${column}`;
 const SAFE_KEY = '#safe';
+const NEW_KEY = '#new';
 const UNCHECKED_KEY = '#unchecked';
 
 /** Every part that collapses, with the rows it shows when open */
@@ -27,6 +28,9 @@ function collapsibles(impact: ImpactView): [string, number][] {
         : entry.columns.map((column) => [groupKey(entry.table, column.column), rows(column.readers)]));
     if (impact.safe.length) {
         parts.push([SAFE_KEY, impact.safe.length]);
+    }
+    if (impact.new.length) {
+        parts.push([NEW_KEY, impact.new.length]);
     }
     if (impact.unchecked.length) {
         parts.push([UNCHECKED_KEY, impact.unchecked.length]);
@@ -159,6 +163,7 @@ function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; is
         <section className="ln-list-section">
             <h2 className="ln-list-heading ln-impact-table">
                 <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
+                {entry.new && <span className="ln-chip" title="The base branch doesn't have this action, but its table is already there">{NEW_TAG}</span>}
                 <span className="ln-list-count">
                     {entry.deleted
                         ? 'deleted on this branch'
@@ -239,6 +244,9 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
             <Header impact={impact} bridge={bridge} now={now} toggleAll={toggleAll} />
             {ready && (
                 <div className="ln-list">
+                    {impact.unset && (
+                        <div className="ln-banner" role="note">{unsetHint(impact).replace(/`/g, '')}</div>
+                    )}
                     {impact.atRisk.length === 0 && (
                         <div className="ln-banner" role="note">
                             <strong>Nothing at risk.</strong> No changed table drops or retypes a column against {impact.against?.length ? `the tables in ${impact.against.join(', ')}` : 'prod'}, and no table is deleted.
@@ -261,6 +269,19 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                                     <li key={entry.table}>
                                         <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
                                         {entry.added?.length ? <span className="ln-dataset"> · adds {entry.added.join(', ')}</span> : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    )}
+                    {impact.new.length > 0 && (
+                        <details className="ln-impact-more" open={isOpen(NEW_KEY)} onToggle={(event) => setOpen(NEW_KEY, event.currentTarget.open)}>
+                            <summary>New ({impact.new.length})</summary>
+                            <ul>
+                                {impact.new.map((entry) => (
+                                    <li key={entry.table}>
+                                        <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
+                                        <span className="ln-dataset">: {newNote(entry).replace(/`/g, '')}</span>
                                     </li>
                                 ))}
                             </ul>

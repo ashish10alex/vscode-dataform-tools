@@ -65,12 +65,95 @@ check:
 test:
     npm run test
 
+# Run the tests that need no VS Code: the Backends' own, in plain Node (fast, any OS)
+test-node:
+    npx tsc -p ./
+    npm run test:node
+
+# Record the manifests a real dbt writes for the example Projects (src/test/fixtures/dbt-manifests); give a dbt-core 1.x and a dbt v2 binary
+record-dbt-manifests +binaries:
+    node scripts/dbt/record-manifests.mjs {{binaries}}
+    git status --short src/test/fixtures/dbt-manifests
+
 # Re-record what the compiled query panel is sent for the test workspace, after an intended change (src/panelRecordings)
 record-panel:
     npm run compile
     rm -rf .vscode-test/user-data
     UPDATE_PANEL_RECORDINGS=1 npx vscode-test --label panel
     git status --short src/panelRecordings/recordings
+
+# Builds the webviews, copies their bundle to website/public/demo, then checks every state in a headless browser
+# and retakes the hero's screenshots, then builds the website and takes the README's pictures of the live demo
+# (media/images/demo_*.png). Needs `npx playwright install chromium` once. Commit what it changes.
+# Rebuild the website's live demo from the panel as it is in this checkout
+website-demo:
+    npm run build:webviews
+    node scripts/demo/copy-bundle.mjs
+    node scripts/demo/check.mjs
+    npm --prefix website run build
+    node scripts/demo/stills.mjs
+
+# gcp_project must hold the tables of website/demo/data/seed.sql. Runs the model once with the Dataform CLI and
+# once with dbt. prod_project is the prod of website/demo/defer, read for the defer to prod picture; nothing is
+# written to it. The states are renamed and checked for leaks (scripts/demo/build-states.mjs) before they reach website/.
+# Record the live demo's states again from the demo Projects (website/demo), against real BigQuery
+website-demo-capture gcp_project prod_project:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    work=/tmp/vdt-demo
+    rm -rf "$work" /tmp/vdt-demo-ud
+    mkdir -p "$work"
+    cp -R website/demo/dataform "$work/football"
+    cp -R website/demo/dbt "$work/football-dbt"
+    grep -rl "football-analytics-dev" "$work" | xargs sed -i '' "s/football-analytics-dev/{{gcp_project}}/g"
+    printf '{"projectId": "{{gcp_project}}", "location": "europe-west2"}\n' > "$work/football/.df-credentials.json"
+    for project in football football-dbt; do
+        (cd "$work/$project" && git init -q -b main && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "demo")
+    done
+    # The staging and intermediate views must be in BigQuery before a dry run can read them
+    (cd "$work/football" && dataform run --actions fct_player_transfers --include-deps)
+    (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select +fct_player_transfers --target dev --profiles-dir .)
+    # The dependency inspector is recorded with a filter on the player of the model's latest row
+    player=$(bq query --use_legacy_sql=false --project_id={{gcp_project}} --location=europe-west2 --format=csv --quiet \
+        'SELECT player_id FROM analytics.fct_player_transfers ORDER BY transfer_date DESC LIMIT 1' | tail -1)
+    npm run compile
+    DEMO_INSPECTOR_FILTER="player_id = $player" \
+    DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-dataform" DEMO_FILE=definitions/fct_player_transfers.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    rm -rf /tmp/vdt-demo-ud
+    DEMO_WORKSPACE="$work/football-dbt" DEMO_OUT="$work/out-dbt" DEMO_FILE=models/fct_player_transfers.sql \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    rm -rf /tmp/vdt-demo-ud
+    DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football" DEMO_OUT="$work/out-diagnostics" DEMO_FILE=definitions/fct_club_spend.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    # Defer to prod in the hero: a copy of the Project whose dev tables are in datasets of their own
+    # (--schema-suffix=dev) that are never built, so what the file reads is read from the dataset without the suffix
+    rm -rf /tmp/vdt-demo-ud
+    cp -R "$work/football" "$work/football-defer"
+    mkdir -p "$work/football-defer/.vscode"
+    printf '{\n  "vscode-dataform-tools.compilerOptions": "--schema-suffix=dev",\n  "vscode-dataform-tools.deferToProd": true\n}\n' > "$work/football-defer/.vscode/settings.json"
+    (cd "$work/football-defer" && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "dev datasets")
+    DEMO_DEFER=1 DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/football-defer" DEMO_OUT="$work/out-defer" DEMO_FILE=definitions/fct_player_transfers.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    # Defer to prod in the README's picture: another Project (website/demo/defer), whose prod is a Google Cloud
+    # project of its own. Nothing is built for it: gcp_project must already have AA_dim_customers in xf_example
+    # (the dev table, with the table prefix AA) and prod_project the Project's tables, so that one table the file
+    # reads is built in dev and the other is read from prod
+    rm -rf /tmp/vdt-demo-ud
+    cp -R website/demo/defer "$work/orders"
+    sed -i '' "s/^defaultProject: .*/defaultProject: {{gcp_project}}/" "$work/orders/workflow_settings.yaml"
+    printf '{"projectId": "{{gcp_project}}", "location": "EU"}\n' > "$work/orders/.df-credentials.json"
+    mkdir -p "$work/orders/.vscode"
+    printf '{\n  "vscode-dataform-tools.compilerOptions": "--table-prefix=\\"AA\\"",\n  "vscode-dataform-tools.prodCompilerOptions": "--default-database={{prod_project}}",\n  "vscode-dataform-tools.deferToProd": true\n}\n' > "$work/orders/.vscode/settings.json"
+    (cd "$work/orders" && git init -q -b main && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "demo")
+    DEMO_DEFER=1 DEMO_COMPILE_ONLY=1 DEMO_WORKSPACE="$work/orders" DEMO_OUT="$work/out-defer-refs" DEMO_FILE=definitions/reports/revenue_report.sqlx \
+        VSCODE_TEST_USER_DATA_DIR=/tmp/vdt-demo-ud npx vscode-test --label demo
+    (cd "$work/football" && dataform run --actions fct_player_transfers) > "$work/terminal-dataform.txt" 2>&1
+    (cd "$work/football-dbt" && NO_COLOR=1 dbt build --select football.fct_player_transfers --target dev --profiles-dir .) > "$work/terminal-dbt.txt" 2>&1
+    bq query --use_legacy_sql=false --project_id={{gcp_project}} --location=europe-west2 --format=json --max_rows=100 \
+        'SELECT * FROM analytics.fct_player_transfers ORDER BY transfer_date DESC' > "$work/rows.json"
+    node scripts/demo/build-states.mjs "$work" {{gcp_project}} {{prod_project}}
+    just website-demo
 
 # Set BENCH_GCP_PROJECT for real BigQuery dry runs, BENCH_ITERATIONS to change the 10 runs per loop.
 # macOS only (like `just test`) and needs the Dataform CLI on PATH.

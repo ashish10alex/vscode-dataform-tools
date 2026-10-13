@@ -1,4 +1,5 @@
-import { getCachedDataformRepositoryLocation, getDataformCliCmdBasedOnScope, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig, getWorkspaceFolder, runCommandInTerminal, showLoadingProgress, ensureFreshCompilation } from "./utils";
+import { getCachedDataformRepositoryLocation, getWorkspaceFolder, showLoadingProgress, ensureFreshCompilation } from "./utils";
+import { compiledJson } from './project';
 import * as vscode from 'vscode';
 import { loadDataformTools } from "./lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely} from "./dataformApiUtils";
@@ -6,12 +7,20 @@ import { ExecutionMode } from './types';
 import { GitService } from "./gitClient";
 import { confirmRemoteRun, resolveExecutionMode } from "./utils/remoteCompiler";
 import { beginRun } from './defer/deferRun';
+import { runDataformRunInTerminal } from './cliRunJobs';
+import { withRunFeedback } from './runFeedback';
+import { resolveDataformOptions } from './project/dataformOptions';
+import { dataformRunCommand } from './project/dataformBackend';
+import { extensionConfiguration } from './project/settings';
 
-export async function runMultipleTagsFromSelection(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+export function runMultipleTagsFromSelection(...args: Parameters<typeof runMultipleTagsFromSelectionNow>): ReturnType<typeof runMultipleTagsFromSelectionNow> {
+    return withRunFeedback('cli', () => runMultipleTagsFromSelectionNow(...args));
+}
+
+async function runMultipleTagsFromSelectionNow(workspaceFolder: string, selectedTags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
     if (!(await beginRun({ kind: 'tags', items: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
-    let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
-    let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, defaultDataformCompileTime, includDependencies, includeDownstreamDependents, fullRefresh);
-    runCommandInTerminal(runmultitagscommand);
+    let runmultitagscommand = getRunTagsWtOptsCommand(workspaceFolder, selectedTags, includDependencies, includeDownstreamDependents, fullRefresh);
+    await runDataformRunInTerminal(workspaceFolder, runmultitagscommand, { tags: selectedTags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
 }
 
 
@@ -24,32 +33,8 @@ export async function getMultipleTagsSelection() {
     return selectedTags as string[] | undefined;
 }
 
-export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[] | object[], dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
-    let dataformCompilerOptions = getDataformCompilerOptions();
-    const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-    let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
-    const dataformExecutionTimeoutVal = getDataformExecutionTimeoutFromConfig();
-    if (dataformExecutionTimeoutVal) {
-        cmd += ` --execution-timeout=${dataformExecutionTimeoutVal}`;
-    }
-    if (typeof tags === "object") {
-        for (let tag of tags) {
-            cmd += ` --tags=${tag}`;
-        }
-    } else {
-        cmd += ` --tags=${tags}`;
-    }
-
-    if (includDependencies) {
-        cmd += ` --include-deps`;
-    }
-    if (includeDownstreamDependents) {
-        cmd += ` --include-dependents`;
-    }
-    if (fullRefresh) {
-        cmd += ` --full-refresh`;
-    }
-    return cmd;
+export function getRunTagsWtOptsCommand(workspaceFolder: string, tags: string[], includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean): string {
+    return dataformRunCommand(workspaceFolder, { tags, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
 }
 
 export async function runTag(context:vscode.ExtensionContext, includeDependencies: boolean, includeDependents: boolean, fullRefresh:boolean, executionMode:ExecutionMode) {
@@ -67,25 +52,25 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
             return;
         }
 
-        let workspaceFolder = await getWorkspaceFolder();
+        let workspaceFolder = await getWorkspaceFolder({ explain: true });
         if (!workspaceFolder) { return; }
 
-        if(executionMode === "cli"){
+        if(executionMode === "cli"){ await withRunFeedback('cli', async () => {
             if (!(await beginRun({ kind: 'tags', items: [selection], includeDependencies, includeDependents, fullRefresh, executionMode: 'cli', workspaceFolder }))) { return; }
 
-            let defaultDataformCompileTime = getDataformCompilationTimeoutFromConfig();
             let cmd = "";
             if (includeDependencies) {
-                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], defaultDataformCompileTime, true, false, false);
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], true, false, false);
             } else if (includeDependents) {
-                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], defaultDataformCompileTime, false, true, false);
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], false, true, false);
             } else {
-                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], defaultDataformCompileTime, false, false, false);
+                cmd = getRunTagsWtOptsCommand(workspaceFolder, [selection], false, false, false);
             }
             if (cmd !== "") {
-                runCommandInTerminal(cmd);
+                // The command has never had --full-refresh, whatever was asked
+                await runDataformRunInTerminal(workspaceFolder, cmd, { tags: [selection], includeDependencies, includeDependents: !includeDependencies && includeDependents, fullRefresh: false });
             }
-        } else if (executionMode === "api"){
+        }); } else if (executionMode === "api"){
             runTagWtApi(context, [selection],includeDependencies, includeDependents, fullRefresh, executionMode);
 
         }
@@ -93,7 +78,11 @@ export async function runTag(context:vscode.ExtensionContext, includeDependencie
     });
 }
 
-export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
+export function runTagWtApi(...args: Parameters<typeof runTagWtApiNow>): ReturnType<typeof runTagWtApiNow> {
+    return withRunFeedback(args[5] === 'api_workspace' ? 'api_workspace' : 'api', () => runTagWtApiNow(...args));
+}
+
+async function runTagWtApiNow(context: vscode.ExtensionContext, tagsToRun: string[], transitiveDependenciesIncluded:boolean, transitiveDependentsIncluded:boolean, fullyRefreshIncrementalTablesEnabled:boolean, executionMode:string){
     // Prepares defer to prod and saves the run once it is about to dispatch, so a cancelled run does not replace the last one.
     const recordThisRun = (workspaceFolder: string) => beginRun({
         kind: 'tags',
@@ -113,7 +102,7 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
     };
 
     if(executionMode === "api_workspace"){
-        const runFolder = await getWorkspaceFolder();
+        const runFolder = await getWorkspaceFolder({ explain: true });
         if (runFolder && !(await recordThisRun(runFolder))) {
             return;
         }
@@ -132,19 +121,19 @@ export async function runTagWtApi(context: vscode.ExtensionContext, tagsToRun: s
         return;
     }
 
-    let workspaceFolder = await getWorkspaceFolder();
+    let workspaceFolder = await getWorkspaceFolder({ explain: true });
     if (!workspaceFolder) { return; }
     if (!(await recordThisRun(workspaceFolder))) { return; }
-    await ensureFreshCompilation(workspaceFolder);
+    await ensureFreshCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
-    const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-    const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
+    const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
+    const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
     if(!projectId){
         vscode.window.showErrorMessage(`Unable to determine GCP project Id in Dataform config`);
         return;
     }
 
-    if(!CACHED_COMPILED_DATAFORM_JSON){
+    if(!compiledJson()){
         vscode.window.showErrorMessage(`Unable to compile dataform project. Run "dataform compile" in the terminal to check`);
         return;
     }

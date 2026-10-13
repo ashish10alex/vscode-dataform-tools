@@ -1,0 +1,15 @@
+config {
+  type: "table",
+  description: "What each club spent on transfers, by season",
+  tags: ["transfers"]
+}
+
+SELECT
+  to_club_name AS club,
+  transfer_season,
+  COUNT(*) AS signings,
+  SUM(transfer_fee) AS spend,
+  URRENT_DATE() AS loaded_on
+FROM ${ref("stg_transfers")}
+WHERE transfer_fee > 0
+GROUP BY club, transfer_season

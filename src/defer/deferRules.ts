@@ -1,3 +1,4 @@
+import type { Action } from '../shared/compiledGraph';
 import { DataformCompiledJson, QueryMeta, Target } from '../types';
 import { formatRelativeTime } from '../utils/relativeTime';
 
@@ -247,6 +248,19 @@ export function applyDeferral(queryMeta: QueryMeta, entries: DeferralEntry[]): Q
     };
 }
 
+/**
+ * The same rewrite for an action of the Compiled Graph: a copy of `action` whose compiled sections read each Deferred
+ * Action from its Prod Target. This is the host's step before the action goes to the dry-run service or to a
+ * preview, neither of which knows of defer. A unit test's queries run on fixed inputs, so they are left alone, and
+ * so is SQL shown as written. The action itself is returned when nothing is deferred.
+ */
+export function applyDeferralToAction(action: Action, entries: DeferralEntry[]): Action {
+    if (action.kind === 'unit test' || !entries.some((entry) => entry.status === "deferred" && entry.prod)) {
+        return action;
+    }
+    return { ...action, sections: action.sections.map((section) => (section.compiled ? { ...section, sql: rewriteSql(section.sql, entries) } : section)) };
+}
+
 /** Tables named in BigQuery `Access Denied: Table project:dataset.table` errors */
 export function findAccessDeniedTargets(errorMessage: string | undefined): Target[] {
     if (!errorMessage) {
@@ -269,7 +283,7 @@ interface RunnableAction {
 }
 
 export interface RunSelection {
-    kind: "currentFile" | "files" | "tags" | "changed";
+    kind: "currentFile" | "files" | "tags" | "changed" | "actions";
     /** Workspace-relative files, tag names or `database.schema.name` target ids, depending on `kind` */
     items: string[];
     includeDependencies: boolean;
@@ -294,6 +308,7 @@ export function computeRunSet(graph: DataformCompiledJson, selection: RunSelecti
             case "tags":
                 return (action.tags ?? []).some((tag) => items.has(tag));
             case "changed":
+            case "actions":
                 return items.has(targetId(action.target));
         }
     });

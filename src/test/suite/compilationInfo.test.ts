@@ -21,28 +21,28 @@ suite('compilationInfoFormat.formatRelativeTime', () => {
 suite('compilationInfoFormat.compilationInfoParts', () => {
     test('CLI compile shows backend, duration and age', () => {
         assert.deepStrictEqual(
-            compilationInfoParts({ backend: 'cli', compiledAt: NOW, durationMs: 3044, fromCache: false }, NOW),
+            compilationInfoParts({ mode: 'cli', compiledAt: NOW, durationMs: 3044, fromCache: false }, NOW),
             ['CLI', '3.04s', 'just now'],
         );
     });
 
     test('fresh API compile shows the short sha and duration', () => {
         assert.deepStrictEqual(
-            compilationInfoParts({ backend: 'api', compiledAt: NOW, durationMs: 6066, fromCache: false, sha: '87be5b33b17419c8' }, NOW),
+            compilationInfoParts({ mode: 'api', compiledAt: NOW, durationMs: 6066, fromCache: false, sha: '87be5b33b17419c8' }, NOW),
             ['API @ 87be5b3', '6.07s', 'just now'],
         );
     });
 
     test('cached API compile says cached and shows its age and release config', () => {
         assert.deepStrictEqual(
-            compilationInfoParts({ backend: 'api', compiledAt: minutesAgo(12), fromCache: true, sha: '87be5b33b17419c8', releaseConfig: 'production' }, NOW),
+            compilationInfoParts({ mode: 'api', compiledAt: minutesAgo(12), fromCache: true, sha: '87be5b33b17419c8', releaseConfig: 'production' }, NOW),
             ['API @ 87be5b3', 'production', 'cached', '12 min ago'],
         );
     });
 
     test('tooltip explains staleness and the cache', () => {
         const tooltip = compilationInfoTooltip({
-            backend: 'api', compiledAt: NOW, fromCache: true, sha: '87be5b3', stale: true, staleReason: 'Local HEAD differs from the compiled commit.',
+            mode: 'api', compiledAt: NOW, fromCache: true, sha: '87be5b3', stale: true, staleReason: 'Local HEAD differs from the compiled commit.',
         });
         assert.ok(tooltip.includes('pushed commit 87be5b3'));
         assert.ok(tooltip.includes('Served from the cache'));
@@ -50,7 +50,7 @@ suite('compilationInfoFormat.compilationInfoParts', () => {
     });
 
     test('saved CLI compile says cached and how to recompile, without mentioning pushed commits', () => {
-        const info = { backend: 'cli' as const, compiledAt: minutesAgo(90), fromCache: true, stale: true, staleReason: 'Project files changed since this compilation; recompiling' };
+        const info = { mode: 'cli' as const, compiledAt: minutesAgo(90), fromCache: true, stale: true, staleReason: 'Project files changed since this compilation; recompiling' };
         assert.deepStrictEqual(compilationInfoParts(info, NOW), ['CLI', 'cached', '2 h ago']);
         const tooltip = compilationInfoTooltip(info);
         assert.ok(tooltip.includes('Saved from an earlier session'));
@@ -61,13 +61,13 @@ suite('compilationInfoFormat.compilationInfoParts', () => {
 
 suite('compilationInfoFormat.customCliLabel', () => {
     test('points out a CLI configured through dataformExecutablePath', () => {
-        const info = { backend: 'cli' as const, compiledAt: NOW, fromCache: false, cliPath: '/opt/dataform-dev/dataform', cliSource: 'setting' as const };
+        const info = { mode: 'cli' as const, compiledAt: NOW, fromCache: false, cliPath: '/opt/dataform-dev/dataform', cliSource: 'setting' as const };
         assert.strictEqual(customCliLabel(info), '/opt/dataform-dev/dataform (dataformExecutablePath)');
         assert.ok(compilationInfoTooltip(info).includes('Dataform CLI: /opt/dataform-dev/dataform (from the vscode-dataform-tools.dataformExecutablePath setting)'));
     });
 
     test('stays quiet for the CLI found on PATH and for API compiles', () => {
-        assert.strictEqual(customCliLabel({ backend: 'cli', compiledAt: NOW, fromCache: false, cliPath: '/usr/local/bin/dataform', cliSource: 'path' }), undefined);
-        assert.strictEqual(customCliLabel({ backend: 'api', compiledAt: NOW, fromCache: false, sha: 'abc' }), undefined);
+        assert.strictEqual(customCliLabel({ mode: 'cli', compiledAt: NOW, fromCache: false, cliPath: '/usr/local/bin/dataform', cliSource: 'path' }), undefined);
+        assert.strictEqual(customCliLabel({ mode: 'api', compiledAt: NOW, fromCache: false, sha: 'abc' }), undefined);
     });
 });

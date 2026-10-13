@@ -1,16 +1,19 @@
 import * as vscode from 'vscode';
+import { compiledGraph, compiledJson } from '../project';
 import { queryDryRun } from '../bigqueryDryRun';
-import { setDiagnostics } from '../setDiagnostics';
 import { getMetadataForSqlxFileBlocks } from '../sqlxFileParser';
 import { logger } from '../logger';
-import { assertionQueryOffset, tableQueryOffset, incrementalTableOffset } from '../constants';
-import { calculateIncrementalPreOpsOffset, calculateIncrementalSkipPreOpsOffset } from '../offsetCalculations';
+import { RunDryRun, ScriptDryRun, dryRunScriptsOf, toDryRunResult } from '../bigquery/dryRunService';
+import { sqlxDiagnostics } from '../bigquery/sqlxDiagnostics';
+import { applyDeferralToAction } from '../defer/deferRules';
+import { Action, actionsInFile, madeUpTarget, slashPath, targetId } from '../shared/compiledGraph';
 import { getDependenciesAutoCompletionItems, getDataformTags } from './queryMetadata';
 import { getCurrentFileMetadata } from './dataformHelpers';
 import { handleAccessDenied } from '../defer';
 import { forgetDryRunSchema, recordDryRunSchema } from '../columnLineage/impactReport';
 import { TablesWtFullQuery, SqlxBlockMetadata, BigQueryDryRunResponse, DryRunAnnotation } from '../types';
 import type { AssertionQueryEntry, TableQueryEntry, IncrementalQueryEntry, OperationQueryEntry, TestQueryEntry } from '../types';
+import { extensionConfiguration } from '../project/settings';
 
 export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
     const preOpsEndsWithSemicolon = /;\s*$/.test(fileMetadata.queryMeta.preOpsQuery);
@@ -32,15 +35,16 @@ export function handleSemicolonPrePostOps(fileMetadata: TablesWtFullQuery) {
 }
 
 export async function gatherQueryAutoCompletionMeta() {
-    if (!CACHED_COMPILED_DATAFORM_JSON) {
+    const compiled = compiledJson();
+    if (!compiled) {
         logger.debug('No cached compilation available for autocompletion');
         return;
     }
     logger.debug('Using cached compilation for autocompletion metadata');
     // all 2 of these together take approx less than 0.35ms (Dataform repository with 285 nodes)
     let [declarationsAndTargets, dataformTags] = await Promise.all([
-        getDependenciesAutoCompletionItems(CACHED_COMPILED_DATAFORM_JSON),
-        getDataformTags(CACHED_COMPILED_DATAFORM_JSON),
+        getDependenciesAutoCompletionItems(compiled),
+        getDataformTags(compiled),
     ]);
     return {
         declarationsAndTargets: declarationsAndTargets, dataformTags: dataformTags
@@ -50,7 +54,32 @@ export async function gatherQueryAutoCompletionMeta() {
 
 
 
-export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscode.TextDocument, diagnosticCollection: any, showCompiledQueryInVerticalSplitOnSave: boolean | undefined) {
+/** A Dataform action as it is dry-run with `skipPreOpsInDryRun` on: without its pre-operations, and so without the dry run of its post-operations, which needs them */
+export function withoutPreOperations(action: Action): Action {
+    const isPreOperations = (title: string) => /^(incremental )?pre_operations/.test(title);
+    if (!action.sections.some((section) => isPreOperations(section.title))) {
+        return action;
+    }
+    return {
+        ...action,
+        sections: action.sections
+            .filter((section) => !isPreOperations(section.title))
+            .map((section) => ({ ...section, dryRun: section.dryRun.filter((script) => script !== 'post_operations') })),
+    };
+}
+
+const emptyDryRunResponse = (): BigQueryDryRunResponse => ({ error: { hasError: false, message: "" } } as BigQueryDryRunResponse);
+
+/**
+ * Dry-runs the actions of the current file and marks their errors in a `.sqlx` file.
+ *
+ * The dry runs are those of the actions' SQL sections (src/bigquery/dryRunService.ts), after defer's rewrite. The
+ * panel is still sent BigQuery's answers in the shape it has always had, so they are handed back that way here, lined
+ * up with the entries of `queryMeta`.
+ *
+ * @param run Asks BigQuery for one dry run. Tests pass their own
+ */
+export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscode.TextDocument, diagnosticCollection: any, showCompiledQueryInVerticalSplitOnSave: boolean | undefined, run: RunDryRun = (sql) => queryDryRun(sql)) {
     let sqlxBlockMetadata: SqlxBlockMetadata | undefined = undefined;
     //NOTE: Currently inline diagnostics are only supported for .sqlx files
     if (curFileMeta.pathMeta.extension === "sqlx") {
@@ -58,31 +87,28 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     }
 
     if (showCompiledQueryInVerticalSplitOnSave !== true) {
-        showCompiledQueryInVerticalSplitOnSave = vscode.workspace.getConfiguration('vscode-dataform-tools').get('showCompiledQueryInVerticalSplitOnSave');
+        showCompiledQueryInVerticalSplitOnSave = extensionConfiguration().get('showCompiledQueryInVerticalSplitOnSave');
     }
 
     const type = curFileMeta.fileMetadata.queryMeta.type;
     const fileMetadata = curFileMeta.fileMetadata;
 
-    let isJsWithTests = type === "js" && fileMetadata.tables.some((table: any) => {
-        return table.type === "test";
-    });
-
-    const skipPreOpsInDryRun = vscode.workspace.getConfiguration('vscode-dataform-tools').get('skipPreOpsInDryRun');
+    const skipPreOpsInDryRun = extensionConfiguration().get('skipPreOpsInDryRun');
     logger.debug(`skipPreOpsInDryRun: ${skipPreOpsInDryRun}`);
 
-
-
-    const withPreOps = (preOpsQuery: string, query: string) => {
-        if (skipPreOpsInDryRun || !preOpsQuery) { return query; }
-        const p = /;\s*$/.test(preOpsQuery) ? preOpsQuery : preOpsQuery + ";";
-        return p + "\n" + query;
-    };
+    // The file's actions as they are dry-run: reading Deferred Actions from prod, and without pre-operations when
+    // those are to be skipped
+    const graph = compiledGraph();
+    const deferralEntries = curFileMeta.deferral?.entries ?? [];
+    const fileActions = (graph ? actionsInFile(graph, slashPath(curFileMeta.pathMeta.relativeFilePath)) : [])
+        .map((action) => applyDeferralToAction(action, deferralEntries))
+        .map((action) => (skipPreOpsInDryRun ? withoutPreOperations(action) : action));
 
     // take ~400 to 1300ms depending on api response times, faster if `cacheHit`
-    // Per-node dry runs run in parallel with the aggregate dry runs to avoid duplication
-    const emptyDryRunResponse: BigQueryDryRunResponse = { error: { hasError: false, message: "" } } as BigQueryDryRunResponse;
-    const shouldSkipAggregatePreOps = !!skipPreOpsInDryRun && !!fileMetadata.queryMeta.preOpsQuery?.trim();
+    const dryRuns: ScriptDryRun[] = (await Promise.all(fileActions.map((action) => dryRunScriptsOf(action, run)))).flat();
+    const find = (actionId: string, script: string, incremental = false) =>
+        dryRuns.find((dryRun) => dryRun.action.id === actionId && dryRun.script.name === script && dryRun.script.incremental === incremental);
+    const responseOf = (dryRun: ScriptDryRun | undefined) => dryRun?.response ?? emptyDryRunResponse();
 
     const assertionQueries: AssertionQueryEntry[] = fileMetadata.queryMeta.assertionQueries ?? [];
     const tableQueries: TableQueryEntry[] = fileMetadata.queryMeta.tableQueries ?? [];
@@ -90,35 +116,18 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
     const operationQueries: OperationQueryEntry[] = fileMetadata.queryMeta.operationQueries ?? [];
     const testQueries: TestQueryEntry[] = fileMetadata.queryMeta.testQueries ?? [];
 
-    const [aggregateDryRunResults, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults] = await Promise.all([
-        Promise.all([
-            //TODO: If pre_operations block has an error the diagnostics wont be placed at correct place in main query block
-            shouldSkipAggregatePreOps ? Promise.resolve(emptyDryRunResponse) : queryDryRun(fileMetadata.queryMeta.preOpsQuery),
-            // To enable to use of variables declared in preOps.
-            // Would result in incorrect cost for post operation though a tradeoff Im willing to have atm
-            // See https://github.com/ashish10alex/vscode-dataform-tools/issues/175
-            (fileMetadata.queryMeta.postOpsQuery && fileMetadata.queryMeta.postOpsQuery !== "")
-                ? (shouldSkipAggregatePreOps ? Promise.resolve(emptyDryRunResponse) : queryDryRun(fileMetadata.queryMeta.preOpsQuery + fileMetadata.queryMeta.postOpsQuery))
-                : Promise.resolve(emptyDryRunResponse),
-            ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.testQuery) ? queryDryRun(fileMetadata.queryMeta.testQuery) : Promise.resolve(emptyDryRunResponse),
-            ((type === "test" || isJsWithTests) && fileMetadata.queryMeta.expectedOutputQuery) ? queryDryRun(fileMetadata.queryMeta.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse),
-        ]),
-        Promise.all(assertionQueries.map((aq: AssertionQueryEntry) => queryDryRun(aq.query))),
-        Promise.all(tableQueries.map((tq: TableQueryEntry) => queryDryRun(withPreOps(tq.preOpsQuery, tq.query)))),
-        Promise.all(incrementalQueries.map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery)))),
-        Promise.all(incrementalQueries.map((iq: IncrementalQueryEntry) => queryDryRun(withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery)))),
-        Promise.all(operationQueries.map((oq: OperationQueryEntry) => queryDryRun(withPreOps(oq.preOpsQuery, oq.query)))),
-        Promise.all(testQueries.map((tq: TestQueryEntry) => tq.testQuery ? queryDryRun(tq.testQuery) : Promise.resolve(emptyDryRunResponse))),
-        Promise.all(testQueries.map((tq: TestQueryEntry) => tq.expectedOutputQuery ? queryDryRun(tq.expectedOutputQuery) : Promise.resolve(emptyDryRunResponse))),
-    ]);
-
-    const [preOpsDryRunResult, postOpsDryRunResult, testDryRunResult, expectedOutputDryRunResult] = aggregateDryRunResults;
+    // Each entry of queryMeta is named by its action's ID, a unit test by its name
+    const unitTestId = (name: string) => targetId(madeUpTarget('unit test', name));
+    const perAssertionDryRunResults = assertionQueries.map((aq) => responseOf(find(aq.targetName, 'query')));
+    const perTableDryRunResults = tableQueries.map((tq) => responseOf(find(tq.targetName, 'query')));
+    const perNonIncrementalDryRunResults = incrementalQueries.map((iq) => responseOf(find(iq.targetName, 'query')));
+    const perIncrementalDryRunResults = incrementalQueries.map((iq) => responseOf(find(iq.targetName, 'query', true)));
+    const perOperationDryRunResults = operationQueries.map((oq) => responseOf(find(oq.targetName, 'operation')));
+    const perTestDryRunResults = testQueries.map((tq) => responseOf(find(unitTestId(tq.name), 'test query')));
+    const perExpectedOutputDryRunResults = testQueries.map((tq) => responseOf(find(unitTestId(tq.name), 'expected output')));
 
     // A deferred query denied access to a prod table: those tables fall back to dev on the next read of the metadata
-    const accessDeniedTargets = handleAccessDenied(curFileMeta.deferral, [
-        ...aggregateDryRunResults, ...perAssertionDryRunResults, ...perTableDryRunResults, ...perNonIncrementalDryRunResults,
-        ...perIncrementalDryRunResults, ...perOperationDryRunResults,
-    ].map((result) => result?.error?.hasError ? result.error.message : undefined));
+    const accessDeniedTargets = handleAccessDenied(curFileMeta.deferral, dryRuns.map(({ response }) => response?.error?.hasError ? response.error.message : undefined));
 
     // Enrich each query entry with the result of its dry run so callers
     // can access query + error as one cohesive object instead of separate maps.
@@ -126,21 +135,21 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         r?.error?.hasError ? { message: r.error.message, location: r.error.location } : undefined;
 
     assertionQueries.forEach((aq: AssertionQueryEntry, i: number) => {
-        aq.dryRunQuery = aq.query;
+        aq.dryRunQuery = find(aq.targetName, 'query')?.script.sql ?? aq.query;
         aq.error = toAnnotation(perAssertionDryRunResults[i]);
     });
     tableQueries.forEach((tq: TableQueryEntry, i: number) => {
-        tq.dryRunQuery = withPreOps(tq.preOpsQuery, tq.query);
+        tq.dryRunQuery = find(tq.targetName, 'query')?.script.sql ?? tq.query;
         tq.error = toAnnotation(perTableDryRunResults[i]);
     });
     incrementalQueries.forEach((iq: IncrementalQueryEntry, i: number) => {
-        iq.dryRunNonIncrementalQuery = withPreOps(iq.preOpsQuery, iq.nonIncrementalQuery);
-        iq.dryRunIncrementalQuery = withPreOps(iq.incrementalPreOpsQuery, iq.incrementalQuery);
+        iq.dryRunNonIncrementalQuery = find(iq.targetName, 'query')?.script.sql ?? iq.nonIncrementalQuery;
+        iq.dryRunIncrementalQuery = find(iq.targetName, 'query', true)?.script.sql ?? iq.incrementalQuery;
         iq.nonIncrementalError = toAnnotation(perNonIncrementalDryRunResults[i]);
         iq.incrementalError = toAnnotation(perIncrementalDryRunResults[i]);
     });
     operationQueries.forEach((oq: OperationQueryEntry, i: number) => {
-        oq.dryRunQuery = withPreOps(oq.preOpsQuery, oq.query);
+        oq.dryRunQuery = find(oq.targetName, 'operation')?.script.sql ?? oq.query;
         oq.error = toAnnotation(perOperationDryRunResults[i]);
     });
     testQueries.forEach((tq: TestQueryEntry, i: number) => {
@@ -148,11 +157,12 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         tq.expectedOutputError = toAnnotation(perExpectedOutputDryRunResults[i]);
     });
 
-    // Derive results from per-node arrays instead of running separate aggregate queries
-    const dryRunResult = perTableDryRunResults[0] ?? perAssertionDryRunResults[0] ?? perOperationDryRunResults[0] ?? perIncrementalDryRunResults[0] ?? emptyDryRunResponse;
-    const incrementalDryRunResult = perIncrementalDryRunResults[0] ?? emptyDryRunResponse;
-    const nonIncrementalDryRunResult = perNonIncrementalDryRunResults[0] ?? emptyDryRunResponse;
-    const assertionDryRunResult = perAssertionDryRunResults[0] ?? emptyDryRunResponse;
+    const dryRunResult = perTableDryRunResults[0] ?? perAssertionDryRunResults[0] ?? perOperationDryRunResults[0] ?? perIncrementalDryRunResults[0] ?? emptyDryRunResponse();
+    const incrementalDryRunResult = perIncrementalDryRunResults[0] ?? emptyDryRunResponse();
+    const nonIncrementalDryRunResult = perNonIncrementalDryRunResults[0] ?? emptyDryRunResponse();
+    const assertionDryRunResult = perAssertionDryRunResults[0] ?? emptyDryRunResponse();
+    const testDryRunResult = perTestDryRunResults[0] ?? emptyDryRunResponse();
+    const expectedOutputDryRunResult = perExpectedOutputDryRunResults[0] ?? emptyDryRunResponse();
 
     if (dryRunResult.schema || nonIncrementalDryRunResult.schema) {
         compiledQuerySchema = type === "incremental" ? nonIncrementalDryRunResult.schema : dryRunResult.schema;
@@ -179,74 +189,18 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
         recordDryRunSchema(document, curFileMeta, impactResult.schema);
     }
 
-    // check if we need to handle errors from non incremental query here
-    if (dryRunResult.error.hasError || preOpsDryRunResult.error.hasError || postOpsDryRunResult.error.hasError || incrementalDryRunResult.error.hasError || assertionDryRunResult.error.hasError || testDryRunResult.error.hasError || expectedOutputDryRunResult.error.hasError) {
-        if (!sqlxBlockMetadata && curFileMeta.pathMeta.extension === ".sqlx") {
-            vscode.window.showErrorMessage("Could not parse sqlx file");
-        }
+    const results = { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets, dryRuns };
 
-        let offSet = 0;
-        if (type === "table" || type === "view") {
-            offSet = tableQueryOffset;
-        } else if (type === "assertion") {
-            offSet = assertionQueryOffset;
-        } else if (type === "incremental") {
-            offSet = incrementalTableOffset;
-        }
-
+    if (dryRuns.some(({ response }) => response?.error?.hasError)) {
         if (sqlxBlockMetadata) {
-            if (type === "incremental") {
-                // check if we need to handle errors from non incremental query here
-                dryRunResult.error = incrementalDryRunResult.error;
-            }
-            let errorMeta = {
-                mainQueryError: dryRunResult.error,
-                preOpsError: preOpsDryRunResult.error,
-                postOpsError: postOpsDryRunResult.error,
-                nonIncrementalError: nonIncrementalDryRunResult.error,
-                incrementalError: incrementalDryRunResult.error,
-                assertionError: assertionDryRunResult.error,
-                testError: testDryRunResult.error,
-                expectedOutputError: expectedOutputDryRunResult.error,
-            };
-
-            let compiledPreOpsLineCount: number | undefined = undefined;
-            if (type === "incremental") {
-                const iq = fileMetadata.queryMeta.incrementalQueries[0];
-                if (!skipPreOpsInDryRun) {
-                    compiledPreOpsLineCount = calculateIncrementalPreOpsOffset(
-                        iq?.incrementalPreOpsQuery,
-                        iq?.incrementalQuery,
-                        offSet
-                    );
-                } else {
-                    // When pre_ops are skipped, only iq.incrementalQuery is sent to BigQuery.
-                    // Compute compiledPreOpsLineCount from the preamble of incrementalQuery alone.
-                    compiledPreOpsLineCount = calculateIncrementalSkipPreOpsOffset(iq?.incrementalQuery);
-                }
-                // When there are no pre_ops in the .sqlx file, preOpsOffset stays 0 and
-                // compiledPreOpsLineCount has no effect on the diagnostic line mapping.
-                // Adjust offSet directly to subtract the preamble blank lines Dataform adds
-                // to the compiled incrementalQuery, which shift BigQuery error line numbers
-                // but are absent from the .sqlx editor file.
-                if (sqlxBlockMetadata.preOpsBlock.preOpsList.length === 0) {
-                    const incLines = (iq?.incrementalQuery || '').split('\n');
-                    let N_inc_preamble = 0;
-                    for (const line of incLines) {
-                        if (line.trim() === '') { N_inc_preamble++; } else { break; }
-                    }
-                    offSet = N_inc_preamble + 2;
-                }
-            }
-
-            // When skipPreOpsInDryRun is true for table/view types, only tq.query is sent to BigQuery
-            // (no pre_ops). preOpsSkippedInDryRun=true tells setDiagnostics to keep preOpsOffset=0
-            // so the diagnostic maps correctly to the main SQL block.
-            // For incremental, the offset is computed via compiledPreOpsLineCount above instead.
-            const preOpsSkippedInDryRun = shouldSkipAggregatePreOps && (type === "table" || type === "view");
-            setDiagnostics(document, errorMeta, diagnosticCollection, sqlxBlockMetadata, offSet, compiledPreOpsLineCount, preOpsSkippedInDryRun);
+            // Each error is placed within its section of the compiled SQL, and from there in the block of the file
+            const sectionResults = dryRuns.map(({ action, script, response }) => toDryRunResult(action, script, 0, response));
+            const severity = vscode.DiagnosticSeverity.Error;
+            const diagnostics = sqlxDiagnostics(fileActions, sectionResults, sqlxBlockMetadata).map(({ line, column, message }) =>
+                new vscode.Diagnostic(new vscode.Range(new vscode.Position(line, column), new vscode.Position(line, column + 5)), message, severity));
+            diagnosticCollection.set(document.uri, diagnostics);
         }
-        return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets };
+        return results;
     }
 
     if (!showCompiledQueryInVerticalSplitOnSave) {
@@ -261,7 +215,7 @@ export async function dryRunAndShowDiagnostics(curFileMeta: any, document: vscod
             : `${dryRunResult.statistics?.totalBytesProcessed || 0}`;
         vscode.window.showInformationMessage(`GB: ${bytesProcessedSummary} - ${combinedTableIds}`);
     }
-    return { mainQuery: dryRunResult, nonIncremental: nonIncrementalDryRunResult, incremental: incrementalDryRunResult, assertion: assertionDryRunResult, testQuery: testDryRunResult, expectedOutput: expectedOutputDryRunResult, perAssertionDryRunResults, perTableDryRunResults, perNonIncrementalDryRunResults, perIncrementalDryRunResults, perOperationDryRunResults, perTestDryRunResults, perExpectedOutputDryRunResults, accessDeniedTargets };
+    return results;
 }
 
 export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, showCompiledQueryInVerticalSplitOnSave: boolean) {
@@ -269,7 +223,7 @@ export async function compiledQueryWtDryRun(document: vscode.TextDocument, diagn
 
     let curFileMeta = await getCurrentFileMetadata(true);
 
-    if (!CACHED_COMPILED_DATAFORM_JSON || !curFileMeta) {
+    if (!compiledJson() || !curFileMeta) {
         return;
     }
 

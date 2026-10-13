@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: Customers with their order history.
+    config:
+      tags: ["daily"]
+    columns:
+      - name: customer_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: first_order_date
+        description: Date of the customer's first order.
+      - name: lifetime_value
+        description: Sum of successful payments, in dollars.
+
+  - name: fct_orders
+    description: Orders with their payment totals, merged on order_id.
+    config:
+      tags: ["hourly"]
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+
+  - name: customer_segments
+    description: Customers by segment. v2 adds the country and enforces a contract.
+    latest_version: 2
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: customer_id
+        data_type: string
+        constraints:
+          - type: not_null
+      - name: segment
+        data_type: string
+      - name: country_name
+        data_type: string
+    versions:
+      - v: 1
+        config:
+          contract:
+            enforced: false
+        columns:
+          - include: all
+            exclude: [country_name]
+      - v: 2
+
+unit_tests:
+  - name: test_fct_orders_sums_payments
+    description: An order's amount is the sum of its payments.
+    model: fct_orders
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_orders')
+        rows:
+          - {order_id: 1, customer_id: 10, order_date: "2024-02-01", status: completed}
+      - input: ref('stg_payments')
+        rows:
+          - {payment_id: 100, order_id: 1, payment_method: card, amount: 5.5}
+          - {payment_id: 101, order_id: 1, payment_method: card, amount: 4.5}
+    expect:
+      rows:
+        - {order_id: 1, amount: 10.0}

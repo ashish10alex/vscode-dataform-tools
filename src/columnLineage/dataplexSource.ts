@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import { loadLineageClient } from '../lazySdk';
 import { logger } from '../logger';
 import { GraphAction } from '../shared/columnLineage/graphLinks';
@@ -6,6 +5,7 @@ import { Limiter } from '../shared/columnLineage/limiter';
 import { columnLinksFromApi, lineageField, lineageFqn, tablesFromApi, untrackedReaders } from '../shared/columnLineage/dataplexLinks';
 import { ColumnLink, LineageDirection, TraceSource } from '../shared/columnLineage/types';
 import { SchemaCache } from './schemaCache';
+import { extensionConfiguration } from '../project/settings';
 
 type LineageClient = InstanceType<Awaited<ReturnType<typeof loadLineageClient>>>;
 
@@ -14,7 +14,7 @@ let client: LineageClient | undefined;
 /** One client for the session, with the same credentials as the BigQuery calls */
 async function lineageClient(): Promise<LineageClient> {
     if (!client) {
-        const keyFilename = vscode.workspace.getConfiguration('vscode-dataform-tools').get<string>('serviceAccountJsonPath');
+        const keyFilename = extensionConfiguration().get<string>('serviceAccountJsonPath');
         client = new (await loadLineageClient())(keyFilename ? { keyFilename } : {});
     }
     return client;

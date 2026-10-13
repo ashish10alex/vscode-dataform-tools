@@ -6,22 +6,6 @@ declare global {
   var DEBOUNCE_WAIT: number;
 }
 
-declare global {
-  var CACHED_COMPILED_DATAFORM_JSON: DataformCompiledJson | undefined;
-}
-
-declare global {
-  var FILE_NODE_MAP: Map<string, (Table | Assertion | Operation | Notebook)[]>;
-}
-
-declare global {
-  var TARGET_DEPENDENTS_MAP: Map<string, Target[]>;
-}
-
-declare global {
-  var TARGET_NAME_MAP: Map<string, (Table | Assertion | Operation | Notebook)[]>;
-}
-
 declare  global {
   var cdnLinks : {
       highlightJsCssUri: string;

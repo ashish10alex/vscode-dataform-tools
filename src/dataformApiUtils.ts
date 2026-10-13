@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledJson } from './project';
 import * as fs from 'fs/promises'; 
 import path from 'path';
 import {GitService} from "./gitClient";
@@ -6,7 +7,11 @@ import { getWorkspaceFolder, runCompilation, getCachedDataformRepositoryLocation
 import type { DataformTools } from "@ashishalex/dataform-tools";
 import { loadDataformTools } from "./lazySdk";
 import { countActionTypes } from './shared/actionTypes';
+import { MAX_RUN_HISTORY } from './shared/cliRunJobs';
+import { takeRunStages } from './runFeedback';
 import { CreateCompilationResultResponse , GitFileChange, CodeCompilationConfig, InvocationConfig, WorkflowUrlEntry} from "./types";
+import { resolveDataformOptions } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 export async function sendWorkflowInvocationNotification(
     url: string,
@@ -35,13 +40,14 @@ export async function sendWorkflowInvocationNotification(
             location: location,
             repositoryName: repositoryName,
             state: 'RUNNING',
+            stages: takeRunStages(Date.now()),
             includedTags: invocationConfig?.includedTags,
             includedTargets: invocationConfig?.includedTargets,
-            includedTargetTypes: invocationConfig?.includedTargets ? countActionTypes(invocationConfig.includedTargets, CACHED_COMPILED_DATAFORM_JSON) : undefined,
+            includedTargetTypes: invocationConfig?.includedTargets ? countActionTypes(invocationConfig.includedTargets, compiledJson()) : undefined,
         });
 
-        if (storedUrls.length > 20) {
-            storedUrls.splice(0, storedUrls.length - 20);
+        if (storedUrls.length > MAX_RUN_HISTORY) {
+            storedUrls.splice(0, storedUrls.length - MAX_RUN_HISTORY);
         }
 
         await context.workspaceState.update('dataform_workflow_urls', storedUrls);
@@ -299,10 +305,11 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             const staleWorkspaceFolder = await getWorkspaceFolder();
             if (staleWorkspaceFolder) {
                 progress.report({ message: 'Waiting for the Dataform project to finish compiling...' });
-                await ensureFreshCompilation(staleWorkspaceFolder);
+                await ensureFreshCompilation(staleWorkspaceFolder, resolveDataformOptions(staleWorkspaceFolder));
             }
         }
-        if (!CACHED_COMPILED_DATAFORM_JSON) {
+        let compiled = compiledJson();
+        if (!compiled) {
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during compilation check.');
                 return;
@@ -316,18 +323,17 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
             // 1
             progress.report({ message: 'Cache miss, compiling Dataform project...', increment: 14.28 });
-            let { dataformCompiledJson } = await runCompilation(workspaceFolder); // ~1100ms
+            let { dataformCompiledJson } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder)); // ~1100ms
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Operation cancelled during compilation.');
                 return;
             }
 
-            if (dataformCompiledJson) {
-                CACHED_COMPILED_DATAFORM_JSON = dataformCompiledJson;
-            } else {
+            if (!dataformCompiledJson) {
                 vscode.window.showErrorMessage(`Unable to compile Dataform project. Run "dataform compile" in the terminal to check`);
                 return;
             }
+            compiled = dataformCompiledJson;
         } 
 
         if (token.isCancellationRequested) {
@@ -335,8 +341,8 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
             return;
         }
 
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const gcpProjectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON.projectConfig.defaultDatabase) as string;
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
+        const gcpProjectId = (gcpProjectIdOveride || compiled.projectConfig.defaultDatabase) as string;
         if (!gcpProjectId) {
             vscode.window.showErrorMessage(`Unable to determine GCP project ID in Dataform config`);
             return;
@@ -377,7 +383,7 @@ export async function syncAndrunDataformRemotely(progress: vscode.Progress<{ mes
 
         // 2
         progress.report({ message: 'Initializing Dataform client...', increment: 14.28 });
-        const serviceAccountJsonPath  = vscode.workspace.getConfiguration('vscode-dataform-tools').get('serviceAccountJsonPath');
+        const serviceAccountJsonPath  = extensionConfiguration().get('serviceAccountJsonPath');
         let clientOptions = { projectId: gcpProjectId };
         if(serviceAccountJsonPath){
             vscode.window.showInformationMessage(`Using service account at: ${serviceAccountJsonPath}`);

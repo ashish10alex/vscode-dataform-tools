@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { compiledIndices, compiledJson } from '../project';
 import { logger } from '../logger';
 import { debounce } from '../debounce';
 import { Target } from '../types';
@@ -6,6 +7,7 @@ import { findRefs } from '../documentSymbols';
 import { getRelativePath } from '../utils/workspaceUtils';
 import { builtInDevHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId } from './deferRules';
 import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralWithStaleFlags } from './index';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * A coloured label after each `${ref(...)}` in a .sqlx file that defer to prod reads from prod or from its built
@@ -19,7 +21,7 @@ import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDe
 type RefHint = { label: (now: number) => string, kind: RefHintKind, hover: vscode.MarkdownString };
 type DocumentHints = { hints: Map<string, RefHint>, dependencies: { target: Target, canonicalTarget?: Target }[] };
 
-const deferredDecoration = vscode.window.createTextEditorDecorationType({
+export const deferredDecoration = vscode.window.createTextEditorDecorationType({
     after: {
         margin: "0 0 0 0.75em",
         color: new vscode.ThemeColor("dataformTools.deferredRef.foreground"),
@@ -35,7 +37,7 @@ const warningDecoration = vscode.window.createTextEditorDecorationType({
         fontWeight: "600",
     },
 });
-const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
+export const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
     after: {
         margin: "0 0 0 0.75em",
         color: new vscode.ThemeColor("dataformTools.builtInDevRef.foreground"),
@@ -44,8 +46,8 @@ const builtInDevDecoration = vscode.window.createTextEditorDecorationType({
     },
 });
 
-function hintsEnabled(): boolean {
-    return vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('deferToProdEditorHints') !== false;
+export function hintsEnabled(): boolean {
+    return extensionConfiguration().get<boolean>('deferToProdEditorHints') !== false;
 }
 
 function markdown(text: string, trustedCommands: string[] = []): vscode.MarkdownString {
@@ -73,11 +75,11 @@ function deferralHints(deferral: Deferral | undefined): Map<string, RefHint> {
  */
 async function computeDocumentHints(document: vscode.TextDocument, onStaleFlags: (hints: DocumentHints) => void): Promise<DocumentHints | undefined> {
     const workspaceFolder = globalThis.workspaceFolder;
-    const graph = CACHED_COMPILED_DATAFORM_JSON;
+    const graph = compiledJson();
     if (!workspaceFolder || !graph) {
         return undefined;
     }
-    const actions = (FILE_NODE_MAP.get(getRelativePath(document.uri.fsPath)) ?? []).filter((action: any) => action?.target && action.type !== "test");
+    const actions = (compiledIndices().fileNodeMap.get(getRelativePath(document.uri.fsPath)) ?? []).filter((action: any) => action?.target && action.type !== "test");
     if (actions.length === 0) {
         return undefined;
     }

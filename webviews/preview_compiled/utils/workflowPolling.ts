@@ -1,4 +1,6 @@
-export const TERMINAL_WORKFLOW_STATES = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
+import { ENDED_RUN_STATES } from '../../../src/shared/cliRunJobs';
+
+export const TERMINAL_WORKFLOW_STATES = ENDED_RUN_STATES;
 
 export const POLL_FAST_MS = 5000;
 // Cancellation usually settles within a few seconds, so poll more eagerly while any invocation is CANCELING.

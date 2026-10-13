@@ -55,7 +55,7 @@ export function ReleaseHighlight() {
             <span>Graduation Release · v1.18.0</span>
           </div>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Develop against prod. Merge without fear.
+            Develop against prod
           </h2>
           <p className="mt-2 max-w-3xl text-balance text-muted-foreground sm:text-base">
             Release 1.18.0 introduces two flagship developer superpowers:{" "}
@@ -153,7 +153,7 @@ export function ReleaseHighlight() {
                   <span>
                     <strong className="text-foreground">In-Editor Ref Decorations:</strong> Real-time{" "}
                     <code className="rounded bg-muted px-1 py-0.5 font-mono text-brand">→ prod</code> indicators
-                    and amber <code className="rounded bg-muted px-1 py-0.5 font-mono text-amber-500">⚠ prod</code>{" "}
+                    and amber <code className="rounded bg-muted px-1 py-0.5 font-mono text-amber-700 dark:text-amber-500">⚠ prod</code>{" "}
                     warnings if an upstream model is modified on your branch.
                   </span>
                 </div>
@@ -178,26 +178,26 @@ export function ReleaseHighlight() {
             <div className="rounded-lg border bg-muted/40 p-3.5 font-mono text-xs">
               <p className="text-[11px] text-muted-foreground">// settings.json</p>
               <p className="mt-1 text-foreground">
-                <span className="text-brand">&quot;vscode-dataform-tools.deferToProd&quot;</span>: <span className="text-emerald-500">true</span>,
+                <span className="text-brand">&quot;vscode-dataform-tools.deferToProd&quot;</span>: <span className="text-emerald-600 dark:text-emerald-500">true</span>,
               </p>
               <p className="text-foreground">
                 <span className="text-brand">&quot;vscode-dataform-tools.prodCompilerOptions&quot;</span>:{" "}
-                <span className="text-amber-500">&quot;--default-database=my-prod-project&quot;</span>
+                <span className="text-amber-700 dark:text-amber-500">&quot;--default-database=my-prod-project&quot;</span>
               </p>
             </div>
           </div>
 
           {/* Visual Code Mockup */}
-          <div className="flex flex-col overflow-hidden rounded-xl border bg-zinc-950 font-mono text-xs text-zinc-300 shadow-2xl">
+          <div className="flex flex-col overflow-hidden rounded-xl border bg-white dark:bg-zinc-950 font-mono text-xs text-zinc-800 dark:text-zinc-300 shadow-2xl">
             {/* Editor Window Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-4 py-2.5 text-zinc-400">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/90 px-4 py-2.5 text-zinc-600 dark:text-zinc-400">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
                 <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
                 <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
-                <span className="ml-2 font-sans text-xs text-zinc-300">0300_MONTHLY_REVENUE.sqlx</span>
+                <span className="ml-2 font-sans text-xs text-zinc-800 dark:text-zinc-300">0300_MONTHLY_REVENUE.sqlx</span>
               </div>
-              <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-400">
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Defer: Active
               </div>
@@ -207,37 +207,37 @@ export function ReleaseHighlight() {
             <div className="relative space-y-1.5 p-4 leading-relaxed overflow-x-auto">
               <div className="text-zinc-500">config &#123; type: &quot;table&quot;, tags: [&quot;finance&quot;] &#125;</div>
               <div className="text-zinc-500"></div>
-              <div><span className="text-purple-400">SELECT</span></div>
+              <div><span className="text-purple-700 dark:text-purple-400">SELECT</span></div>
               <div>&nbsp;&nbsp;o.order_id,</div>
               <div>&nbsp;&nbsp;o.customer_id,</div>
               <div>&nbsp;&nbsp;c.company_name,</div>
               <div>&nbsp;&nbsp;o.gross_amount_usd</div>
-              <div className="flex flex-wrap items-center gap-2 bg-zinc-900/40 px-1 py-0.5 rounded">
-                <span><span className="text-purple-400">FROM</span> $&#123;ref(<span className="text-amber-300">&quot;stg_orders&quot;</span>)&#125; <span className="text-purple-400">AS</span> o</span>
+              <div className="flex flex-wrap items-center gap-2 bg-zinc-100 dark:bg-zinc-900/40 px-1 py-0.5 rounded">
+                <span><span className="text-purple-700 dark:text-purple-400">FROM</span> $&#123;ref(<span className="text-amber-700 dark:text-amber-300">&quot;stg_orders&quot;</span>)&#125; <span className="text-purple-700 dark:text-purple-400">AS</span> o</span>
                 <span className="inline-flex items-center gap-1 rounded bg-brand/20 px-2 py-0.5 font-sans text-[11px] font-medium text-brand">
                   <span>→ prod</span>
-                  <span className="text-[10px] text-zinc-400">(unbuilt in dev)</span>
+                  <span className="text-[10px] text-zinc-600 dark:text-zinc-400">(unbuilt in dev)</span>
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 bg-amber-500/5 px-1 py-0.5 rounded border border-amber-500/20">
-                <span><span className="text-purple-400">JOIN</span> $&#123;ref(<span className="text-amber-300">&quot;dim_customers&quot;</span>)&#125; <span className="text-purple-400">AS</span> c</span>
-                <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 font-sans text-[11px] font-medium text-amber-300">
+                <span><span className="text-purple-700 dark:text-purple-400">JOIN</span> $&#123;ref(<span className="text-amber-700 dark:text-amber-300">&quot;dim_customers&quot;</span>)&#125; <span className="text-purple-700 dark:text-purple-400">AS</span> c</span>
+                <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 font-sans text-[11px] font-medium text-amber-700 dark:text-amber-300">
                   <ShieldAlert className="h-3 w-3" />
                   <span>⚠ prod (branch modified)</span>
                 </span>
               </div>
-              <div>&nbsp;&nbsp;<span className="text-purple-400">ON</span> o.customer_id = c.id</div>
+              <div>&nbsp;&nbsp;<span className="text-purple-700 dark:text-purple-400">ON</span> o.customer_id = c.id</div>
             </div>
 
             {/* Status Bar simulation */}
-            <div className="mt-auto flex items-center justify-between border-t border-zinc-800 bg-zinc-900/60 px-4 py-2 text-[11px] text-zinc-400">
+            <div className="mt-auto flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 px-4 py-2 text-[11px] text-zinc-600 dark:text-zinc-400">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1 text-brand">
                   <Database className="h-3 w-3" />
                   <span>Defer: Prod (database=prod_dw)</span>
                 </span>
-                <span className="text-zinc-600">|</span>
-                <span className="text-zinc-400">Proxy Views: 0 leftover</span>
+                <span className="text-zinc-300 dark:text-zinc-600">|</span>
+                <span className="text-zinc-600 dark:text-zinc-400">Proxy Views: 0 leftover</span>
               </div>
               <span className="text-zinc-500">BigQuery dry-run: 0 B ($0.00)</span>
             </div>
@@ -298,7 +298,7 @@ export function ReleaseHighlight() {
               <Button onClick={handleCopyPrReport} variant="outline" size="sm" className="gap-2 text-xs">
                 {copiedPrReport ? (
                   <>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
                     <span>Copied Markdown!</span>
                   </>
                 ) : (
@@ -312,16 +312,16 @@ export function ReleaseHighlight() {
           </div>
 
           {/* Lineage & Impact Card Mockup */}
-          <div className="flex flex-col overflow-hidden rounded-xl border bg-zinc-950 font-sans text-xs shadow-2xl">
-            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-4 py-2.5 text-zinc-300">
+          <div className="flex flex-col overflow-hidden rounded-xl border bg-white dark:bg-zinc-950 font-sans text-xs shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/90 px-4 py-2.5 text-zinc-800 dark:text-zinc-300">
               <div className="flex items-center gap-2">
                 <Layers className="h-4 w-4 text-brand" />
                 <span className="font-medium">Column Impact Inspector</span>
-                <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+                <span className="rounded bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-600 dark:text-zinc-400">
                   fct_player_transfers
                 </span>
               </div>
-              <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400">
+              <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-400">
                 1 Dropped · 1 Altered
               </span>
             </div>
@@ -331,26 +331,26 @@ export function ReleaseHighlight() {
               <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-red-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-red-400">
+                    <span className="rounded bg-red-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-red-700 dark:text-red-400">
                       - transfer_fee_cents
                     </span>
-                    <span className="font-mono text-[10px] text-zinc-400">INT64</span>
+                    <span className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400">INT64</span>
                   </div>
-                  <span className="rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400">
+                  <span className="rounded bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400">
                     Dropped
                   </span>
                 </div>
-                <div className="border-t border-zinc-800/80 pt-2 text-[11px] text-zinc-400">
-                  <p className="font-medium text-zinc-300">Downstream Readers via Dataplex Lineage:</p>
-                  <ul className="mt-1 space-y-1 pl-3 text-zinc-400">
+                <div className="border-t border-zinc-200 dark:border-zinc-800/80 pt-2 text-[11px] text-zinc-600 dark:text-zinc-400">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-300">Downstream Readers via Dataplex Lineage:</p>
+                  <ul className="mt-1 space-y-1 pl-3 text-zinc-600 dark:text-zinc-400">
                     <li className="flex items-center gap-1.5">
                       <span className="h-1 w-1 rounded-full bg-red-400" />
-                      <code className="font-mono text-zinc-300">finance_dw.monthly_pnl_summary</code>
+                      <code className="font-mono text-zinc-800 dark:text-zinc-300">finance_dw.monthly_pnl_summary</code>
                       <span className="text-[10px] text-zinc-500">(Nightly ELT)</span>
                     </li>
                     <li className="flex items-center gap-1.5">
                       <span className="h-1 w-1 rounded-full bg-red-400" />
-                      <code className="font-mono text-zinc-300">marketing_bi.executive_kpi_dashboard</code>
+                      <code className="font-mono text-zinc-800 dark:text-zinc-300">marketing_bi.executive_kpi_dashboard</code>
                       <span className="text-[10px] text-zinc-500">(Looker Studio)</span>
                     </li>
                   </ul>
@@ -361,33 +361,33 @@ export function ReleaseHighlight() {
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-amber-300">
+                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-amber-700 dark:text-amber-300">
                       ~ player_status
                     </span>
-                    <span className="font-mono text-[10px] text-zinc-400">STRING → INT64</span>
+                    <span className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400">STRING → INT64</span>
                   </div>
-                  <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+                  <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
                     Retyped
                   </span>
                 </div>
-                <div className="border-t border-zinc-800/80 pt-2 text-[11px] text-zinc-400">
-                  <p className="font-medium text-zinc-300">Downstream Readers via Dataplex Lineage:</p>
-                  <ul className="mt-1 space-y-1 pl-3 text-zinc-400">
+                <div className="border-t border-zinc-200 dark:border-zinc-800/80 pt-2 text-[11px] text-zinc-600 dark:text-zinc-400">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-300">Downstream Readers via Dataplex Lineage:</p>
+                  <ul className="mt-1 space-y-1 pl-3 text-zinc-600 dark:text-zinc-400">
                     <li className="flex items-center gap-1.5">
                       <span className="h-1 w-1 rounded-full bg-amber-400" />
-                      <code className="font-mono text-zinc-300">data_science.churn_prediction_v2</code>
+                      <code className="font-mono text-zinc-800 dark:text-zinc-300">data_science.churn_prediction_v2</code>
                     </li>
                   </ul>
                 </div>
               </div>
 
               {/* Safe Columns summary */}
-              <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-zinc-400">
+              <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40 px-3 py-2 text-zinc-600 dark:text-zinc-400">
                 <span className="flex items-center gap-1.5 text-[11px]">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" />
                   <span>14 unchanged columns</span>
                 </span>
-                <span className="text-[10px] text-emerald-400 font-medium">Safe to deploy</span>
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">Safe to deploy</span>
               </div>
             </div>
           </div>
@@ -415,15 +415,15 @@ export function ReleaseHighlight() {
               {/* Visual badges mock */}
               <div className="mt-4 space-y-2 rounded-xl border bg-muted/40 p-3 font-mono text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-sky-500/20 px-2 py-0.5 font-medium text-sky-400">UNIQUE KEY</span>
+                  <span className="rounded bg-sky-500/20 px-2 py-0.5 font-medium text-sky-700 dark:text-sky-400">UNIQUE KEY</span>
                   <span className="text-muted-foreground">order_id</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-purple-500/20 px-2 py-0.5 font-medium text-purple-400">NON NULL</span>
+                  <span className="rounded bg-purple-500/20 px-2 py-0.5 font-medium text-purple-700 dark:text-purple-400">NON NULL</span>
                   <span className="text-muted-foreground">customer_id, created_at</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-amber-500/20 px-2 py-0.5 font-medium text-amber-400">ROW CONDITION</span>
+                  <span className="rounded bg-amber-500/20 px-2 py-0.5 font-medium text-amber-700 dark:text-amber-400">ROW CONDITION</span>
                   <span className="text-muted-foreground">gross_usd &gt;= 0</span>
                 </div>
               </div>
@@ -486,7 +486,7 @@ export function ReleaseHighlight() {
                   <div className="text-[11px] text-muted-foreground">Quiet Startup</div>
                 </div>
                 <div className="rounded-xl border bg-muted/40 p-3">
-                  <div className="text-2xl font-bold text-emerald-500">0 ms</div>
+                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">0 ms</div>
                   <div className="text-[11px] text-muted-foreground">Cached Recompiles</div>
                 </div>
               </div>

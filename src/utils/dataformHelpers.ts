@@ -7,18 +7,22 @@ import { perfTimed } from '../perf';
 import { GitService } from '../gitClient';
 import { loadDataformTools } from "../lazySdk";
 import { sendWorkflowInvocationNotification, syncAndrunDataformRemotely } from "../dataformApiUtils";
-import { BigQueryDryRunResponse, CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
-import { getWorkspaceFolder, selectWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
-import { runCompilation, getOrCompileDataformJson, getDataformCompilationTimeoutFromConfig, getDataformCompilerOptions, getDataformExecutionTimeoutFromConfig } from './dataformCompiler';
-import { getDataformCliCmdBasedOnScope } from './executableResolver';
+import { CurrentFileMetadata, DataformCompiledJson, Target, Table, Operation, Assertion, Declarations, ExecutionMode, LastRunRequest } from '../types';
+import { getWorkspaceFolder, getFileNameFromDocument, getAllFilesWtAnExtension } from './workspaceUtils';
+import { runCompilation, getOrCompileDataformJson } from './dataformCompiler';
 import { getQueryMetaForCurrentFile } from './queryMetadata';
 import { getCachedDataformRepositoryLocation } from './gcpUtils';
-import { showLoadingProgress, runCommandInTerminal } from './vscodeUi';
-import { clearIndices } from './compiledJsonIndex';
+import { showLoadingProgress } from './vscodeUi';
+import { runDataformRunInTerminal } from '../cliRunJobs';
+import { withRunFeedback } from '../runFeedback';
+import { clearCompiled, compiledIndices, compiledJson, fileBackendHints, projects } from '../project';
 import { confirmRemoteRun } from './remoteCompiler';
 import { beginRun } from '../defer/deferRun';
 import { deferFileMetadata, isDeferEnabled, prepareDeferral } from '../defer';
 import { proxyViewsMayExist } from '../defer/proxyViews';
+import { resolveDataformOptions } from '../project/dataformOptions';
+import { dataformRunCommand } from '../project/dataformBackend';
+import { extensionConfiguration } from '../project/settings';
 
 export function formatTimestamp(lastModifiedTime:Date):string {
     return lastModifiedTime.toLocaleString('en-US', {
@@ -67,36 +71,6 @@ export const UNKNOWN_ACCURACY_STAT = '\u26a0 Bytes unknown';
 /** Tooltip shown on a stat ending in UNKNOWN_ACCURACY_STAT. */
 export const UNKNOWN_ACCURACY_TOOLTIP = 'BigQuery could not estimate the bytes this query scans (totalBytesProcessedAccuracy: UNKNOWN), so it reports 0 bytes and 0 cost. The query will still scan data when executed \u2014 treat this as "no estimate", not as free.';
 
-/**
- * Formats a dry run result into the short stat string shown in the compiled query panel,
- * e.g. "Incremental: Up to 1.20 GiB $0.006", or "Incremental: \u26a0 Bytes unknown" when
- * BigQuery could not estimate the bytes. Returns "" when there is nothing to show.
- */
-export function formatDryRunCostSummary(result: BigQueryDryRunResponse | undefined, type: string, currencySymbol: string): string {
-    if (!result?.statistics?.cost || result?.error?.hasError !== false) {
-        return "";
-    }
-
-    const accuracy = result.statistics.totalBytesProcessedAccuracy;
-    const isUpperBound = accuracy === 'UPPER_BOUND';
-    const isLowerBound = accuracy === 'LOWER_BOUND';
-    const prefix = isUpperBound ? "Up to " : (isLowerBound ? "At least " : "");
-    const label = type ? type + ": " : "";
-
-    // BigQuery reports 0 bytes / 0 cost when it cannot compute them statically. Showing those
-    // figures reads as "this query is free", so replace them outright with a warning the
-    // webview renders as a chip; the raw values are explained in the tooltip.
-    if (result.statistics.bytesEstimateUnknown) {
-        return label + UNKNOWN_ACCURACY_STAT;
-    }
-
-    if (result.statistics.statementType === 'SCRIPT' && accuracy !== 'PRECISE' && accuracy !== 'UPPER_BOUND') {
-        return label + "NOTE: Could not compute bytes processed estimate for script.";
-    }
-
-    return label + prefix + formatBytes(result.statistics.totalBytesProcessed) + " " + currencySymbol + (result.statistics.cost.value.toFixed(3) || "0.00");
-}
-
 export function sendNotificationToUserOnExtensionUpdate(context: vscode.ExtensionContext) {
     // Kept in globalState: the extension's install folder can be read-only, and reading files there blocked activation
     const lastVersionKey = 'vscode-dataform-tools.lastNotifiedVersion';
@@ -127,9 +101,9 @@ function getTreeRootFromWordInStruct(struct: Table[] | Operation[] | Assertion[]
     }
 }
 
-export async function getDependentsOfTarget(targetToSearch: Target) {
+export async function getDependentsOfTarget(targetToSearch: Target, workspaceFolder?: string) {
     const targetKey = `${targetToSearch.database}.${targetToSearch.schema}.${targetToSearch.name}`;
-    const dependents = TARGET_DEPENDENTS_MAP.get(targetKey) || [];
+    const dependents = compiledIndices(workspaceFolder).targetDependentsMap.get(targetKey) || [];
     logger.debug(`Found ${dependents.length} dependents for ${targetKey} from cache`);
     return dependents;
 }
@@ -173,9 +147,9 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
 
     const [filename, relativeFilePath, extension] = result.value;
     logger.debug(`File name: ${filename}, relative file path: ${relativeFilePath}, extension: ${extension}`);
-    if (!workspaceFolder) {
-        workspaceFolder = await getWorkspaceFolder();
-    }
+    // The Project is the file's own: the one the window last worked in may be another, with another compile result
+    const ofFile = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+    workspaceFolder = ofFile.kind === 'project' && ofFile.project.backend === 'dataform' ? ofFile.project.root : await getWorkspaceFolder();
     if (!workspaceFolder) { return { isDataformWorkspace: false }; }
     logger.debug(`Workspace folder: ${workspaceFolder}`);
 
@@ -194,14 +168,14 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
         }
     }
 
-    if (freshCompilation || !CACHED_COMPILED_DATAFORM_JSON) {
+    if (freshCompilation || !compiledJson(workspaceFolder)) {
         if (freshCompilation) {
             logger.debug('Fresh compilation requested, ignoring cache');
         } else {
             logger.debug('No cached compilation found, performing fresh compilation');
         }
         prepareDeferral(workspaceFolder);
-        let { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } = await runCompilation(workspaceFolder); // Takes ~1100ms
+        let { dataformCompiledJson, errors, possibleResolutions, compilationTimeMs } = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder)); // Takes ~1100ms
         if (dataformCompiledJson) {
             let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, dataformCompiledJson, workspaceFolder);
 
@@ -237,7 +211,7 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
             const targetToSearch = fileMetadata?.tables[0]?.target;
             let dependents = undefined;
             if (targetToSearch) {
-                dependents = await getDependentsOfTarget(targetToSearch);
+                dependents = await getDependentsOfTarget(targetToSearch, workspaceFolder);
             }
             const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, dataformCompiledJson, workspaceFolder, deferralInBackground);
 
@@ -262,8 +236,7 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
             };
         }
         else if (errors?.length !== 0) {
-            CACHED_COMPILED_DATAFORM_JSON = undefined;
-            clearIndices();
+            clearCompiled(workspaceFolder);
             logger.debug('Clearing compilation cache due to errors');
             logger.debug(`Compilation errors: ${JSON.stringify(errors)}`);
             return {
@@ -287,7 +260,8 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
         }
     } else {
         logger.debug('Using cached compilation data');
-        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder);
+        const compiled = compiledJson(workspaceFolder)!;
+        let fileMetadata = await getQueryMetaForCurrentFile(relativeFilePath, compiled, workspaceFolder);
 
         if (fileMetadata?.queryMeta.error !== "") {
             return {
@@ -304,10 +278,10 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
         const targetToSearch = fileMetadata?.tables[0]?.target;
         let dependents = undefined;
         if (targetToSearch) {
-            dependents = await getDependentsOfTarget(targetToSearch);
+            dependents = await getDependentsOfTarget(targetToSearch, workspaceFolder);
         }
         const isConfigFile = filename === 'workflow_settings' || filename === 'dataform' || (filename === 'package' && extension === 'json');
-        const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, CACHED_COMPILED_DATAFORM_JSON!, workspaceFolder, deferralInBackground);
+        const deferred = await deferFileMetadataFor(isConfigFile, fileMetadata, compiled, workspaceFolder, deferralInBackground);
 
         return {
             isDataformWorkspace: true,
@@ -321,8 +295,8 @@ async function readCurrentFileMetadata(freshCompilation: boolean, options: { def
                 relativeFilePath: relativeFilePath
             },
             document: document,
-            projectConfig: CACHED_COMPILED_DATAFORM_JSON!.projectConfig,
-            dataformCoreVersion: CACHED_COMPILED_DATAFORM_JSON!.dataformCoreVersion,
+            projectConfig: compiled.projectConfig,
+            dataformCoreVersion: compiled.dataformCoreVersion,
             packageJsonContent: packageJsonContent
         };
     }
@@ -415,13 +389,11 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
 
     let searchTerm = editor.document.getText(wordRange);
 
-    if (!workspaceFolder) {
-        workspaceFolder = await selectWorkspaceFolder();
-    }
+    workspaceFolder = await getWorkspaceFolder();
     if (!workspaceFolder) {
         return;
     }
-    let dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder);
+    let dataformCompiledJson = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
     let declarations = dataformCompiledJson?.declarations;
     let tables = dataformCompiledJson?.tables;
@@ -456,32 +428,8 @@ export async function getTreeRootFromRef(): Promise<string | undefined> {
     return undefined;
 }
 
-export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, dataformCompilationTimeoutVal: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
-    let dataformCompilerOptions = getDataformCompilerOptions();
-    const customDataformCliPath = getDataformCliCmdBasedOnScope(workspaceFolder);
-    let cmd = `${customDataformCliPath} run "${workspaceFolder}" ${dataformCompilerOptions} --timeout=${dataformCompilationTimeoutVal}`;
-    const dataformExecutionTimeoutVal = getDataformExecutionTimeoutFromConfig();
-    if (dataformExecutionTimeoutVal) {
-        cmd += ` --execution-timeout=${dataformExecutionTimeoutVal}`;
-    }
-    for (let i = 0; i < actionsList.length; i++) {
-        let fullTableName = actionsList[i];
-        if (i === 0) {
-            if (includDependencies) {
-                cmd += ` --include-deps`;
-            }
-            if (includeDownstreamDependents) {
-                cmd += ` --include-dependents`;
-            }
-            if (fullRefresh) {
-                cmd += ` --full-refresh`;
-            }
-            cmd += ` --actions "${fullTableName}"`;
-        } else {
-            cmd += ` --actions "${fullTableName}"`;
-        }
-    }
-    return cmd;
+export function getDataformActionCmdFromActionList(actionsList: string[], workspaceFolder: string, includDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean) {
+    return dataformRunCommand(workspaceFolder, { actions: actionsList, includeDependencies: includDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
 }
 
 export async function getTextForBlock(document: vscode.TextDocument, blockRangeWtMeta: { startLine: number, endLine: number, exists: boolean }): Promise<string> {
@@ -515,10 +463,14 @@ export async function getMultipleFileSelection(workspaceFolder: string) {
     return Array.isArray(selectedFiles) ? selectedFiles : [selectedFiles];
 }
 
-export async function runMultipleFilesFromSelection(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
+export function runMultipleFilesFromSelection(...args: Parameters<typeof runMultipleFilesFromSelectionNow>): ReturnType<typeof runMultipleFilesFromSelectionNow> {
+    return withRunFeedback(args[6], () => runMultipleFilesFromSelectionNow(...args));
+}
+
+async function runMultipleFilesFromSelectionNow(context: vscode.ExtensionContext, workspaceFolder: string, selectedFiles: string[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode:ExecutionMode) {
     let fileMetadatas: any[] = [];
 
-    let dataformCompiledJson = await runCompilation(workspaceFolder);
+    let dataformCompiledJson = await runCompilation(workspaceFolder, resolveDataformOptions(workspaceFolder));
 
     if (selectedFiles && dataformCompiledJson.dataformCompiledJson !== undefined) {
         for (let i = 0; i < selectedFiles.length; i++) {
@@ -549,8 +501,15 @@ export async function runMultipleFilesFromSelection(context: vscode.ExtensionCon
     await runIncludedTargets(context, workspaceFolder, includedTargets, includeDependencies, includeDownstreamDependents, fullRefresh, executionMode, lastRunRequest);
 }
 
-/** Runs the given actions with the CLI or the Dataform API, preparing defer to prod and recording `lastRunRequest` just before dispatching. */
-export async function runIncludedTargets(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>) {
+/**
+ * Runs the given actions with the CLI or the Dataform API, preparing defer to prod and recording `lastRunRequest` just
+ * before dispatching. Resolves to true when it created a workflow invocation on the pushed branch.
+ */
+export function runIncludedTargets(...args: Parameters<typeof runIncludedTargetsNow>): ReturnType<typeof runIncludedTargetsNow> {
+    return withRunFeedback(args[6], () => runIncludedTargetsNow(...args));
+}
+
+async function runIncludedTargetsNow(context: vscode.ExtensionContext, workspaceFolder: string, includedTargets: Target[], includeDependencies: boolean, includeDownstreamDependents: boolean, fullRefresh: boolean, executionMode: ExecutionMode, lastRunRequest: Omit<LastRunRequest, 'timestamp'>): Promise<boolean> {
     const invocationConfig = {
         includedTargets: includedTargets,
         transitiveDependenciesIncluded: includeDependencies,
@@ -559,7 +518,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
     };
 
     if(executionMode === "api_workspace"){
-        if (!(await beginRun(lastRunRequest))) { return; }
+        if (!(await beginRun(lastRunRequest))) { return false; }
         await showLoadingProgress(
             "",
             syncAndrunDataformRemotely,
@@ -568,20 +527,20 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
             invocationConfig,
             compilerOptionsMap,
         );
-        return;
+        return false;
     }
 
     if(executionMode === "api"){
         if (!(await confirmRemoteRun())) {
-            return;
+            return false;
         }
-        if (!(await beginRun(lastRunRequest))) { return; }
+        if (!(await beginRun(lastRunRequest))) { return false; }
 
-        const gcpProjectIdOveride = vscode.workspace.getConfiguration('vscode-dataform-tools').get('gcpProjectId');
-        const projectId = (gcpProjectIdOveride || CACHED_COMPILED_DATAFORM_JSON?.projectConfig.defaultDatabase) as string | undefined;
+        const gcpProjectIdOveride = extensionConfiguration().get('gcpProjectId');
+        const projectId = (gcpProjectIdOveride || compiledJson()?.projectConfig.defaultDatabase) as string | undefined;
         if(!projectId){
             vscode.window.showErrorMessage("Unable to determine GCP project id to use for Dataform API run");
-            return;
+            return false;
         }
 
         try{
@@ -596,7 +555,7 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
             const gcpProjectLocation = await getCachedDataformRepositoryLocation(context, repositoryName);
             if (!gcpProjectLocation) {
                 vscode.window.showInformationMessage("Could not determine the location where Dataform repository is hosted, aborting...");
-                return;
+                return false;
             }
 
             const dataformClient = new (await loadDataformTools())(projectId, gcpProjectLocation);
@@ -616,17 +575,18 @@ export async function runIncludedTargets(context: vscode.ExtensionContext, works
                 gcpProjectLocation,
                 repositoryName
             );
+            return true;
         } catch(error:any){
             vscode.window.showErrorMessage(error.message);
         }
     } else if (executionMode === "cli") {
         const actionsList = includedTargets.map((target) => `${target.database}.${target.schema}.${target.name}`);
-        let dataformCompilationTimeoutVal = getDataformCompilationTimeoutFromConfig();
         let dataformActionCmd = "";
-        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, dataformCompilationTimeoutVal, includeDependencies, includeDownstreamDependents, fullRefresh);
-        if (!(await beginRun(lastRunRequest))) { return; }
-        runCommandInTerminal(dataformActionCmd);
+        dataformActionCmd = getDataformActionCmdFromActionList(actionsList, workspaceFolder, includeDependencies, includeDownstreamDependents, fullRefresh);
+        if (!(await beginRun(lastRunRequest))) { return false; }
+        await runDataformRunInTerminal(workspaceFolder, dataformActionCmd, { targets: includedTargets, includeDependencies, includeDependents: includeDownstreamDependents, fullRefresh });
     }
+    return false;
 }
 
 export async function readDataformCoreVersion(

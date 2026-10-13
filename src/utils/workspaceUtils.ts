@@ -1,14 +1,21 @@
 import * as vscode from 'vscode';
-import fs from 'fs';
 import path from 'path';
 import { logger } from '../logger';
 import { FileNameMetadataResult, FileNameMetadata } from '../types';
+import { activateProject, detectProjects, projects } from '../project';
 
 const supportedExtensions = ['sqlx', 'js', 'yaml', 'json'];
 
+/** The root of the Project `filePath` is in, whichever its Backend */
+function projectRootOf(filePath: string): string | undefined {
+    const found = projects.forFile(filePath);
+    return found.kind === 'project' ? found.project.root : found.kind === 'ambiguous' ? found.candidates[0].root : undefined;
+}
+
+/** The path of a file from the root of its Project, which is how a compile result names it */
 export function getRelativePath(filePath: string) {
-    const fileUri = vscode.Uri.file(filePath);
-    let relativePath = vscode.workspace.asRelativePath(fileUri);
+    const root = projectRootOf(filePath);
+    let relativePath = root ? path.relative(root, filePath) : vscode.workspace.asRelativePath(vscode.Uri.file(filePath));
     if (isRunningOnWindows) {
         relativePath = path.win32.normalize(relativePath);
     }
@@ -19,38 +26,31 @@ export function getRelativePath(filePath: string) {
     return relativePath;
 }
 
-export async function selectWorkspaceFolder() {
-    const availableFolders = vscode.workspace.workspaceFolders;
-
-    if (availableFolders) {
-        let folderOptions = availableFolders.map(folder => {
-            return {
-                label: folder.name,
-                description: folder.uri.fsPath,
-                value: folder.uri.fsPath
-            };
-        });
-
-        if (folderOptions.length === 1) {
-            workspaceFolder = folderOptions[0].value;
-            return workspaceFolder;
-        }
-
-        folderOptions = folderOptions.filter(folder => isDataformWorkspace(folder.description));
-
-        if (folderOptions.length === 1) {
-            workspaceFolder = folderOptions[0].value;
-            return workspaceFolder;
-        }
-
-        const selectedFolder = await vscode.window.showQuickPick(folderOptions, { placeHolder: "Select the Dataform workspace which this file belongs to" });
-        if (selectedFolder) {
-            workspaceFolder = selectedFolder.value;
-            return workspaceFolder;
-        }
+/**
+ * The Project picker: asks which Dataform Project to work in when the window holds several, and makes it the active
+ * Project. With one there is nothing to ask. Returns its root.
+ *
+ * @param activate False leaves the active Project as it is, for a caller that only needs the root
+ */
+export async function selectWorkspaceFolder(activate = true): Promise<string | undefined> {
+    const dataformProjects = projects.projects.filter((project) => project.backend === 'dataform');
+    if (dataformProjects.length === 0) {
         return undefined;
     }
-    return undefined;
+    let picked = dataformProjects[0];
+    if (dataformProjects.length > 1) {
+        const options = dataformProjects.map((project) => ({ label: path.basename(project.root), description: project.root, project }));
+        const selection = await vscode.window.showQuickPick(options, { placeHolder: "Select the Dataform Project to work in" });
+        if (!selection) {
+            return undefined;
+        }
+        picked = selection.project;
+    }
+    if (activate) {
+        activateProject(picked);
+    }
+    workspaceFolder = picked.root;
+    return workspaceFolder;
 }
 
 export function getFileNameFromDocument(
@@ -75,61 +75,41 @@ export function getFileNameFromDocument(
     return { success: true, value: [rawFileName, relativeFilePath, extension] };
 }
 
-//
-//WARN: What if user has multiple workspaces open in the same window
-//TODO: we are taking the first workspace from the active workspaces. Is it possible to handle cases where there are multiple workspaces in the same window ?
-//
-//TODO: What if user has no workspaces open ?
-//
-export async function getWorkspaceFolder(): Promise<string | undefined> {
-    if (!workspaceFolder) {
-        workspaceFolder = await selectWorkspaceFolder();
-    }
-    if (workspaceFolder === undefined) {
-        logger.debug(`Workspace could not be determined. Please open folder with your dataform project`);
-        vscode.window.showWarningMessage(`Workspace could not be determined. Please open folder with your dataform project`);
-        return undefined;
-    }
-    if (isDataformWorkspace(workspaceFolder)) {
-        logger.debug(`Workspace: ${workspaceFolder} is a Dataform workspace`);
+/**
+ * The root of the Dataform Project to work in: the active Project, which follows the editor in focus, else the one
+ * used last, else the one the user picks. Undefined when the window has no Dataform Project.
+ *
+ * Says nothing when there is none: this is also called for hovers and for every editor switch. `explain` is for a
+ * command the user ran, which should say why it did nothing.
+ */
+export async function getWorkspaceFolder(options: { explain?: boolean } = {}): Promise<string | undefined> {
+    const active = projects.active;
+    if (active?.backend === 'dataform') {
+        workspaceFolder = active.root;
         return workspaceFolder;
     }
-    logger.debug(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
-    vscode.window.showWarningMessage(`Not a Dataform workspace. Workspace: ${workspaceFolder} does not have workflow_settings.yaml or dataform.json at its root`);
-    return undefined;
+    if (workspaceFolder && projects.find(workspaceFolder, 'dataform')) {
+        return workspaceFolder;
+    }
+    // A dbt Project that is active stays so: its file has focus
+    workspaceFolder = await selectWorkspaceFolder(!active);
+    if (workspaceFolder === undefined) {
+        logger.debug('No Dataform Project to work in');
+        if (options.explain) {
+            vscode.window.showInformationMessage('No Dataform project found. Open a folder that has workflow_settings.yaml or dataform.json in it or in one of its sub-folders.');
+        }
+    }
+    return workspaceFolder;
 }
 
 export function isDataformWorkspace(workspacePath: string) {
-    const dataformSignatureFiles = ['workflow_settings.yaml', 'dataform.json'];
-    return dataformSignatureFiles.some(file => {
-        let filePath = path.join(workspacePath, file);
-        return fs.existsSync(filePath);
-    });
+    return detectProjects(workspacePath).some((project) => project.backend === 'dataform');
 }
 
+/** The files of the Project at `workspaceFolder` that end in `extension`, as paths from its root */
 export async function getAllFilesWtAnExtension(workspaceFolder: string, extension: string) {
-    let trimInitial = false;
-    const globPattern = new vscode.RelativePattern(workspaceFolder, `**/*${extension}`);
-    const workspaces = vscode.workspace.workspaceFolders;
-    if(workspaces && workspaces?.length > 1){
-        trimInitial = true;
-    }
-    let files = await vscode.workspace.findFiles(globPattern);
-    const fileList = files.map((file) => {
-        if(trimInitial){
-            const pathParts = vscode.workspace.asRelativePath(file).split(path.posix.sep);
-            if(isRunningOnWindows){
-            return path.win32.normalize(pathParts.slice(1).join(path.win32.sep));
-            }
-            return path.posix.normalize(pathParts.slice(1).join(path.posix.sep));
-        }
-         const relativePath = vscode.workspace.asRelativePath(file);
-         if(isRunningOnWindows){
-             return path.win32.normalize(relativePath);
-         }
-         return relativePath;
-    });
-    return fileList;
+    const files = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/*${extension}`));
+    return files.map((file) => path.relative(workspaceFolder, file.fsPath));
 }
 
 export async function getStdoutFromCliRun(exec: any, cmd: string): Promise<any> {

@@ -1,22 +1,40 @@
 import * as vscode from 'vscode';
-import { pickBackendConfigurationTarget } from '../utils/remoteCompiler';
+import { currentDataformRoot, onDidChangeActiveProject, projects } from '../project';
 import { getDeferAvailability, isDeferEnabled } from './index';
 import { clearProdTargetCache } from './prodTargets';
 import { clearTableExistenceCache } from './tableExistence';
 import { removeProxyViews } from './proxyViews';
 import { getOrCompileDataformJson } from '../utils/dataformCompiler';
+import { pickConfigurationTarget, resolveDataformOptions } from '../project/dataformOptions';
+import { extensionConfiguration } from '../project/settings';
+import { dbtOptions, dbtSettings, forgetDbtCompile } from '../project/dbtCompile';
+import { dbtDeferToProdState, dbtProdTarget, forgetDbtProdManifest } from '../project/dbtDefer';
+import type { ProjectState } from '../project/registry';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
  * compiled query panel so its SQL and banner follow straight away.
+ *
+ * The switch is one setting for both Backends. In a dbt Project dbt defers itself, to the manifest of the prod dbt
+ * target (src/project/dbtDefer.ts): there are no prod compiler options and no proxy views there.
  */
 
-const DEFER_SETTINGS = ['deferToProd', 'prodCompilerOptions', 'compilerOptions'];
+const DEFER_SETTINGS = ['deferToProd', 'prodCompilerOptions', 'compilerOptions', 'dbtProdTarget', 'dbtTarget'];
+
+/** The active Project when it is a dbt one: defer to prod is then dbt's */
+function activeDbtProject(): ProjectState | undefined {
+    return projects.active?.backend === 'dbt' ? projects.active : undefined;
+}
+
+/** The dbt target the Project is compiled and run with, where it is known */
+function dbtTargetInUse(project: ProjectState): string | undefined {
+    return dbtSettings(project.root).target ?? project.dbtBackend?.lastResult?.target;
+}
 
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 function currentWorkspaceFolder(): string | undefined {
-    return globalThis.workspaceFolder || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    return activeDbtProject()?.root ?? currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
 function refreshStatusBar() {
@@ -29,7 +47,21 @@ function refreshStatusBar() {
         return;
     }
     statusBarItem.backgroundColor = undefined;
-    if (!isDeferEnabled(workspaceFolder)) {
+    const dbt = activeDbtProject();
+    if (dbt) {
+        const state = dbtDeferToProdState(dbt.root, dbtTargetInUse(dbt));
+        if (!state.enabled) {
+            statusBarItem.text = "$(circle-slash) Defer: off";
+            statusBarItem.tooltip = "Defer to prod is off: upstream tables are read from your dbt target. Click for options.";
+        } else if (state.available) {
+            statusBarItem.text = "$(cloud-download) Defer: prod";
+            statusBarItem.tooltip = `Upstream tables not built in your dbt target are read from prod in the compiled query, dry runs, previews and runs (dbt --defer, to the dbt target ${dbtProdTarget(dbt.root)}). Click for options.`;
+        } else {
+            statusBarItem.text = "$(warning) Defer: prod";
+            statusBarItem.tooltip = `Defer to prod is on but not applied. ${state.reason}`;
+            statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+        }
+    } else if (!isDeferEnabled(workspaceFolder)) {
         statusBarItem.text = "$(circle-slash) Defer: off";
         statusBarItem.tooltip = "Defer to prod is off: upstream tables are read from dev. Click for options.";
     } else {
@@ -49,8 +81,8 @@ function refreshStatusBar() {
 /** Flips defer to prod, or sets it to `enabled` when given, so a caller with a stale view of the setting cannot invert it */
 async function toggleDeferToProd(enabled?: boolean) {
     const workspaceFolder = currentWorkspaceFolder();
-    const config = vscode.workspace.getConfiguration('vscode-dataform-tools', workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
-    const target = pickBackendConfigurationTarget(config.inspect<boolean>('deferToProd'), !!vscode.workspace.workspaceFolders?.length);
+    const config = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    const target = pickConfigurationTarget(config.inspect<boolean>('deferToProd'), !!vscode.workspace.workspaceFolders?.length);
     const value = typeof enabled === 'boolean' ? enabled : !isDeferEnabled(workspaceFolder);
     if (value === isDeferEnabled(workspaceFolder)) {
         return;
@@ -63,9 +95,20 @@ async function clearDeferCaches() {
     await clearProdTargetCache();
 }
 
+/** Forgets the Project's prod manifest and what was compiled with it: the panel's next showing of the file parses prod and compiles again */
+async function forgetDbtDefer(project: ProjectState) {
+    await forgetDbtProdManifest(project, await dbtOptions(project.root));
+    forgetDbtCompile(project);
+}
+
 /** Forgets the prod compile and table listings, then redraws the panel, which looks everything up again */
 async function refreshDeferToProd(refreshPanel: () => Promise<void> | void) {
-    await clearDeferCaches();
+    const dbt = activeDbtProject();
+    if (dbt) {
+        await forgetDbtDefer(dbt);
+    } else {
+        await clearDeferCaches();
+    }
     await refreshPanel();
 }
 
@@ -76,12 +119,23 @@ async function removeProxyViewsCommand(ids?: string[]) {
         return;
     }
     const workspaceFolder = currentWorkspaceFolder();
-    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder) : undefined);
+    await removeProxyViews(workspaceFolder ? await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder)) : undefined);
 }
 
 async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
     const enabled = isDeferEnabled(currentWorkspaceFolder());
-    const actions = [
+    const actions = activeDbtProject() ? [
+        { label: enabled ? "$(circle-slash) Turn off defer to prod" : "$(cloud-download) Turn on defer to prod", run: () => toggleDeferToProd() },
+        {
+            label: "$(refresh) Parse the prod manifest again",
+            description: "For when the prod dbt target of your profile has changed",
+            run: () => refreshDeferToProd(refreshPanel),
+        },
+        {
+            label: "$(settings) Open defer to prod settings",
+            run: () => vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools dbtProdTarget deferToProd'),
+        },
+    ] : [
         { label: enabled ? "$(circle-slash) Turn off defer to prod" : "$(cloud-download) Turn on defer to prod", run: () => toggleDeferToProd() },
         {
             label: "$(refresh) Refresh prod targets and table cache",
@@ -107,6 +161,7 @@ export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: 
     statusBarItem.command = 'vscode-dataform-tools.deferToProdActions';
     context.subscriptions.push(
         statusBarItem,
+        onDidChangeActiveProject(() => refreshStatusBar()),
         vscode.commands.registerCommand('vscode-dataform-tools.toggleDeferToProd', toggleDeferToProd),
         vscode.commands.registerCommand('vscode-dataform-tools.deferToProdActions', () => deferToProdActions(refreshPanel)),
         vscode.commands.registerCommand('vscode-dataform-tools.removeProxyViews', removeProxyViewsCommand),
@@ -116,6 +171,10 @@ export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: 
                 return;
             }
             refreshStatusBar();
+            if (activeDbtProject()) {
+                // The panel follows these settings itself: it shows the dbt file again, which compiles it
+                return;
+            }
             if (event.affectsConfiguration('vscode-dataform-tools.prodCompilerOptions')) {
                 await clearDeferCaches();
             }

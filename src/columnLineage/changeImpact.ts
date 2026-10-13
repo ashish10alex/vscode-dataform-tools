@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import crypto from 'crypto';
 import { logger } from '../logger';
 import { queryDryRun } from '../bigqueryDryRun';
@@ -15,7 +14,9 @@ import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf } from '../
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
 import { resolveProdIndex } from './prodIndex';
+import { isProdCompilerOptionsSet } from '../defer/prodTargets';
 import { SchemaCache } from './schemaCache';
+import { extensionConfiguration } from '../project/settings';
 
 /*
  * The column impact of a branch: every table, view and incremental table it changes is dry run and compared with its
@@ -110,9 +111,12 @@ export interface CheckDeps {
     dryRun: (action: CompiledAction) => Promise<{ fields: SchemaField[]; error?: string }>;
 }
 
-type ActionRef = { target: string; fileName?: string; type: string };
+type ActionRef = { target: string; fileName?: string; type: string; reasons?: string[] };
 
-/** Reads a changed table's Prod Target and dry runs it. `action`: the changed action in the head compile. */
+/**
+ * Reads a changed table's Prod Target and dry runs it. `action`: the changed action in the head compile. An
+ * action the base doesn't have, with no table yet, has nothing to compare and isn't dry run.
+ */
 export async function checkChanged(change: ActionRef, action: CompiledAction | undefined, deps: CheckDeps): Promise<ImpactCandidate> {
     const type = action?.type ?? change.type;
     const table = deps.prodTarget(change.target);
@@ -120,11 +124,18 @@ export async function checkChanged(change: ActionRef, action: CompiledAction | u
         return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET };
     }
     const candidate: ImpactCandidate = { table, fileName: change.fileName, type };
+    if (change.reasons?.includes('new')) {
+        candidate.new = true;
+    }
     const prod = await deps.read(table);
     if (prod.error) {
         candidate.uncheckedReason = `${table} could not be read: ${prod.error}`;
     } else if (!prod.columns?.length) {
-        candidate.uncheckedReason = `no table in ${project(table)} yet`;
+        if (candidate.new) {
+            candidate.noTable = true;
+        } else {
+            candidate.uncheckedReason = `no table in ${project(table)} yet`;
+        }
     } else if (type === 'operations' || type === 'operation') {
         candidate.uncheckedReason = 'operation: a dry run of a script has no schema';
     } else if (!action) {
@@ -188,7 +199,7 @@ export async function computeColumnImpact(
     cancelled: () => boolean,
 ): Promise<ImpactRunResult> {
     const comparison = { headRef: result.headRef, baseRef: result.baseRef, mergeBaseSha: result.mergeBaseSha, headLabel: result.headLabel };
-    const base: Omit<ImpactView, 'status'> = { comparison, changedCount: 0, atRisk: [], safe: [], unchecked: [] };
+    const base: Omit<ImpactView, 'status'> = { comparison, changedCount: 0, atRisk: [], safe: [], new: [], unchecked: [] };
     const devIndex = indexGraph(head);
     const actions = compiledActions(head);
     const changed = result.changed.filter((change) => {
@@ -212,7 +223,7 @@ export async function computeColumnImpact(
     const resolveFile = (table: string) => index.get(table)?.fileName;
 
     const schemas = new SchemaCache();
-    const skipPreOps = vscode.workspace.getConfiguration('vscode-dataform-tools').get<boolean>('skipPreOpsInDryRun') === true;
+    const skipPreOps = extensionConfiguration().get<boolean>('skipPreOpsInDryRun') === true;
     // Read upstream tables the way a dry run of the file would, so a dev table that was never built doesn't fail it
     const selected = changed.map((change) => actions.get(change.target)).filter((action): action is CompiledAction => !!action);
     let deferral: Awaited<ReturnType<typeof resolveDeferralForActions>>;
@@ -284,5 +295,7 @@ export async function computeColumnImpact(
     if (!summary) {
         return { view: view('cancelled'), resolveFile };
     }
-    return { view: view('ready', { ...summary, against: projectsOf(compared), checkedAt: Date.now() }), source, resolveFile };
+    // Nothing sets prodCompilerOptions: the summary says it compared with the default targets
+    const unset = isProdCompilerOptionsSet(workspaceFolder) ? {} : { unset: 'prodCompilerOptions' };
+    return { view: view('ready', { ...summary, ...unset, against: projectsOf(compared), checkedAt: Date.now() }), source, resolveFile };
 }

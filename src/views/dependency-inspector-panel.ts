@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
+import { compiledJson } from '../project';
 import { Uri } from 'vscode';
 import { randomUUID } from 'crypto';
 import { getNonce, formatBytes, getWorkspaceFolder, getOrCompileDataformJson } from '../utils';
-import { isRemoteMode } from '../utils/remoteCompiler';
 import { queryDryRun } from '../bigqueryDryRun';
 import { queryBigQuery } from '../bigqueryRunQuery';
 import { fetchTableMetadata } from '../hoverProvider';
 import { DataformCompiledJson, Target, Table, Assertion, Operation } from '../types';
+import { isRemoteMode, resolveDataformOptions } from '../project/dataformOptions';
 
 type FilterPreset = {
     id: string;
@@ -91,11 +92,15 @@ function getAllNodes(compiledJson: DataformCompiledJson) {
 /** Resolve the full table ID for the given source file path using compiled JSON. */
 function getModelIdForFile(filePath: string, compiledJson: DataformCompiledJson): string | undefined {
     const nodes = getAllNodes(compiledJson);
-    // FILE_NODE_MAP keys use the relative path stored in node.fileName
+    // The file lookup's keys use the relative path stored in node.fileName
     const normalizedFilePath = filePath.replace(/\\/g, '/');
     const match = nodes.find(n => n.fileName && normalizedFilePath.endsWith(n.fileName.replace(/\\/g, '/').replace(/^\//, '')));
     return match ? getFullTableId(match.target) : undefined;
 }
+
+/** For `just website-demo-capture`: what the last inspector opened was sent, and a way to send it what its page would */
+const onDidPostInspectorMessage = new vscode.EventEmitter<unknown>();
+export const inspectorForTests: { onDidPostMessage: vscode.Event<unknown>; receive?: (message: unknown) => Promise<void> } = { onDidPostMessage: onDidPostInspectorMessage.event };
 
 export function createDependencyInspectorPanel(context: vscode.ExtensionContext, initialFilePath?: string): vscode.WebviewPanel {
     const panel = vscode.window.createWebviewPanel(
@@ -111,49 +116,54 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
 
     panel.webview.html = getHtmlForWebview(panel.webview, context);
 
-    panel.webview.onDidReceiveMessage(async (message) => {
+    const post = (message: unknown) => {
+        onDidPostInspectorMessage.fire(message);
+        return panel.webview.postMessage(message);
+    };
+
+    const receive = async (message: any) => {
         switch (message.command) {
             case 'appLoaded':
             case 'getModels': {
-                let compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
-                if (!compiledJson) {
-                    panel.webview.postMessage({ type: 'compiling', value: true, backend: isRemoteMode() ? 'api' : 'cli' });
+                let compiled: DataformCompiledJson | undefined = compiledJson();
+                if (!compiled) {
+                    post({ type: 'compiling', value: true, backend: isRemoteMode() ? 'api' : 'cli' });
                     const workspaceFolder = await getWorkspaceFolder();
                     if (!workspaceFolder) {
-                        panel.webview.postMessage({
+                        post({
                             type: 'error',
                             value: 'No Dataform workspace found. Open a Dataform project folder first.',
                         });
                         return;
                     }
-                    compiledJson = await getOrCompileDataformJson(workspaceFolder);
-                    if (!compiledJson) {
-                        panel.webview.postMessage({
+                    compiled = await getOrCompileDataformJson(workspaceFolder, resolveDataformOptions(workspaceFolder));
+                    if (!compiled) {
+                        post({
                             type: 'error',
                             value: 'Compilation failed. Check that your Dataform project is valid.',
                         });
                         return;
                     }
-                    panel.webview.postMessage({ type: 'compiling', value: false });
+                    post({ type: 'compiling', value: false });
                 }
-                const models = getAllNodes(compiledJson).map(node => ({
+                const models = getAllNodes(compiled).map(node => ({
                     fullId: getFullTableId(node.target),
                     name: node.target.name,
                     type: (node as any).type ?? 'table',
                 }));
                 const initialModelId = initialFilePath
-                    ? getModelIdForFile(initialFilePath, compiledJson)
+                    ? getModelIdForFile(initialFilePath, compiled)
                     : undefined;
-                panel.webview.postMessage({ type: 'models', value: models, initialModelId });
+                post({ type: 'models', value: models, initialModelId });
                 return;
             }
 
             case 'fetchDependencies': {
                 const modelFullId: string = message.value?.modelFullId ?? '';
                 const maxDepth: number = Math.max(1, Math.min(message.value?.depth ?? 5, 20));
-                const compiledJson: DataformCompiledJson | undefined = globalThis.CACHED_COMPILED_DATAFORM_JSON;
-                if (!compiledJson) {
-                    panel.webview.postMessage({
+                const compiled: DataformCompiledJson | undefined = compiledJson();
+                if (!compiled) {
+                    post({
                         type: 'error',
                         value: 'No compiled Dataform JSON found.',
                     });
@@ -161,9 +171,9 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 }
 
                 // Build a fast lookup map: fullId → node, and a set of assertion IDs to exclude
-                const allNodes = getAllNodes(compiledJson);
+                const allNodes = getAllNodes(compiled);
                 const assertionIds = new Set<string>(
-                    (compiledJson.assertions ?? []).map(a => getFullTableId(a.target))
+                    (compiled.assertions ?? []).map(a => getFullTableId(a.target))
                 );
                 const nodeMap = new Map<string, Table | Assertion | Operation>();
                 for (const n of allNodes) {
@@ -200,7 +210,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     }
                 }
 
-                panel.webview.postMessage({
+                post({
                     type: 'dependencies',
                     value: deps,
                     edges,
@@ -218,7 +228,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 try {
                     const result = await queryDryRun(query);
                     if (result.error.hasError) {
-                        panel.webview.postMessage({
+                        post({
                             type: 'dryRunResult',
                             value: { tableId, query, error: result.error.message },
                         });
@@ -227,7 +237,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         const cost = result.statistics?.cost
                             ? `${result.statistics.cost.value.toFixed(4)} ${result.statistics.cost.currency}`
                             : undefined;
-                        panel.webview.postMessage({
+                        post({
                             type: 'dryRunResult',
                             value: {
                                 tableId,
@@ -240,7 +250,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         });
                     }
                 } catch (err: any) {
-                    panel.webview.postMessage({
+                    post({
                         type: 'dryRunResult',
                         value: { tableId, query, error: err?.message ?? 'Unknown error' },
                     });
@@ -255,15 +265,15 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     ? `SELECT * FROM \`${tableId}\` WHERE ${filter}`
                     : `SELECT * FROM \`${tableId}\``;
                 // Notify webview that loading has started
-                panel.webview.postMessage({ type: 'queryLoading', value: { tableId } });
+                post({ type: 'queryLoading', value: { tableId } });
                 try {
                     const { results, columns, jobStats, errorMessage } = await queryBigQuery(query);
-                    panel.webview.postMessage({
+                    post({
                         type: 'queryResult',
                         value: { tableId, query, results, columns, jobStats, errorMessage },
                     });
                 } catch (err: any) {
-                    panel.webview.postMessage({
+                    post({
                         type: 'queryResult',
                         value: { tableId, query, error: err?.message ?? 'Unknown error' },
                     });
@@ -275,7 +285,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 const fullTableId: string = message.value?.fullTableId ?? '';
                 const parts = fullTableId.split('.');
                 if (parts.length !== 3) {
-                    panel.webview.postMessage({
+                    post({
                         type: 'schemaError',
                         value: { fullTableId, error: `Invalid table id: ${fullTableId}` },
                     });
@@ -286,19 +296,19 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     const metadata = await fetchTableMetadata(projectId, datasetId, tableId);
                     const fields = metadata?.schema?.fields ?? null;
                     if (!fields) {
-                        panel.webview.postMessage({
+                        post({
                             type: 'schemaError',
                             value: { fullTableId, error: 'Schema not available for this table.' },
                         });
                         return;
                     }
-                    panel.webview.postMessage({
+                    post({
                         type: 'schema',
                         value: { fullTableId, fields },
                     });
                 } catch (err: any) {
                     const detail = err?.message ?? String(err ?? 'Unknown error');
-                    panel.webview.postMessage({
+                    post({
                         type: 'schemaError',
                         value: { fullTableId, error: `Failed to fetch table metadata: ${detail}` },
                     });
@@ -319,7 +329,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 if (!modelFullId || !filterState) { return; }
                 const ws = await getWorkspaceFolder();
                 if (!ws) {
-                    panel.webview.postMessage({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: 'No Dataform workspace open' } });
+                    post({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: 'No Dataform workspace open' } });
                     return;
                 }
                 const dir = vscode.Uri.joinPath(vscode.Uri.file(ws), '.vscode-dataform-tools');
@@ -359,12 +369,12 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                         await writeFilterFile(file, data);
                         return { savedPreset, overwrote: idx >= 0 };
                     });
-                    panel.webview.postMessage({
+                    post({
                         type: 'filtersSavedToWorkspace',
                         value: { modelFullId, ok: true, presetId: result.savedPreset.id, overwrote: result.overwrote, path: file.fsPath },
                     });
                 } catch (e: any) {
-                    panel.webview.postMessage({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: e?.message ?? String(e) } });
+                    post({ type: 'filtersSavedToWorkspace', value: { modelFullId, ok: false, error: e?.message ?? String(e) } });
                 }
                 return;
             }
@@ -381,7 +391,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 const latest = list.reduce((a, b) =>
                     new Date(b.updatedAt).getTime() > new Date(a.updatedAt).getTime() ? b : a
                 );
-                panel.webview.postMessage({
+                post({
                     type: 'filtersLoadedFromWorkspace',
                     value: {
                         modelFullId,
@@ -403,14 +413,14 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 if (!modelFullId) { return; }
                 const ws = await getWorkspaceFolder();
                 if (!ws) {
-                    panel.webview.postMessage({ type: 'filtersLoadedFromWorkspace', value: { modelFullId, state: null, error: 'No Dataform workspace open' } });
+                    post({ type: 'filtersLoadedFromWorkspace', value: { modelFullId, state: null, error: 'No Dataform workspace open' } });
                     return;
                 }
                 const file = vscode.Uri.joinPath(vscode.Uri.file(ws), '.vscode-dataform-tools', 'dependency-inspector-filters.json');
                 const data = await readFilterFile(file);
                 let list = data.filters[modelFullId] ?? [];
                 if (list.length === 0) {
-                    panel.webview.postMessage({ type: 'filtersLoadedFromWorkspace', value: { modelFullId, state: null, missing: true } });
+                    post({ type: 'filtersLoadedFromWorkspace', value: { modelFullId, state: null, missing: true } });
                     return;
                 }
 
@@ -439,7 +449,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                             return next;
                         });
                         list = updated;
-                        panel.webview.postMessage({ type: 'filterPresetDeleted', value: { modelFullId, presetId: e.item.presetId } });
+                        post({ type: 'filterPresetDeleted', value: { modelFullId, presetId: e.item.presetId } });
                         if (list.length === 0) {
                             qp.hide();
                             return;
@@ -455,7 +465,7 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                     if (sel) {
                         const preset = list.find(p => p.id === sel.presetId);
                         if (preset) {
-                            panel.webview.postMessage({
+                            post({
                                 type: 'filtersLoadedFromWorkspace',
                                 value: {
                                     modelFullId,
@@ -478,7 +488,9 @@ export function createDependencyInspectorPanel(context: vscode.ExtensionContext,
                 return;
             }
         }
-    });
+    };
+    panel.webview.onDidReceiveMessage(receive);
+    inspectorForTests.receive = receive;
 
     return panel;
 }

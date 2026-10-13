@@ -1,0 +1,12 @@
+config {
+  type: "view",
+  description: "Players, with the columns the marts use",
+  tags: ["staging"]
+}
+
+SELECT
+  player_id,
+  position,
+  country_of_citizenship,
+  date_of_birth
+FROM ${ref("PLAYERS")}

@@ -1,0 +1,29 @@
+config {
+  type: "incremental",
+  tags: ["marts", "hourly"],
+  description: "Orders with their payment totals, merged on order_id.",
+  uniqueKey: ["order_id"],
+  bigquery: {
+    partitionBy: "order_date",
+    updatePartitionFilter: "order_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)"
+  }
+}
+
+pre_operations {
+  DECLARE since DATE DEFAULT (
+    ${when(incremental(),
+      `SELECT MAX(order_date) FROM ${self()}`,
+      `SELECT DATE "${constants.START_DATE}"`)}
+  );
+}
+
+SELECT
+  o.order_id,
+  o.customer_id,
+  o.order_date,
+  o.status,
+  SUM(p.amount) AS amount
+FROM ${ref("stg_orders")} AS o
+LEFT JOIN ${ref("stg_payments")} AS p USING (order_id)
+${when(incremental(), `WHERE o.order_date > since`)}
+GROUP BY 1, 2, 3, 4

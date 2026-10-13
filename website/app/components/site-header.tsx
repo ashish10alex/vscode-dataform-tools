@@ -14,14 +14,13 @@ const navLinks = [
   { href: "/changelog", label: "Changelog" },
   { href: "/install", label: "Install" },
   { href: "/blog", label: "Blog" },
-  { href: "/faq", label: "FAQ" },
 ];
 
 function Wordmark() {
   return (
     <Link href="/" className="flex items-center gap-2 rounded-md font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <img src="/logo.png" alt="" width={24} height={24} className="h-6 w-6" />
-      <span>{site.name}</span>
+      <span>{site.shortName}</span>
     </Link>
   );
 }
@@ -79,6 +78,15 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+          <a
+            href={site.googleRecommendationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mr-2 hidden items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground lg:inline-flex"
+          >
+            <span className="text-brand" aria-hidden>✦</span>
+            Recommended by Google&apos;s Dataform team
+          </a>
           <Button variant="ghost" size="icon" asChild>
             <a href={site.repoUrl} target="_blank" rel="noopener noreferrer">
               <Github className="h-[1.1rem] w-[1.1rem]" />

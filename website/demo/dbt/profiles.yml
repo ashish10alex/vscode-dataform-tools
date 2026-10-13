@@ -1,0 +1,10 @@
+football:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: football-analytics-dev
+      dataset: analytics
+      location: europe-west2
+      threads: 4

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { loadGoogleAuth, loadProjectsClient } from '../lazySdk';
-import { checkAuthentication, getBigQueryClient } from '../bigqueryClient';
+import { loadProjectsClient } from '../lazySdk';
+import { checkAuthentication, findJobProject, getBigQueryClient } from '../bigqueryClient';
 import { DataformCompiledJson, SchemaMetadata } from '../types';
 import { createSelector } from './vscodeUi';
 import { gcloudComputeRegions } from '../constants';
@@ -19,9 +19,7 @@ export async function getCachedDataformRepositoryLocation(context: vscode.Extens
 
 export async function getCurrentGcpProjectId(): Promise<string | undefined> {
     try {
-        const auth = new (await loadGoogleAuth())();
-        const projectId = await auth.getProjectId();
-        return projectId;
+        return (await findJobProject()).projectId;
     } catch (err) {
         console.error("Failed to get project ID:", err);
         return undefined;

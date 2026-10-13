@@ -51,6 +51,10 @@ export interface ImpactTable {
     readersError?: string;
     /** Columns only the branch has; nothing downstream reads them yet */
     added?: string[];
+    /** An action the base doesn't have */
+    new?: boolean;
+    /** A new action whose table is already in BigQuery, and so was compared: a run of the branch built it, or an action deleted earlier is back */
+    exists?: boolean;
 }
 
 export interface UncheckedTable {
@@ -80,7 +84,14 @@ export interface ImpactView {
     atRisk: ImpactTable[];
     /** Changed tables whose columns all survive */
     safe: ImpactTable[];
+    /**
+     * New actions with nothing to lose: no table in BigQuery yet, or one (`exists`) whose columns all survive. A
+     * new action that drops or retypes a column of its table is in `atRisk`.
+     */
+    new: ImpactTable[];
     unchecked: UncheckedTable[];
+    /** `prodCompilerOptions` when that setting isn't set: the changes were compared with the default targets, which may be dev tables */
+    unset?: string;
     /** Projects of the tables the changes were compared with, sorted; candidates with no Prod Target left out */
     against?: string[];
     /** A later compile changed what the branch changes, so the summary may be out of date */
@@ -232,11 +243,14 @@ export function otherProject(reader: string, of: string): string | undefined {
     return project === of.split('.')[0] ? undefined : project;
 }
 
-export function summaryCounts(view: Pick<ImpactView, 'changedCount' | 'atRisk' | 'unchecked'>): string {
+export function summaryCounts(view: Pick<ImpactView, 'changedCount' | 'atRisk' | 'new' | 'unchecked'>): string {
     const low = view.atRisk.filter(isLowImpact).length;
     const parts = [`${view.changedCount} changed`, `${view.atRisk.length - low} at risk`];
     if (low) {
         parts.push(`${low} low`);
+    }
+    if (view.new.length) {
+        parts.push(`${view.new.length} new`);
     }
     if (view.unchecked.length) {
         parts.push(`${view.unchecked.length} not checked`);
@@ -391,7 +405,34 @@ export function safeSummary(count: number, against?: string[]): string {
     return `${plural(count, 'changed table')} ${one ? 'keeps' : 'keep'} every column ${one ? 'it has' : 'they have'} in ${codeList(against)}`;
 }
 
-/** The summary as Markdown for a pull request: one table per changed model, then the tables that keep every column and what wasn't checked */
+/** Marks a new action among the tables at risk */
+export const NEW_TAG = 'new on this branch';
+
+/** What the summary says of a new action with nothing to lose: "nothing reads it yet", or "table already in `acme-prod`, keeps every column" */
+export function newNote(table: ImpactTable): string {
+    if (!table.exists) {
+        return 'nothing reads it yet';
+    }
+    const note = `table already in \`${table.table.split('.')[0]}\`, keeps every column`;
+    return table.added?.length ? `${note} and adds ${codeList(table.added)}` : note;
+}
+
+/**
+ * What a summary compared with the default targets says, as Markdown: they may be dev tables, and the setting that
+ * compares with prod. Empty when the setting is set.
+ */
+export function unsetHint(view: Pick<ImpactView, 'unset' | 'against'>): string {
+    if (!view.unset) {
+        return '';
+    }
+    const targets = `the project's default targets${view.against?.length ? ` (${codeList(view.against)})` : ''}`;
+    return `Compared with ${targets}, which may be dev tables. Set \`${view.unset}\` to compare with prod.`;
+}
+
+/**
+ * The summary as Markdown for a pull request: one table per changed model, then the tables that keep every column,
+ * the new ones and what wasn't checked
+ */
 export function impactMarkdown(view: ImpactView): string {
     const lines: string[] = ['### Dataform Column Lineage Impact Report', ''];
     const comparison = view.comparison;
@@ -404,7 +445,7 @@ export function impactMarkdown(view: ImpactView): string {
         lines.push('', 'No dropped or retyped columns, and no deleted tables.');
     }
     for (const table of view.atRisk) {
-        lines.push('', `**Target model:** \`${shortTable(table.table)}\``, '');
+        lines.push('', `**Target model:** \`${shortTable(table.table)}\`${table.new ? ` (${NEW_TAG})` : ''}`, '');
         lines.push('| Column | Change | Severity | Downstream | Direct copies |', '| --- | --- | --- | --- | --- |');
         const readers: string[] = [];
         const row = (column: string, change: ColumnChange | 'deleted', columnReaders: ImpactReader[] | undefined, error?: string) => {
@@ -427,6 +468,11 @@ export function impactMarkdown(view: ImpactView): string {
         view.safe.forEach((entry) => lines.push(`- \`${shortTable(entry.table)}\`${entry.added?.length ? `: adds ${entry.added.map((column) => `\`${column}\``).join(', ')}` : ''}`));
         lines.push('', '</details>');
     }
+    if (view.new.length) {
+        lines.push('', `<details><summary>New (${view.new.length})</summary>`, '');
+        view.new.forEach((entry) => lines.push(`- \`${shortTable(entry.table)}\`: ${newNote(entry)}`));
+        lines.push('', '</details>');
+    }
     if (view.unchecked.length) {
         lines.push('', `<details><summary>Not checked (${view.unchecked.length})</summary>`, '');
         view.unchecked.forEach((entry) => lines.push(`- \`${shortTable(entry.table)}\`: ${entry.reason}`));
@@ -435,6 +481,10 @@ export function impactMarkdown(view: ImpactView): string {
     lines.push('', '_Downstream readers come from Dataplex lineage of prod runs in the last 30 days, about 2 h behind. '
         + '"Probably updated": changed on this branch, and its new SQL no longer names the column. '
         + '"Deleted here": the reader is deleted on this branch too._');
+    const hint = unsetHint(view);
+    if (hint) {
+        lines.push('', `<sub>${hint}</sub>`);
+    }
     return lines.join('\n');
 }
 
@@ -448,6 +498,10 @@ export interface ImpactCandidate {
     prod?: SchemaField[];
     /** The dry run's schema; unused for a deleted table */
     dev?: SchemaField[];
+    /** The base doesn't have the action */
+    new?: boolean;
+    /** A new action with no table to compare with: there is nothing to lose, so it wasn't dry run */
+    noTable?: boolean;
     /** Set when the table couldn't be compared, e.g. its dry run failed */
     uncheckedReason?: string;
 }
@@ -455,6 +509,7 @@ export interface ImpactCandidate {
 export interface ImpactResult {
     atRisk: ImpactTable[];
     safe: ImpactTable[];
+    new: ImpactTable[];
     unchecked: UncheckedTable[];
 }
 
@@ -486,6 +541,7 @@ export async function buildImpactSummary(
 ): Promise<ImpactResult | undefined> {
     const unchecked: UncheckedTable[] = [];
     const safe: ImpactTable[] = [];
+    const fresh: ImpactTable[] = [];
     const atRisk: ImpactTable[] = [];
     const lookups: (() => Promise<void>)[] = [];
 
@@ -493,6 +549,10 @@ export async function buildImpactSummary(
         const { table, fileName, type } = candidate;
         if (candidate.uncheckedReason) {
             unchecked.push({ table, fileName, reason: candidate.uncheckedReason });
+            continue;
+        }
+        if (candidate.noTable) {
+            fresh.push({ table, fileName, type, columns: [], new: true });
             continue;
         }
         if (candidate.deleted) {
@@ -514,8 +574,9 @@ export async function buildImpactSummary(
         const prodNames = new Set(prod.map((field) => field.name.toLowerCase()));
         const added = dev.filter((field) => !prodNames.has(field.name.toLowerCase())).map((field) => field.name);
         const columns: ImpactColumn[] = diffSchemas(dev, prod).map(({ column, change }) => ({ column, change, readers: [] }));
-        const entry: ImpactTable = { table, fileName, type, columns, ...(added.length ? { added } : {}) };
-        (columns.length ? atRisk : safe).push(entry);
+        const entry: ImpactTable = { table, fileName, type, columns, ...(added.length ? { added } : {}), ...(candidate.new ? { new: true, exists: true } : {}) };
+        // A new action that keeps every column of the table already there has nothing to lose either
+        (columns.length ? atRisk : candidate.new ? fresh : safe).push(entry);
         for (const column of columns) {
             lookups.push(async () => {
                 try {
@@ -546,6 +607,7 @@ export async function buildImpactSummary(
     return {
         atRisk: sortTables(atRisk),
         safe: [...safe].sort((a, b) => a.table.localeCompare(b.table)),
+        new: [...fresh].sort((a, b) => a.table.localeCompare(b.table)),
         unchecked: [...unchecked].sort((a, b) => a.table.localeCompare(b.table)),
     };
 }

@@ -2,15 +2,16 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { loadBeautify } from './lazySdk';
 import { exec as exec } from 'child_process';
-import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder,  writeCompiledSqlToFile, getStdoutFromCliRun, readFile,  getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
+import { ensureSqlfluffConfigExists, compiledQueryWtDryRun, getFileNameFromDocument, getSqlfluffExecutablePathFromSettings, getTextForBlock, getWorkspaceFolder, writeCompiledSqlToFile, getStdoutFromCliRun, readFile, getSqlfluffConfigPathFromSettings, runCommandInTerminal } from './utils';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 import {sqlFileToFormatPath} from './constants';
 import { SqlxBlockMetadata } from './types';
-import { isRemoteMode } from './utils/remoteCompiler';
 import { logger } from './logger';
+import { isRemoteMode } from './project/dataformOptions';
+import { extensionConfiguration } from './project/settings';
 
 export async function formatDataformSqlxFile(document:vscode.TextDocument){
-    let formattingCli = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formattingCli");
+    let formattingCli = extensionConfiguration().get("formattingCli");
     if (formattingCli === "sqlfluff") {
         const formattedText:any = await formatCurrentFile(diagnosticCollection);
         if (formattedText) {
@@ -104,7 +105,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
         if (typeof formattedSql === 'string'){
             //let finalFormattedSqlx = configBlockText + jsBlockText + preOpsBlockText +  postOpsBlockText + formattedSql;
 
-            let formatOrdering = vscode.workspace.getConfiguration("vscode-dataform-tools").get("formatOrdering");
+            let formatOrdering = extensionConfiguration().get("formatOrdering");
             // if formatOrdering is not defined, use default
             if (!formatOrdering) {
                 formatOrdering = ["js", "preOperations", "postOperations", "sql"];
@@ -168,7 +169,7 @@ export async function formatCurrentFile(diagnosticCollection:any) {
         return null;
     }
 
-    let compileAndDryRunBeforeFormatting = vscode.workspace.getConfiguration('vscode-dataform-tools').get('compileAndDryRunBeforeFormatting');
+    let compileAndDryRunBeforeFormatting = extensionConfiguration().get('compileAndDryRunBeforeFormatting');
     if (compileAndDryRunBeforeFormatting === undefined) {
         compileAndDryRunBeforeFormatting = true;
     }
@@ -199,7 +200,7 @@ export async function formatCurrentFileWithDataform() {
     if (isRunningOnWindows) {
         workspaceFolder = path.win32.normalize(workspaceFolder);
     }
-    runCommandInTerminal(`dataform format ${workspaceFolder}`);
+    runCommandInTerminal(`dataform format "${workspaceFolder}"`);
 }
 
 interface SqlfluffViolation {
