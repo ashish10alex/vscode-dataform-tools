@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.1](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.0...v2.0.1) (2026-10-13)
+
+
+### Features
+
+* list and preview the tables a .sqlx declaration declares ([#527](https://github.com/ashish10alex/vscode-dataform-tools/issues/527)) ([a6f32e9](https://github.com/ashish10alex/vscode-dataform-tools/commit/a6f32e94792b747f13aa0446531fc71723fd53ca)), closes [#522](https://github.com/ashish10alex/vscode-dataform-tools/issues/522)
+
 ## [2.0.0](https://github.com/ashish10alex/vscode-dataform-tools/compare/v1.19.1...v2.0.0) (2026-10-13)
 
 
