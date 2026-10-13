@@ -199,9 +199,9 @@ package:
     set -euo pipefail
     v=$(just _version)
     if [ "$(just _channel "$v")" = "pre-release" ]; then
-        npx --yes @vscode/vsce@3 package --pre-release
+        node scripts/package-vsix.mjs --pre-release
     else
-        npx --yes @vscode/vsce@3 package
+        node scripts/package-vsix.mjs
     fi
 
 # Bump version, update CHANGELOG, commit and tag locally (does NOT push)

@@ -37,14 +37,16 @@ jobs:
 
       # Package once up front so each registry publishes the same artifact and
       # neither depends on the other having run.
+      # The script leaves the light pictures out of the packaged README: only
+      # GitHub can show one of each light and dark pair.
       - name: Package extension
         id: package
         run: |
           VSIX="${GITHUB_WORKSPACE}/extension.vsix"
           if [ "${{ steps.check_prerelease.outputs.is_prerelease }}" = "true" ]; then
-            npx --yes @vscode/vsce@3 package --pre-release --out "$VSIX"
+            node scripts/package-vsix.mjs --pre-release --out "$VSIX"
           else
-            npx --yes @vscode/vsce@3 package --out "$VSIX"
+            node scripts/package-vsix.mjs --out "$VSIX"
           fi
           echo "vsix=$VSIX" >> $GITHUB_OUTPUT
 
