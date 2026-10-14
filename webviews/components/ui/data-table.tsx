@@ -16,7 +16,7 @@ import {
   Updater,
   Column,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 /**
  * A table whose rows are held elsewhere: `data` is one page of them, and paging, sorting and filtering are asked
@@ -103,6 +103,17 @@ function ColumnFilterInput({ column, shouldAutoFocus, applyOnEnter }: { column: 
   );
 }
 
+/** Which way a column is sorted, or that it can be: a sorted column's arrow is drawn in full */
+function SortIcon({ direction }: { direction: false | 'asc' | 'desc' }) {
+  if (direction === 'asc') {
+    return <ArrowUp aria-label="Sorted ascending" className="w-3 h-3 ml-1 shrink-0 text-[var(--vscode-focusBorder)]" />;
+  }
+  if (direction === 'desc') {
+    return <ArrowDown aria-label="Sorted descending" className="w-3 h-3 ml-1 shrink-0 text-[var(--vscode-focusBorder)]" />;
+  }
+  return <ArrowUpDown className="w-3 h-3 ml-1 shrink-0 opacity-50" />;
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -120,8 +131,10 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [ownSorting, setOwnSorting] = useState<SortingState>(initialSorting);
   const [ownColumnFilters, setOwnColumnFilters] = useState<ColumnFiltersState>([]);
+  const [ownPagination, setOwnPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
   const sorting = server ? server.sorting : ownSorting;
   const columnFilters = server ? server.columnFilters : ownColumnFilters;
+  const pagination = server ? { pageIndex: server.pageIndex, pageSize: server.pageSize } : ownPagination;
   const resolve = <T,>(updater: Updater<T>, current: T): T => typeof updater === 'function' ? (updater as (old: T) => T)(current) : updater;
   const setSorting: OnChangeFn<SortingState> = server
     ? (updater) => server.onChange({ sorting: resolve(updater, server.sorting) })
@@ -129,12 +142,12 @@ export function DataTable<TData, TValue>({
   const setColumnFilters: OnChangeFn<ColumnFiltersState> = server
     ? (updater) => server.onChange({ columnFilters: resolve(updater, server.columnFilters) })
     : setOwnColumnFilters;
-  const setPagination: OnChangeFn<PaginationState> | undefined = server
+  const setPagination: OnChangeFn<PaginationState> = server
     ? (updater) => {
         const next = resolve(updater, { pageIndex: server.pageIndex, pageSize: server.pageSize });
         server.onChange(next.pageSize !== server.pageSize ? { pageSize: next.pageSize, pageIndex: 0 } : { pageIndex: next.pageIndex });
       }
-    : undefined;
+    : setOwnPagination;
   const [globalFilter, setGlobalFilter] = useState('');
   const isTree = expanded !== undefined;
   const isFiltering = globalFilter !== '' || columnFilters.some((f) => f.value !== undefined && f.value !== '');
@@ -161,19 +174,19 @@ export function DataTable<TData, TValue>({
       // Ignore toggles while filtering so the stored state is restored when filters are cleared.
       onExpandedChange: isFiltering ? () => {} : onExpandedChange,
     } : {}),
-    ...(server ? {
-      manualPagination: true,
-      manualSorting: true,
-      manualFiltering: true,
-      rowCount: server.rowCount,
-      onPaginationChange: setPagination,
-    } : {}),
+    // Given in both modes: the table keeps an option it is no longer given, so a table that held rows elsewhere
+    // would go on leaving the paging, sorting and filtering to the holder after it is given rows of its own
+    manualPagination: !!server,
+    manualSorting: !!server,
+    manualFiltering: !!server,
+    rowCount: server?.rowCount,
+    onPaginationChange: setPagination,
     state: {
       sorting,
       columnFilters,
       globalFilter,
       expanded: isTree && !isFiltering ? expanded : true,
-      ...(server ? { pagination: { pageIndex: server.pageIndex, pageSize: server.pageSize } } : {}),
+      pagination,
     },
     columnResizeMode: 'onChange',
     initialState: {
@@ -201,7 +214,8 @@ export function DataTable<TData, TValue>({
                 {headerGroup.headers.map((header, index) => {
                   return (
                     <th 
-                      key={header.id} 
+                      key={header.id}
+                      aria-sort={header.column.getIsSorted() === 'asc' ? 'ascending' : header.column.getIsSorted() === 'desc' ? 'descending' : undefined}
                       className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] group bg-[var(--vscode-sideBarSectionHeader-background)]"
                       style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10, ...(stickyFirstColumn && index === 0 ? { left: 0, zIndex: 11 } : {}) }}
                     >
@@ -221,9 +235,7 @@ export function DataTable<TData, TValue>({
                                         header.getContext()
                                     )}
                                 </span>
-                                {header.column.getCanSort() && (
-                                    <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />
-                                )}
+                                {header.column.getCanSort() && <SortIcon direction={header.column.getIsSorted()} />}
                             </div>
                             {/* Column Filter Input */}
                             {header.column.getCanFilter() ? (
