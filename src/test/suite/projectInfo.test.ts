@@ -1,8 +1,9 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import path from 'path';
-import { GitInfo, INFO_SETTINGS, ProjectInfoInput, SettingInfo, ToolInfo, linksOf, projectInfoSlice, remoteWebUrl, settingInfo, warningsOf, withPanelChoice, withoutCredentials } from '../../panel/projectInfo';
+import { GitInfo, INFO_SETTINGS, ProjectInfoInput, SettingInfo, ToolInfo, linksOf, projectInfoSlice, remoteWebUrl, settingInfo, withPanelChoice, withoutCredentials } from '../../panel/projectInfo';
 import type { InfoRow, InfoSectionName, ProjectInfoSlice } from '../../shared/panelContract';
+import { warningsOf } from '../../shared/panelProjectInfoView';
 import { applyMessage, initialSlices } from '../../shared/panelState';
 import type { Credentials, GcloudAccount } from '../../utils/googleAccounts';
 
