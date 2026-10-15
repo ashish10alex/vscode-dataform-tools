@@ -17,16 +17,11 @@ export const HEADER_WAIT_MS = 15_000;
 
 // dbt-core: "============================== 15:51:48.981236 | 2636e9ed-… ==============================".
 // dbt v2: "==================== 2026-10-12T14:44:19.684293Z | 01a13092-… ===================="
-const HEADER = /^={5,} [^|\n]+ \| ([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}) ={5,}\s*$/gm;
-
-/** The IDs of the invocations whose starts are in `log`, a part of dbt's `dbt.log`, oldest first */
-export function invocationsStarted(log: string): string[] {
-    return [...log.matchAll(HEADER)].map((match) => match[1]);
-}
+const HEADER = /^={5,} [^|\n]+ \| ([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}) ={5,}\s*$/m;
 
 /** The start of an invocation in `log`: its ID, and where the lines of the invocation begin. Undefined when the log has none */
 export function firstInvocation(log: string): { id: string; after: number } | undefined {
-    const match = new RegExp(HEADER.source, 'm').exec(log);
+    const match = HEADER.exec(log);
     return match ? { id: match[1], after: match.index + match[0].length } : undefined;
 }
 
