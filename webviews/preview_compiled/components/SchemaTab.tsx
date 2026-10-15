@@ -2,13 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { PanelState } from '../types';
 import { DataTable } from '../../components/ui/data-table';
 import { ColumnDef, ExpandedState } from '@tanstack/react-table';
-import { Download, Edit2, Copy, Check, ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { Download, Edit2, Copy, Check, ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { vscode } from '../utils/vscode';
 import type { ColumnMetadata } from '../../../src/types';
 import { buildColumnsConfig, formatAsUnquotedJson, pathKey } from '../../../src/utils/schemaTree';
-import { fileView } from '../utils/fileView';
-import { columnsOnShow } from '../utils/bigQueryView';
-import { ROW_BUTTON } from './SummaryRow';
+import { schemaOnShow } from '../utils/bigQueryView';
+import { ROW_BUTTON, RowChip } from './SummaryRow';
+import { BigQueryTableLink } from '../../components/BigQueryTableLink';
 
 interface SchemaTabProps {
   state: PanelState;
@@ -52,12 +52,52 @@ const buildRows = (
     };
   });
 
-/** The Schema tab of a Dataform file: the columns of its first action, from the last dry runs that gave results */
+/**
+ * The Schema tab of a Dataform file: the table it is of, and its columns from the last dry runs that gave results.
+ * While another file's columns are all the panel has, the tab says the file's are loading.
+ */
 export const SchemaTab: React.FC<SchemaTabProps> = ({ state }) => {
-  const schema = columnsOnShow(state.columns);
-  const target = fileView(state.file).models[0]?.target;
-  return <SchemaTable fields={schema?.fields ?? NO_FIELDS} exportName={target ? `${target.database}_${target.schema}_${target.name}.json` : 'schema.json'} />;
+  const { target, file, columns, loading } = schemaOnShow(state);
+  return (
+    <div className="h-full flex flex-col">
+      <div data-schema="target" className="pb-2 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[26px]">
+        {target ? (
+          <BigQueryTableLink id={target} className="font-mono text-sm break-all text-[var(--vscode-textLink-foreground)] hover:text-[var(--vscode-textLink-activeForeground)]" />
+        ) : file ? (
+          <span className="font-mono text-sm break-all text-[var(--vscode-descriptionForeground)]">{file}</span>
+        ) : null}
+        {loading && (
+          <span data-schema="loading">
+            <RowChip tone="busy"><Loader2 className="w-2.5 h-2.5 animate-spin" /> {columns ? 'updating…' : 'loading schema…'}</RowChip>
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-h-0">
+        {!columns && loading ? (
+          <SchemaSkeleton />
+        ) : (
+          <SchemaTable fields={columns?.fields ?? NO_FIELDS} exportName={target ? `${target.database}_${target.schema}_${target.name}.json` : 'schema.json'} />
+        )}
+      </div>
+    </div>
+  );
 };
+
+/** Bars where the rows of a table of columns will be */
+const SchemaSkeleton: React.FC = () => (
+  <div aria-hidden="true" className="animate-pulse border border-[var(--vscode-widget-border)] rounded-md overflow-hidden">
+    <div className="flex gap-4 px-3 py-2 bg-[var(--vscode-sideBar-background)] border-b border-[var(--vscode-widget-border)]">
+      {['w-12', 'w-10', 'w-20'].map((width, i) => <div key={i} className="flex-1"><div className={`h-3 ${width} rounded bg-[var(--vscode-foreground)] opacity-10`} /></div>)}
+    </div>
+    {['w-24', 'w-32', 'w-20', 'w-28', 'w-16'].map((width, row) => (
+      <div key={row} className="flex gap-4 px-3 py-2.5 border-b last:border-b-0 border-[var(--vscode-widget-border)]">
+        <div className="flex-1"><div className={`h-3 ${width} rounded bg-[var(--vscode-foreground)] opacity-10`} /></div>
+        <div className="flex-1"><div className="h-3 w-14 rounded bg-[var(--vscode-foreground)] opacity-10" /></div>
+        <div className="flex-1"><div className="h-3 w-3/4 rounded bg-[var(--vscode-foreground)] opacity-10" /></div>
+      </div>
+    ))}
+  </div>
+);
 
 const NO_FIELDS: ColumnMetadata[] = [];
 

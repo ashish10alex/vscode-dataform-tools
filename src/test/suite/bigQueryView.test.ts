@@ -8,16 +8,20 @@ import { dryRunScripts } from '../../shared/compiledGraph';
 import type { BigQuerySlice, CompileStatus, FileSlice, HostMessage } from '../../shared/panelContract';
 import { PanelSlices, applyMessage, initialSlices } from '../../shared/panelState';
 import type { DataformCompiledJson } from '../../types';
-import { bigQueryView, columnsOnShow } from '../../../webviews/preview_compiled/utils/bigQueryView';
+import { bigQueryView, columnsOnShow, schemaOnShow } from '../../../webviews/preview_compiled/utils/bigQueryView';
 
 const dataform = new DataformBackend(async () => ({}));
 const target = (name: string) => ({ database: 'p', schema: 'ds', name });
 const graph = buildDataformGraph({
-    tables: [{ type: 'table', target: target('orders'), fileName: 'definitions/orders.sqlx', query: 'select 1 as id', actionDescriptor: { columns: [{ path: ['id'], description: 'The order' }] } }],
+    tables: [
+        { type: 'table', target: target('orders'), fileName: 'definitions/orders.sqlx', query: 'select 1 as id', actionDescriptor: { columns: [{ path: ['id'], description: 'The order' }] } },
+        { type: 'view', target: target('customers'), fileName: 'definitions/customers.sqlx', query: 'select 1 as customer_id' },
+    ],
     assertions: [{ target: target('orders_check'), fileName: 'definitions/orders.sqlx', query: 'select 2 as n' }],
 } as unknown as DataformCompiledJson);
 const file = fileSlice(graph, dataform, 'definitions/orders.sqlx', 1);
 const helper = fileSlice(graph, dataform, 'includes/params.js', 1);
+const customers = fileSlice(graph, dataform, 'definitions/customers.sqlx', 1);
 const answer = (id: string, response: object, compile = 1): DryRunResult => toDryRunResult(graph.actions[id], dryRunScripts(graph.actions[id])[0], compile, response as any);
 const ok = (fields?: object[]) => ({ error: { hasError: false, message: '' }, statistics: { totalBytesProcessed: 1024, cost: { currency: 'USD', value: 0.01 }, totalBytesProcessedAccuracy: 'PRECISE' }, ...(fields ? { schema: { fields } } : {}) });
 const failed = { error: { hasError: true, message: 'Not found: Table p.ds.orders', location: { line: 1, column: 8 } } };
@@ -83,5 +87,30 @@ suite('panel: what BigQuery said of the actions on show', () => {
         assert.deepStrictEqual(columnsOnShow(noColumns.columns), { fields: [{ name: '', type: '' }] });
         // Results that arrive before any file are for nothing on show
         assert.strictEqual(after(bigquery(answered)).columns, undefined);
+    });
+
+    test('the Schema tab names the table its columns are of, and never shows another file\'s columns', () => {
+        const shown = after(aFile(file), bigquery(answered));
+        assert.deepStrictEqual(schemaOnShow(shown), { target: target('orders'), file: 'definitions/orders.sqlx', columns: columnsOnShow(shown.columns), loading: false });
+
+        // A save: the columns stay while the file compiles and its dry runs are out
+        const saved = applyMessage(shown, { slice: 'compile status', value: { ...compiling, file: 'definitions/orders.sqlx' } });
+        assert.deepStrictEqual([schemaOnShow(saved).columns, schemaOnShow(saved).loading], [columnsOnShow(shown.columns), true]);
+
+        // Another file compiles: its target is not known yet, and the last file's columns are not its own
+        const switching = applyMessage(shown, { slice: 'compile status', value: { ...compiling, file: 'definitions/customers.sqlx' } });
+        assert.deepStrictEqual(schemaOnShow(switching), { target: undefined, file: 'definitions/customers.sqlx', columns: null, loading: true });
+
+        // Its SQL is on show and its dry runs are out
+        const dryRunning = applyMessage(applyMessage(shown, aFile(customers)), bigquery(bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.customers', script: 'query', incremental: false }] }, 1)));
+        assert.deepStrictEqual(schemaOnShow(dryRunning), { target: target('customers'), file: 'definitions/customers.sqlx', columns: null, loading: true });
+
+        // No dry run was made for it: there is no schema to show, not the last file's
+        const noDryRun = applyMessage(dryRunning, bigquery(bigQuerySlice({ results: [] }, 1)));
+        assert.deepStrictEqual([schemaOnShow(noDryRun).columns, schemaOnShow(noDryRun).loading], [null, false]);
+
+        // Its results: its columns
+        const answeredCustomers = applyMessage(dryRunning, bigquery(bigQuerySlice({ results: [answer('p.ds.customers', ok([{ name: 'customer_id', type: 'INT64' }]))] }, 1)));
+        assert.deepStrictEqual(schemaOnShow(answeredCustomers).columns, { fields: [{ name: 'customer_id', type: 'INT64' }] });
     });
 });
