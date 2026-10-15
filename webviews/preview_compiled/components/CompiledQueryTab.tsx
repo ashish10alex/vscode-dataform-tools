@@ -32,7 +32,7 @@ import {
   RotateCcw,
   Loader2,
 } from "lucide-react";
-import { tableActions } from "../../../src/shared/columnLineage/tableActions";
+import { isOperation, tableActions } from "../../../src/shared/columnLineage/tableActions";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
 import { CompilerOverrides, overrideLabels } from "./CompilerOverrides";
@@ -527,7 +527,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-80">{model.fileName}</span>
                       )}
                       <CopyTableIdButton onCopy={() => navigator.clipboard.writeText(`\`${target.database}.${target.schema}.${target.name}\``)} />
-                      {model.type !== 'operations' && kindHasTable(model.type as Kind) && <QueryInScratchButton target={target} />}
+                      {(isOperation(model) ? !!model.hasOutput : kindHasTable(model.type as Kind)) && <QueryInScratchButton target={target} />}
                     </>
                   )}
                 </>}
