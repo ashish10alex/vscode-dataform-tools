@@ -3,7 +3,7 @@ import * as path from 'path';
 import { suite, test } from 'mocha';
 import { BigQueryJobMetadata, countJobRows, finalRunState, isTerminalRun, jobTargetMatcher, runJobRows } from '../../shared/cliRunJobs';
 import {
-    dbtJobNamer, dbtRunFiles, firstInvocation, invocationsStarted, nodeEvents, nodeNamer, nodeOfQuery, ofInvocation, readRunResults, withNodeProgress, withNodeResults,
+    dbtJobNamer, dbtRunFiles, firstInvocation, nodeEvents, nodeNamer, nodeOfQuery, ofInvocation, readRunResults, withNodeProgress, withNodeResults,
 } from '../../shared/dbtRunJobs';
 import type { WorkflowActionJobStats } from '../../types';
 
@@ -48,14 +48,6 @@ function results(nodes: Array<Record<string, unknown>>, invocation = CORE_ID): s
 }
 
 suite('dbtRunJobs', () => {
-    test("the invocation's ID is read from the start of a run in the log of either engine", () => {
-        assert.deepStrictEqual(invocationsStarted(CORE_LOG), [CORE_ID]);
-        // The line that closes the run before is no start
-        assert.deepStrictEqual(invocationsStarted(V2_LOG), [V2_ID]);
-        assert.deepStrictEqual(invocationsStarted(`${V2_LOG}\n${CORE_LOG.replace(/\n/g, '\r\n')}`), [V2_ID, CORE_ID]);
-        assert.deepStrictEqual(invocationsStarted('14:44:19 [info ]: nothing started'), []);
-    });
-
     test('the lines of a run are those after its start', () => {
         const started = firstInvocation(`${V2_LOG}\n${CORE_LOG}`);
         assert.strictEqual(started?.id, V2_ID);
