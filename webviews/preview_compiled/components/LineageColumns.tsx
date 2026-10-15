@@ -103,8 +103,12 @@ function Lists({ lists }: { lists: LineageList[] }) {
         {tables.map((table) => {
           const own = !!shown.own?.has(table.id);
           const isExternal = !!shown.external?.has(table.id);
-          // `project.dataset.` in front of the name, dimmer, so the name is what the eye finds
-          const name = <>{table.dataset && <span className={MUTED}>{table.dataset}.</span>}{table.name}</>;
+          // `project.dataset.` in front of the name, dimmer, so the name is what the eye finds. Where the line is too
+          // narrow, the prefix is cut short first: the name keeps its room
+          const name = <>
+            {table.dataset && <span className={clsx("min-w-0 truncate", MUTED)}>{table.dataset}.</span>}
+            <span className="flex-shrink-0 max-w-full truncate">{table.name}</span>
+          </>;
           return (
             <div key={table.id} title={table.id} className="group flex items-center gap-1.5 min-h-[26px] px-3 border-b border-[color-mix(in_srgb,var(--vscode-widget-border)_45%,transparent)] hover:bg-[var(--vscode-list-hoverBackground)]">
               <span className="flex-1 min-w-0 flex items-center gap-1.5">
@@ -113,11 +117,11 @@ function Lists({ lists }: { lists: LineageList[] }) {
                     type="button"
                     onClick={table.open}
                     title={`${table.id}\nGo to definition`}
-                    className={clsx("min-w-0 truncate p-0 bg-transparent border-0 font-mono text-xs text-left cursor-pointer hover:text-[var(--vscode-textLink-foreground)] hover:underline", own ? MUTED : "text-[var(--vscode-foreground)]")}
+                    className={clsx("min-w-0 flex p-0 bg-transparent border-0 font-mono text-xs text-left cursor-pointer hover:text-[var(--vscode-textLink-foreground)] hover:underline", own ? MUTED : "text-[var(--vscode-foreground)]")}
                   >
                     {name}
                   </button>
-                ) : <span className={clsx("min-w-0 truncate font-mono text-xs", own ? MUTED : "text-[var(--vscode-foreground)]")}>{name}</span>}
+                ) : <span className={clsx("min-w-0 flex font-mono text-xs", own ? MUTED : "text-[var(--vscode-foreground)]")}>{name}</span>}
                 {table.tags?.map((tag) => <span key={tag.text} className={clsx(TAG, MUTED, "border-[var(--vscode-widget-border)]")} title={tag.title}>{tag.text}</span>)}
                 {/* A word, not a badge: it is the least of what the list has to say */}
                 {own && <span className={clsx("flex-shrink-0 text-xs whitespace-nowrap", MUTED)} title="Built by the file on show">this file</span>}

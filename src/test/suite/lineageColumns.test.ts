@@ -31,7 +31,7 @@ suite('LineageColumns: what a file reads and what reads it', () => {
     test('has a table on one line as project.dataset.table, with the project and dataset dimmer', () => {
         const html = render();
 
-        assert.ok(html.includes('p.raw.</span>source<'), 'the table is not shown as project.dataset.table');
+        assert.ok(/p\.raw\.<\/span><span class="flex-shrink-0[^"]*">source</.test(html), 'the table is not shown as project.dataset.table, with the name kept from being cut');
         assert.ok(html.includes('title="p.raw.source"'), 'the whole ID is not in the tooltip');
     });
 
