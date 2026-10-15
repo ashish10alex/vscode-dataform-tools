@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.6...v2.0.7) (2026-10-15)
+
+
+### Features
+
+* open a scratch query on a target from the compiled query panel ([#538](https://github.com/ashish10alex/vscode-dataform-tools/issues/538)) ([55a9473](https://github.com/ashish10alex/vscode-dataform-tools/commit/55a9473a013de637af90e8a30e8e30922b77a6bb))
+
 ### [2.0.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.5...v2.0.6) (2026-10-15)
 
 
