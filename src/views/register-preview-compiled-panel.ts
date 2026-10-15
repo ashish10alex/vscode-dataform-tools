@@ -70,7 +70,7 @@ import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
 import { extensionConfiguration } from '../project/settings';
-import { ROW_LAYOUT_KEY, RowLayout, isRowLabel, withRow } from '../shared/rowLayout';
+import { ROW_LAYOUT_KEY, RowLayout, TAB_LAYOUT_KEY, TabLayout, isRowLabel, isTabChoice, withRow, withTab } from '../shared/rowLayout';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -240,8 +240,8 @@ function getLastRunView() {
 const impactHintSeq = new Map<string, number>();
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
-    // Which rows of the panel the user leaves open is theirs on every machine
-    context.globalState.setKeysForSync([ROW_LAYOUT_KEY]);
+    // Which rows of the panel the user leaves open, and which tabs on show, is theirs on every machine
+    context.globalState.setKeysForSync([ROW_LAYOUT_KEY, TAB_LAYOUT_KEY]);
 
     context.subscriptions.push(
         onDidChangeLastRun(() => {
@@ -1298,6 +1298,11 @@ export class CompiledQueryPanel {
               case 'rememberRow':
                 if (isRowLabel(message.label) && typeof message.open === 'boolean') {
                     await extensionContext.globalState.update(ROW_LAYOUT_KEY, withRow(panel.rowLayout(), message.label, message.open));
+                }
+                return;
+              case 'rememberTab':
+                if (isTabChoice(message.group, message.tab)) {
+                    await extensionContext.globalState.update(TAB_LAYOUT_KEY, withTab(panel.tabLayout(), message.group, message.tab));
                 }
                 return;
               case 'dataform.startSnooze':
@@ -2402,6 +2407,12 @@ export class CompiledQueryPanel {
         return kept && typeof kept === 'object' ? kept as RowLayout : {};
     }
 
+    /** Which tab of each group the user left on show, as kept for them across files, panels and machines */
+    private tabLayout(): TabLayout {
+        const kept = this.extensionContext.globalState.get<unknown>(TAB_LAYOUT_KEY);
+        return kept && typeof kept === 'object' ? kept as TabLayout : {};
+    }
+
     /** The panel's page, starting with the slices given */
     private pageWith(webview: vscode.Webview, initialState: Partial<PanelSlices>) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
@@ -2427,6 +2438,7 @@ export class CompiledQueryPanel {
             <script nonce="${nonce}">
                 window.initialState = ${JSON.stringify(initialState).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
                 window.rowLayout = ${JSON.stringify(this.rowLayout()).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
+                window.tabLayout = ${JSON.stringify(this.tabLayout()).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
             </script>
             <script nonce="${nonce}" type="module" src="${scriptUri}" id="panel-script"></script>
             <script nonce="${nonce}">

@@ -3,6 +3,7 @@ import { suite, test } from 'mocha';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { LineageColumns, LineageLists } from '../../../webviews/preview_compiled/components/LineageColumns';
+import { rememberTab } from '../../../webviews/preview_compiled/utils/rowLayout';
 
 const target = (name: string, schema = 'ds') => ({ database: 'p', schema, name });
 
@@ -27,11 +28,24 @@ suite('LineageColumns: what a file reads and what reads it', () => {
         assert.ok(html.includes('>source<') && !html.includes('>report<'), 'the list of the other tab is on show');
     });
 
-    test('has a table on one line: its name, then its dataset without the project', () => {
+    test('has a table on one line as project.dataset.table, with the project and dataset dimmer', () => {
         const html = render();
 
-        assert.ok(html.indexOf('>source<') < html.indexOf('>raw<'));
-        assert.ok(html.includes('title="p.raw"'), 'the whole dataset is not in the tooltip');
+        assert.ok(html.includes('p.raw.</span>source<'), 'the table is not shown as project.dataset.table');
+        assert.ok(html.includes('title="p.raw.source"'), 'the whole ID is not in the tooltip');
+    });
+
+    test('starts on the tab the user left on show, and on the first where that tab is not there', () => {
+        const lists = (tab: string) => {
+            rememberTab('Lineage', tab);
+            return renderToStaticMarkup(createElement(LineageLists, { reads: [], readBy: [], tests: [], noneReadBy: 'Nothing' }));
+        };
+        try {
+            assert.ok(lists('dependents').includes('data-lineage="dependents"'));
+            assert.ok(lists('tests').includes('data-lineage="dependencies"'));
+        } finally {
+            rememberTab('Lineage', 'dependencies');
+        }
     });
 
     test('marks what the file on show builds with a word', () => {

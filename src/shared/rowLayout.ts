@@ -35,3 +35,19 @@ export function firstChoice(row: { left: boolean | undefined; defaultOpen?: bool
 export function withRow(layout: RowLayout, label: string, open: boolean): RowLayout {
     return { ...layout, [label]: open };
 }
+
+/** The globalState key of which tab the user left on show, by the tabs' group, e.g. the lists of the Lineage row */
+export const TAB_LAYOUT_KEY = 'dataformTools.panelTabs';
+
+/** The key of the tab the user left on show, by the tabs' group */
+export type TabLayout = Record<string, string>;
+
+/** A group and tab the host keeps: the panel's own are a word or two */
+export function isTabChoice(group: unknown, tab: unknown): boolean {
+    return isRowLabel(group) && isRowLabel(tab);
+}
+
+/** The tabs after the user chose one of a group */
+export function withTab(layout: TabLayout, group: string, tab: string): TabLayout {
+    return { ...layout, [group]: tab };
+}
