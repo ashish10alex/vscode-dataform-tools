@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { applyDeferral, applyDeferralToAction, buildProdTargetMap, builtInDevHint, collectCandidates, declarationHint, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, deferralEntryHint, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql } from '../../defer/deferRules';
+import { applyDeferral, applyDeferralToAction, buildProdTargetMap, builtInDevHint, collectCandidates, declarationHint, computeRunSet, proxyViewSpec, decideDeferral, DeferralCandidate, DeferralEntry, deferralEntryHint, findAccessDeniedTargets, indexGraphActions, isRoutineOperation, matchRef, prodKey, prodMatchesDev, proxyViewAction, rewriteSql, upstreamDeclarations } from '../../defer/deferRules';
 import { buildDataformGraph } from '../../backend/dataform/graph';
 import { dryRunAction } from '../../bigquery/dryRunService';
 import { previewQuery } from '../../bigquery/preview';
@@ -391,6 +391,17 @@ suite('deferRules.deferralEntryHint', () => {
         assert.match(hint.hover, /a declaration, which the project does not build, so dev and prod read the same table/);
         assert.match(hint.hover, /`proj-prod\.raw\.raw_orders`/);
         assert.match(hint.hover, /Open table in BigQuery\]\(https:\/\/console\.cloud\.google\.com\/bigquery\?project=proj-prod&.*!2sraw!3sraw_orders\)/);
+    });
+
+    test('a ref to an upstream declaration finds the declaration, and a ref to a table does not', () => {
+        const rawOrders: Target = { database: 'proj-prod', schema: 'raw', name: 'raw_orders' };
+        const compiled = graph({ tables: [{ target: dev('orders'), canonicalTarget: canonical('orders'), type: 'table' }], declarations: [{ target: rawOrders, canonicalTarget: rawOrders }] });
+        const dependencies = [...indexGraphActions(compiled).values()];
+        const declared = upstreamDeclarations(dependencies, compiled);
+        assert.deepStrictEqual(declared, [rawOrders]);
+        const [declarationRef, tableRef] = findRefs('SELECT * FROM ${ref("raw", "raw_orders")} JOIN ${ref("orders")}');
+        assert.deepStrictEqual(matchRef(declarationRef.args, dependencies), rawOrders);
+        assert.deepStrictEqual(matchRef(tableRef.args, dependencies), dev('orders'));
     });
 });
 

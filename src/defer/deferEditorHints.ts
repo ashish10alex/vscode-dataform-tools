@@ -6,7 +6,7 @@ import { Target } from '../types';
 import { findRefs } from '../documentSymbols';
 import { getRelativePath } from '../utils/workspaceUtils';
 import { slashPath } from '../shared/compiledGraph';
-import { builtInDevHint, declarationHint, deferralEntryHint, DeferralEntryHint, GraphAction, indexGraphActions, matchRef, RefHintKind, targetId } from './deferRules';
+import { builtInDevHint, declarationHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId, upstreamDeclarations } from './deferRules';
 import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralWithStaleFlags } from './index';
 import { extensionConfiguration } from '../project/settings';
 
@@ -96,8 +96,7 @@ async function computeDocumentHints(document: vscode.TextDocument, onStaleFlags:
         .map((dependency: Target) => graphActions.get(targetId(dependency)) ?? { target: dependency });
 
     if (isDeferEnabled(workspaceFolder)) {
-        const declarationIds = new Set((graph.declarations ?? []).filter((declaration) => declaration?.target).map((declaration) => targetId(declaration.target)));
-        const declared = dependencies.map((dependency: GraphAction) => dependency.target).filter((target: Target) => declarationIds.has(targetId(target)));
+        const declared = upstreamDeclarations(dependencies, graph);
         const { deferral, staleFlags } = await resolveDeferralWithStaleFlags(actions, graph, workspaceFolder);
         // The flags are set on the entries of this same deferral
         staleFlags?.then((flagged) => {
