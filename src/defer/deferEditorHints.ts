@@ -5,6 +5,7 @@ import { debounce } from '../debounce';
 import { Target } from '../types';
 import { findRefs } from '../documentSymbols';
 import { getRelativePath } from '../utils/workspaceUtils';
+import { slashPath } from '../shared/compiledGraph';
 import { builtInDevHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId } from './deferRules';
 import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralWithStaleFlags } from './index';
 import { extensionConfiguration } from '../project/settings';
@@ -79,7 +80,7 @@ async function computeDocumentHints(document: vscode.TextDocument, onStaleFlags:
     if (!workspaceFolder || !graph) {
         return undefined;
     }
-    const actions = (compiledIndices().fileNodeMap.get(getRelativePath(document.uri.fsPath)) ?? []).filter((action: any) => action?.target && action.type !== "test");
+    const actions = (compiledIndices().fileNodeMap.get(slashPath(getRelativePath(document.uri.fsPath))) ?? []).filter((action: any) => action?.target && action.type !== "test");
     if (actions.length === 0) {
         return undefined;
     }
