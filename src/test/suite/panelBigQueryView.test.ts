@@ -5,7 +5,7 @@ import { buildDataformGraph } from '../../backend/dataform/graph';
 import { DryRunResult, toDryRunResult } from '../../bigquery/dryRunService';
 import { bigQuerySlice, fileSlice } from '../../panel/slices';
 import { dryRunScripts, madeUpTarget, targetId } from '../../shared/compiledGraph';
-import { bigQueryFieldsOf, dryRunCostSummary } from '../../shared/panelBigQueryView';
+import { bigQueryFieldsOf, dryRunCostSummary, schemaOf } from '../../shared/panelBigQueryView';
 import type { DataformCompiledJson } from '../../types';
 
 const dataform = new DataformBackend(async () => ({}));
@@ -23,8 +23,6 @@ suite('panel: what BigQuery said, by the name of each action', () => {
     test('dry runs that are out are the spinner; none out stops it', () => {
         const started = bigQueryFieldsOf(bigQuerySlice({ results: [], dryRunning: [{ action: 'p.ds.v', script: 'query', incremental: false }] }, 1), undefined);
         assert.deepStrictEqual([started.dryRunning, started.currencySymbol], [true, '$']);
-        // The columns on show stay while dry runs are out
-        assert.ok(!('columns' in started));
         const back = bigQueryFieldsOf(bigQuerySlice({ results: [], currencySymbol: '£' }, 1), undefined);
         assert.deepStrictEqual([back.dryRunning, back.currencySymbol], [false, '£']);
     });
@@ -118,28 +116,18 @@ suite('panel: what BigQuery said, by the name of each action', () => {
         assert.deepStrictEqual(unplaced['p.ds.events'].location, { line: 0, column: 0 });
     });
 
-    test('the columns are those of the first action, described as its config describes them', () => {
+    test('the columns of an action are those of the dry run of its query, described as its config describes them', () => {
         const described = buildDataformGraph({
             tables: [{ type: 'table', target: target('orders'), fileName: 'definitions/orders.sqlx', query: 'select 1 as id', actionDescriptor: { columns: [{ path: ['id'], description: 'The order' }] } }],
-            assertions: [{ target: target('orders_check'), fileName: 'definitions/orders.sqlx', query: 'select 2 as n' }],
         } as unknown as DataformCompiledJson);
-        const shown = fileSlice(described, dataform, 'definitions/orders.sqlx', 1);
-        const results = [
-            answer('p.ds.orders', 'query', ok(1, [{ name: 'id', type: 'INT64' }, { name: 'total', type: 'NUMERIC' }]), false, described),
-            answer('p.ds.orders_check', 'query', ok(1, [{ name: 'n', type: 'INT64' }]), false, described),
-        ];
-        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results }, 1), shown).columns, {
+        const [orders] = fileSlice(described, dataform, 'definitions/orders.sqlx', 1).actions;
+        const results = [answer('p.ds.orders', 'query', ok(1, [{ name: 'id', type: 'INT64' }, { name: 'total', type: 'NUMERIC' }]), false, described)];
+        assert.deepStrictEqual(schemaOf(bigQuerySlice({ results }, 1), orders), {
             fields: [{ name: 'id', type: 'INT64', description: 'The order' }, { name: 'total', type: 'NUMERIC' }],
         });
-        // A dry run that gave no columns: the one empty column the flat state has for that
-        const noColumns = [answer('p.ds.orders', 'query', failed('boom'), false, described)];
-        assert.deepStrictEqual(bigQueryFieldsOf(bigQuerySlice({ results: noColumns }, 1), shown).columns, { fields: [{ name: '', type: '' }] });
-        // No dry run was made, or they are still out: the columns on show stay
-        assert.ok(!('columns' in bigQueryFieldsOf(bigQuerySlice({ results: [] }, 1), shown)));
-        assert.ok(!('columns' in bigQueryFieldsOf(bigQuerySlice({ results, dryRunning: [{ action: 'p.ds.orders', script: 'query', incremental: false }] }, 1), shown)));
-        // A file with no action to show has no columns
-        const helper = fileSlice(described, dataform, 'includes/params.js', 1);
-        assert.strictEqual(bigQueryFieldsOf(bigQuerySlice({ results: [] }, 1), helper).columns, null);
+        // A dry run that gave no columns, and none made
+        assert.strictEqual(schemaOf(bigQuerySlice({ results: [answer('p.ds.orders', 'query', failed('boom'), false, described)] }, 1), orders), undefined);
+        assert.strictEqual(schemaOf(bigQuerySlice({ results: [] }, 1), orders), undefined);
     });
 
     test('a result of an earlier compile is not for the SQL on show', () => {

@@ -135,16 +135,13 @@ function dryRunMaps(slice: BigQuerySlice, shown: Shown[]): Pick<BigQueryFields, 
     return { stats, errors, incrementalErrors, expectedOutputErrors, queries, incrementalQueries, nonIncrementalQueries };
 }
 
-const NO_COLUMNS = { fields: [{ name: '', type: '' }] };
-
 /**
- * The columns of the first action on show, from the dry run of its query, described as its config describes them.
- * An action whose dry run gave no columns has one empty column, which the Schema tab shows as no schema.
+ * The columns of a table, view or incremental table, from the dry run of its query, described as its config
+ * describes them. Undefined when the slice has no result for it, and when its dry run gave no columns.
  */
-function columnsOf(slice: BigQuerySlice, shown: Shown[]): CompiledQuerySchema {
-    const [{ model, action }] = shown;
-    const schema = slice.results.find((result) => result.action === action.id && result.script === mainScript(model) && !result.incremental)?.schema;
-    return schema?.fields ? { fields: applyColumnDescriptions(schema.fields, action.columns ?? []) } : NO_COLUMNS;
+export function schemaOf(slice: BigQuerySlice, action: PanelAction): CompiledQuerySchema | undefined {
+    const schema = slice.results.find((result) => result.action === action.id && result.script === 'query' && !result.incremental)?.schema;
+    return schema?.fields ? { fields: applyColumnDescriptions(schema.fields, action.columns ?? []) } : undefined;
 }
 
 /** What is known of a model's table */
@@ -170,11 +167,6 @@ export interface BigQueryFields {
     nonIncrementalQueries: Record<string, string>;
     /** What is known of each model's table, by the model's position. Null for one that builds none; empty when no model is on show */
     lastUpdates: Array<TableTimes | null | undefined>;
-    /**
-     * The columns of the first model. Null when no model is on show. Unset while dry runs are out, and when none
-     * was made: the columns the panel has stay.
-     */
-    columns?: CompiledQuerySchema | null;
 }
 
 /**
@@ -185,9 +177,6 @@ export function bigQueryFieldsOf(slice: BigQuerySlice, file: FileSlice | undefin
     const shown = file ? fileModels(file) : [];
     const fields: BigQueryFields = { dryRunning, currencySymbol: slice.currencySymbol, ...dryRunMaps(slice, shown), lastUpdates: [] };
     if (shown.length === 0) {
-        if (!dryRunning) {
-            fields.columns = null;
-        }
         return fields;
     }
     fields.lastUpdates = shown.map(({ model, action }) => {
@@ -198,8 +187,5 @@ export function bigQueryFieldsOf(slice: BigQuerySlice, file: FileSlice | undefin
         const table = slice.tables[action.id];
         return table && { lastModifiedTime: table.lastModified, modelWasUpdatedToday: table.modifiedToday, error: { message: table.error } };
     });
-    if (!dryRunning && slice.results.length > 0) {
-        fields.columns = columnsOf(slice, shown);
-    }
     return fields;
 }

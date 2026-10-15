@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import type { ReactNode } from "react";
 import { CodeBlock } from "../../components/CodeBlock";
 
 export interface SqlBlock {
@@ -38,29 +39,40 @@ interface SqlTabsProps {
   dimmed?: boolean;
 }
 
+/** A row of tabs that runs from edge to edge of a panel padded by 1rem, and stays at the top as it scrolls */
+export const TAB_STRIP = "sticky top-0 z-10 -mx-4 px-2 flex items-center gap-1 h-9 overflow-x-auto scrollbar-thin border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)]";
+
+/** One tab of a `TAB_STRIP`, with a red dot when what it shows failed */
+export function TabButton({ selected, onClick, title, failed, children }: { selected: boolean; onClick: () => void; title: string; failed?: boolean; children: ReactNode }) {
+  return (
+    <button
+      role="tab"
+      aria-selected={selected}
+      onClick={onClick}
+      title={title}
+      className={clsx(
+        "flex items-center gap-1.5 flex-shrink-0 h-6 px-2 rounded text-xs whitespace-nowrap border-0 transition-colors",
+        selected
+          ? "bg-[var(--vscode-list-inactiveSelectionBackground,var(--vscode-toolbar-hoverBackground))] text-[var(--vscode-foreground)]"
+          : "bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
+      )}
+    >
+      {failed && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-errorForeground,#f14c4c)]" />}
+      {children}
+    </button>
+  );
+}
+
 /** The queries a file compiles to, as tabs over one code block. They run from edge to edge of a panel padded by 1rem */
 export function SqlTabs({ blocks, shown, onShow, labelOf, dimmed }: SqlTabsProps) {
   return (
     <>
-      <div role="tablist" aria-label="Compiled SQL" className="sticky top-0 z-10 -mx-4 px-2 flex items-center gap-1 h-9 overflow-x-auto scrollbar-thin border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)]">
+      <div role="tablist" aria-label="Compiled SQL" className={TAB_STRIP}>
         {blocks.map((block) => (
-          <button
-            key={block.key}
-            role="tab"
-            aria-selected={block === shown}
-            onClick={() => onShow(block.key)}
-            title={block.failed ? `${block.target}: its dry run failed` : block.target}
-            className={clsx(
-              "flex items-center gap-1.5 flex-shrink-0 h-6 px-2 rounded text-xs whitespace-nowrap border-0 transition-colors",
-              block === shown
-                ? "bg-[var(--vscode-list-inactiveSelectionBackground,var(--vscode-toolbar-hoverBackground))] text-[var(--vscode-foreground)]"
-                : "bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]"
-            )}
-          >
-            {block.failed && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[var(--vscode-errorForeground,#f14c4c)]" />}
+          <TabButton key={block.key} selected={block === shown} onClick={() => onShow(block.key)} failed={block.failed} title={block.failed ? `${block.target}: its dry run failed` : block.target}>
             {labelOf(block)}
             {block.note && <span title={block.note.title} className="px-1 rounded border border-[var(--vscode-widget-border)] text-[10px] font-mono uppercase tracking-wider leading-4 text-[var(--vscode-descriptionForeground)]">{block.note.text}</span>}
-          </button>
+          </TabButton>
         ))}
         <span className="ml-2 min-w-0 truncate text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-60">{shown.target}</span>
       </div>
