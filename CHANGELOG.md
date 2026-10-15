@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.3...v2.0.4) (2026-10-15)
+
+
+### Features
+
+* a Schema tab for each table, with its name and a loading state ([#532](https://github.com/ashish10alex/vscode-dataform-tools/issues/532)) ([f34d855](https://github.com/ashish10alex/vscode-dataform-tools/commit/f34d85571a10e62c2532cb509adda8e3990087a1))
+
+
+### Refactors
+
+* count the Project tab's warnings with the function the tests check ([#531](https://github.com/ashish10alex/vscode-dataform-tools/issues/531)) ([383ea14](https://github.com/ashish10alex/vscode-dataform-tools/commit/383ea14e4e6f8619605891275ba8725f162d58cf))
+
 ### [2.0.3](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.2...v2.0.3) (2026-10-14)
 
 
