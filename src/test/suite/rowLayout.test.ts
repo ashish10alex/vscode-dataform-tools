@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { firstChoice, isRowLabel, withRow } from '../../shared/rowLayout';
+import { firstChoice, isRowLabel, isTabChoice, withRow, withTab } from '../../shared/rowLayout';
 
 suite('panel: the rows the user left open', () => {
     test('a row the user has not chosen for starts as it is made to: closed unless it is open by default', () => {
@@ -31,5 +31,11 @@ suite('panel: the rows the user left open', () => {
     test('the host keeps only labels the panel could have sent', () => {
         assert.ok(isRowLabel('Last run'));
         assert.ok(![undefined, 3, '', 'x'.repeat(41)].some(isRowLabel));
+    });
+
+    test('a tab chosen changes only its own group, and the host keeps only what the panel could have sent', () => {
+        assert.deepStrictEqual(withTab({ Lineage: 'dependencies', Other: 'a' }, 'Lineage', 'dependents'), { Lineage: 'dependents', Other: 'a' });
+        assert.ok(isTabChoice('Lineage', 'dependents'));
+        assert.ok(![[undefined, 'a'], ['Lineage', 3], ['Lineage', '']].some(([group, tab]) => isTabChoice(group, tab)));
     });
 });

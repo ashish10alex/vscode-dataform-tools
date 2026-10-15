@@ -2,11 +2,12 @@ import { ReactNode, useState } from "react";
 import clsx from "clsx";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { getUrlToNavigateToTableInBigQuery, parseBigQueryTableId } from "../../utils/bigquery";
+import { rememberTab, tabLeftOn } from "../utils/rowLayout";
 
 /** A line of a list: a table, or an action that builds none */
 export interface LineageEntry {
   id: string;
-  /** `project.dataset`, which tables are grouped under. Empty for what is in no dataset */
+  /** `project.dataset`, shown in front of the name. Empty for what is in no dataset */
   dataset: string;
   name: string;
   /** Null for what has no page in BigQuery */
@@ -59,12 +60,16 @@ interface LineageList {
   footer?: ReactNode;
 }
 
+/** The group the chosen tab is kept under, for every file */
+const TAB_GROUP = "Lineage";
+
 /**
  * The lists, one on show at a time under a tab for each: a line is as wide as the panel, so a name is rarely cut
- * short. A table is one line, its name first and its dataset at the end, where the eye does not have to pass it.
+ * short. A table is one line, as `project.dataset.table` with the table's name the brightest. The tab the user chose
+ * is on show for the next file too, and on the next page.
  */
 function Lists({ lists }: { lists: LineageList[] }) {
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(() => tabLeftOn(TAB_GROUP) ?? null);
   const shown = lists.find((list) => list.key === chosen) ?? lists[0];
   if (!shown) {
     return null;
@@ -80,7 +85,10 @@ function Lists({ lists }: { lists: LineageList[] }) {
             type="button"
             role="tab"
             aria-selected={list === shown}
-            onClick={() => setChosen(list.key)}
+            onClick={() => {
+              setChosen(list.key);
+              rememberTab(TAB_GROUP, list.key);
+            }}
             className={clsx(
               "flex-1 flex items-center justify-center gap-1.5 h-7 -mb-px px-2 bg-transparent border-0 border-b-2 border-solid text-xs whitespace-nowrap cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[var(--vscode-focusBorder)]",
               list === shown ? "border-[var(--vscode-focusBorder)] text-[var(--vscode-foreground)]" : clsx("border-transparent hover:text-[var(--vscode-foreground)]", MUTED)
@@ -95,8 +103,12 @@ function Lists({ lists }: { lists: LineageList[] }) {
         {tables.map((table) => {
           const own = !!shown.own?.has(table.id);
           const isExternal = !!shown.external?.has(table.id);
-          // The dataset without its project: the whole of it is in the tooltip
-          const dataset = table.dataset.slice(table.dataset.lastIndexOf(".") + 1);
+          // `project.dataset.` in front of the name, dimmer, so the name is what the eye finds. Where the line is too
+          // narrow, the prefix is cut short first: the name keeps its room
+          const name = <>
+            {table.dataset && <span className={clsx("min-w-0 truncate", MUTED)}>{table.dataset}.</span>}
+            <span className="flex-shrink-0 max-w-full truncate">{table.name}</span>
+          </>;
           return (
             <div key={table.id} title={table.id} className="group flex items-center gap-1.5 min-h-[26px] px-3 border-b border-[color-mix(in_srgb,var(--vscode-widget-border)_45%,transparent)] hover:bg-[var(--vscode-list-hoverBackground)]">
               <span className="flex-1 min-w-0 flex items-center gap-1.5">
@@ -105,11 +117,11 @@ function Lists({ lists }: { lists: LineageList[] }) {
                     type="button"
                     onClick={table.open}
                     title={`${table.id}\nGo to definition`}
-                    className={clsx("min-w-0 truncate p-0 bg-transparent border-0 font-mono text-xs text-left cursor-pointer hover:text-[var(--vscode-textLink-foreground)] hover:underline", own ? MUTED : "text-[var(--vscode-foreground)]")}
+                    className={clsx("min-w-0 flex p-0 bg-transparent border-0 font-mono text-xs text-left cursor-pointer hover:text-[var(--vscode-textLink-foreground)] hover:underline", own ? MUTED : "text-[var(--vscode-foreground)]")}
                   >
-                    {table.name}
+                    {name}
                   </button>
-                ) : <span className={clsx("min-w-0 truncate font-mono text-xs", own ? MUTED : "text-[var(--vscode-foreground)]")}>{table.name}</span>}
+                ) : <span className={clsx("min-w-0 flex font-mono text-xs", own ? MUTED : "text-[var(--vscode-foreground)]")}>{name}</span>}
                 {table.tags?.map((tag) => <span key={tag.text} className={clsx(TAG, MUTED, "border-[var(--vscode-widget-border)]")} title={tag.title}>{tag.text}</span>)}
                 {/* A word, not a badge: it is the least of what the list has to say */}
                 {own && <span className={clsx("flex-shrink-0 text-xs whitespace-nowrap", MUTED)} title="Built by the file on show">this file</span>}
@@ -120,7 +132,6 @@ function Lists({ lists }: { lists: LineageList[] }) {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               )}
-              {dataset && <span title={table.dataset} className={clsx("flex-shrink-0 max-w-[42%] truncate font-mono text-xs text-right", MUTED)}>{dataset}</span>}
             </div>
           );
         })}
