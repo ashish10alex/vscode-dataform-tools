@@ -155,6 +155,43 @@ export function columnNamesText(fields: ReadonlyArray<{ name: string }>): string
     return fields.map((field) => field.name).join(',\n');
 }
 
+/** GoogleSQL's reserved keywords, which a column name must be in backticks to be */
+const RESERVED_KEYWORDS = new Set([
+    'ALL', 'AND', 'ANY', 'ARRAY', 'AS', 'ASC', 'ASSERT_ROWS_MODIFIED', 'AT', 'BETWEEN', 'BY', 'CASE', 'CAST', 'COLLATE', 'CONTAINS',
+    'CREATE', 'CROSS', 'CUBE', 'CURRENT', 'DEFAULT', 'DEFINE', 'DESC', 'DISTINCT', 'ELSE', 'END', 'ENUM', 'ESCAPE', 'EXCEPT', 'EXCLUDE',
+    'EXISTS', 'EXTRACT', 'FALSE', 'FETCH', 'FOLLOWING', 'FOR', 'FROM', 'FULL', 'GROUP', 'GROUPING', 'GROUPS', 'HASH', 'HAVING', 'IF',
+    'IGNORE', 'IN', 'INNER', 'INTERSECT', 'INTERVAL', 'INTO', 'IS', 'JOIN', 'LATERAL', 'LEFT', 'LIKE', 'LIMIT', 'LOOKUP', 'MERGE',
+    'NATURAL', 'NEW', 'NO', 'NOT', 'NULL', 'NULLS', 'OF', 'ON', 'OR', 'ORDER', 'OUTER', 'OVER', 'PARTITION', 'PRECEDING', 'PROTO',
+    'QUALIFY', 'RANGE', 'RECURSIVE', 'RESPECT', 'RIGHT', 'ROLLUP', 'ROWS', 'SELECT', 'SET', 'SOME', 'STRUCT', 'TABLESAMPLE', 'THEN',
+    'TO', 'TREAT', 'TRUE', 'UNBOUNDED', 'UNION', 'UNNEST', 'USING', 'WHEN', 'WHERE', 'WINDOW', 'WITH', 'WITHIN',
+]);
+
+/** A column name as a query writes it: in backticks when it is a reserved keyword or not a plain identifier */
+export function columnNameInQuery(name: string): string {
+    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && !RESERVED_KEYWORDS.has(name.toUpperCase()) ? name : `\`${name.replace(/`/g, '\\`')}\``;
+}
+
+/** How many rows the query made for a table asks for: enough to look at */
+export const TABLE_QUERY_LIMIT = 100;
+
+/**
+ * The query a scratch query made for a table starts as: its top-level columns, one to a line, else `*` when they are
+ * not known
+ */
+export function tableQueryText(table: string, columns: readonly string[]): string {
+    const select = columns.length ? `SELECT\n${columns.map((name) => `  ${columnNameInQuery(name)}`).join(',\n')}` : 'SELECT *';
+    return `${select}\nFROM \`${table}\`\nLIMIT ${TABLE_QUERY_LIMIT}\n`;
+}
+
+/** The comment lines a new scratch query starts with: what it is, how to run it, and a note when there is one */
+export function scratchHeaderText(runKey: string, note?: string): string {
+    const lines = [`-- Scratch query: plain BigQuery SQL. ${runKey} runs the selection, or the whole file.`];
+    if (note) {
+        lines.push(`-- ${note.replace(/\s*\n\s*/g, ' ').trim()}`);
+    }
+    return `${lines.join('\n')}\n\n`;
+}
+
 /**
  * What is being typed of a table name at the end of `linePrefix`: from its opening backtick when it has one.
  * `inTableName` says the text can only be a table name: it is in backticks or has a dot.

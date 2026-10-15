@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { columnNamesText, hasStatement, isScratchPath, tableNamesAt, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, tableNamePrefix, tableNamesIn, tableNameText } from '../../scratch/scratchQuery';
+import { columnNameInQuery, columnNamesText, scratchHeaderText, tableQueryText, hasStatement, isScratchPath, tableNamesAt, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, tableNamePrefix, tableNamesIn, tableNameText } from '../../scratch/scratchQuery';
 
 const GIB = 1024 ** 3;
 const names = (sql: string) => tableNamesIn(sql).map(tableNameText);
@@ -144,6 +144,49 @@ suite('scratchQuery.columnNamesText', () => {
         assert.strictEqual(columnNamesText([{ name: 'order_id' }, { name: 'order_date' }, { name: 'total' }]), 'order_id,\norder_date,\ntotal');
         assert.strictEqual(columnNamesText([{ name: 'order_id' }]), 'order_id');
         assert.strictEqual(columnNamesText([]), '');
+    });
+});
+
+suite('scratchQuery.columnNameInQuery', () => {
+    test('a plain name is written as it is', () => {
+        assert.strictEqual(columnNameInQuery('order_id'), 'order_id');
+        assert.strictEqual(columnNameInQuery('_loaded_at'), '_loaded_at');
+    });
+
+    test('a reserved keyword, of any case, is in backticks', () => {
+        assert.strictEqual(columnNameInQuery('order'), '`order`');
+        assert.strictEqual(columnNameInQuery('FROM'), '`FROM`');
+    });
+
+    test('a name that is no plain identifier is in backticks', () => {
+        assert.strictEqual(columnNameInQuery('0500_code'), '`0500_code`');
+        assert.strictEqual(columnNameInQuery('unit price'), '`unit price`');
+    });
+});
+
+suite('scratchQuery.tableQueryText', () => {
+    test('selects the columns one to a line, from the table, with a limit', () => {
+        assert.strictEqual(
+            tableQueryText('proj.sales.orders', ['order_id', 'order', 'amount']),
+            'SELECT\n  order_id,\n  `order`,\n  amount\nFROM `proj.sales.orders`\nLIMIT 100\n',
+        );
+    });
+
+    test('selects * when the columns are not known', () => {
+        assert.strictEqual(tableQueryText('proj.sales.0500_orders', []), 'SELECT *\nFROM `proj.sales.0500_orders`\nLIMIT 100\n');
+    });
+});
+
+suite('scratchQuery.scratchHeaderText', () => {
+    test('says how to run the query, then a blank line', () => {
+        assert.strictEqual(scratchHeaderText('Cmd+Enter'), '-- Scratch query: plain BigQuery SQL. Cmd+Enter runs the selection, or the whole file.\n\n');
+    });
+
+    test('a note is a comment line of its own, however many lines it had', () => {
+        assert.strictEqual(
+            scratchHeaderText('Ctrl+Enter', 'Could not read the columns of p.d.t: Not found:\n  Table p:d.t'),
+            '-- Scratch query: plain BigQuery SQL. Ctrl+Enter runs the selection, or the whole file.\n-- Could not read the columns of p.d.t: Not found: Table p:d.t\n\n',
+        );
     });
 });
 

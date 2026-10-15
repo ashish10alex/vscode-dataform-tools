@@ -8,9 +8,9 @@ import { RunChangedButton } from "./RunChangedButton";
 import type { CompileError } from "../../../src/backend/backend";
 import type { DbtBlock, PanelAction } from "../../../src/shared/panelContract";
 import { DbtCard, DbtStatusLine, DbtTab, DbtView, LineageRow, dbtDryRunOf, dbtErrorFoot, dbtNameOf, dbtView, incrementalCase, targetText, testedBy } from "../../../src/shared/panelDbtView";
-import { isMadeUpTarget, targetId } from "../../../src/shared/compiledGraph";
+import { isMadeUpTarget, kindHasTable, targetId } from "../../../src/shared/compiledGraph";
 import { dryRunCostSummary } from "../../../src/shared/panelBigQueryView";
-import { CopyTableIdButton, DryRunResult, KindBadge, LastUpdated, TargetAction, TargetRow } from "./TargetRow";
+import { CopyTableIdButton, DryRunResult, KindBadge, LastUpdated, QueryInScratchButton, TargetAction, TargetRow } from "./TargetRow";
 import { FULL_REFRESH_RING, RUN_GROUP, RUN_MAIN_PART, RUN_PART, RunModifiers, RunRow, TagRunPart } from "./RunParts";
 import { ROW_BUTTON, ROW_TOKEN, ROW_TOKEN_SET, RowChip, RowTone, SummaryRow } from "./SummaryRow";
 import { SqlBlock, SqlTabs, shownSqlBlock, sqlTabLabels } from "./SqlTabs";
@@ -306,6 +306,7 @@ function DbtTargetAction({ state, view, action, separated }: { state: PanelSlice
               fallbackClassName="flex items-center font-mono text-[var(--vscode-errorForeground)]"
             />
             <CopyTableIdButton onCopy={() => vscode.postMessage({ command: "copyToClipboard", text: `\`${database}.${schema}.${name}\`` })} />
+            {kindHasTable(action.kind) && <QueryInScratchButton target={action.target} />}
           </>
         ) : (
           <span className="font-mono font-semibold text-[var(--vscode-foreground)] break-all">{dbtNameOf(state, action)}</span>

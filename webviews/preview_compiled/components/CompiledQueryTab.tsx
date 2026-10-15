@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { CompilationErrorType, ExecutionMode, Target, PanelState, WorkflowUrlEntry } from "../types";
-import { previewSection, targetId } from "../../../src/shared/compiledGraph";
+import { Kind, kindHasTable, previewSection, targetId } from "../../../src/shared/compiledGraph";
 import { vscode } from "../utils/vscode";
 import { LatestRunBanner } from "./LatestRunBanner";
 import { LastRunCard, formatAgo, useRerun } from "./LastRunCard";
@@ -14,7 +14,7 @@ import { LineageColumns } from "./LineageColumns";
 import { ROW_BUTTON, RowChip, RowTone, SummaryRow } from "./SummaryRow";
 import { FULL_REFRESH_RING, RUN_GROUP, RUN_MAIN_PART, RUN_PART, RunModifiers, RunRow, TagRunPart } from "./RunParts";
 import { SqlBlock, SqlTabs, shownSqlBlock, sqlTabLabels } from "./SqlTabs";
-import { CopyTableIdButton, DryRunResult, KindBadge, TargetAction, TargetRow } from "./TargetRow";
+import { CopyTableIdButton, DryRunResult, KindBadge, QueryInScratchButton, TargetAction, TargetRow } from "./TargetRow";
 import { RunChangedButton } from "./RunChangedButton";
 import { API_COLOR, RunBackend, RunBackendSwitch } from "./RunBackendSwitch";
 import { ApiRunGitChip } from "./ApiRunGitChip";
@@ -32,7 +32,7 @@ import {
   RotateCcw,
   Loader2,
 } from "lucide-react";
-import { tableActions } from "../../../src/shared/columnLineage/tableActions";
+import { isOperation, tableActions } from "../../../src/shared/columnLineage/tableActions";
 import { BigQueryTableLink } from "../../components/BigQueryTableLink";
 import { describeBuiltInAssertion } from "../../../src/shared/builtInAssertions";
 import { CompilerOverrides, overrideLabels } from "./CompilerOverrides";
@@ -527,6 +527,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
                         <span className="text-xs font-mono text-[var(--vscode-descriptionForeground)] opacity-80">{model.fileName}</span>
                       )}
                       <CopyTableIdButton onCopy={() => navigator.clipboard.writeText(`\`${target.database}.${target.schema}.${target.name}\``)} />
+                      {(isOperation(model) ? !!model.hasOutput : kindHasTable(model.type as Kind)) && <QueryInScratchButton target={target} />}
                     </>
                   )}
                 </>}

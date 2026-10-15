@@ -18,7 +18,8 @@ import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse } from '../types';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
-    columnNamesText, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
+    columnNamesText, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchHeaderText, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
+    tableQueryText,
     tableNamesAt, tableNamesIn,
     type TableName,
 } from './scratchQuery';
@@ -84,6 +85,26 @@ async function projectForNew(): Promise<ProjectState | undefined> {
     return picked?.project;
 }
 
+/**
+ * Makes a scratch query in the Project at `root` and opens it: the header, a note in it when there is one, then
+ * `body`. The cursor goes where the body starts.
+ */
+async function openNewScratchQuery(root: string, body = '', note?: string, viewColumn?: vscode.ViewColumn) {
+    const folder = path.join(root, ...SCRATCH_FOLDER.split('/'));
+    await fs.promises.mkdir(folder, { recursive: true });
+    // The folder ignores what is in it, so that the Project's own .gitignore is left alone
+    const gitignore = path.join(folder, '.gitignore');
+    if (!fs.existsSync(gitignore)) {
+        await fs.promises.writeFile(gitignore, '*\n');
+    }
+    const file = path.join(folder, scratchFileName(new Date(), await fs.promises.readdir(folder)));
+    const header = scratchHeaderText(process.platform === 'darwin' ? 'Cmd+Enter' : 'Ctrl+Enter', note);
+    await fs.promises.writeFile(file, header + body);
+    const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file), { viewColumn, preview: false });
+    const start = editor.document.positionAt(header.length);
+    editor.selection = new vscode.Selection(start, start);
+}
+
 async function newScratchQuery() {
     const project = await projectForNew();
     if (!project) {
@@ -92,19 +113,25 @@ async function newScratchQuery() {
         }
         return;
     }
-    const folder = path.join(project.root, ...SCRATCH_FOLDER.split('/'));
-    await fs.promises.mkdir(folder, { recursive: true });
-    // The folder ignores what is in it, so that the Project's own .gitignore is left alone
-    const gitignore = path.join(folder, '.gitignore');
-    if (!fs.existsSync(gitignore)) {
-        await fs.promises.writeFile(gitignore, '*\n');
+    await openNewScratchQuery(project.root);
+}
+
+/**
+ * Makes a scratch query of the Project at `root` that selects from the table: its columns as BigQuery has them now,
+ * else `*` with a note of why. The compiled query panel calls it for the Target of its file's action.
+ */
+async function queryTableInScratch(target: Target, root: string) {
+    const name = `${target.database}.${target.schema}.${target.name}`;
+    let columns: string[] = [];
+    let note: string | undefined;
+    try {
+        const metadata = await fetchTableMetadata(target.database, target.schema, target.name);
+        columns = (metadata?.schema?.fields ?? []).map((field: { name: string }) => field.name);
+    } catch (error: any) {
+        note = `Could not read the columns of ${name}: ${error?.message ?? error}`;
     }
-    const file = path.join(folder, scratchFileName(new Date(), await fs.promises.readdir(folder)));
-    const run = process.platform === 'darwin' ? 'Cmd+Enter' : 'Ctrl+Enter';
-    await fs.promises.writeFile(file, `-- Scratch query: plain BigQuery SQL. ${run} runs the selection, or the whole file.\n\n`);
-    const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file));
-    const end = editor.document.positionAt(editor.document.getText().length);
-    editor.selection = new vscode.Selection(end, end);
+    // Beside the panel, as the files the panel opens are
+    await openNewScratchQuery(root, tableQueryText(name, columns), note, vscode.ViewColumn.One);
 }
 
 // ---- Run
@@ -434,6 +461,7 @@ export function initScratchQueries(context: vscode.ExtensionContext) {
         diagnostics,
         vscode.commands.registerCommand('vscode-dataform-tools.newScratchQuery', newScratchQuery),
         vscode.commands.registerCommand('vscode-dataform-tools.copyTableColumns', copyTableColumns),
+        vscode.commands.registerCommand('vscode-dataform-tools.queryTableInScratch', queryTableInScratch),
         vscode.languages.registerCompletionItemProvider(SCRATCH_SELECTOR, new ScratchCompletionProvider(), '`', '.'),
         vscode.languages.registerHoverProvider(SCRATCH_SELECTOR, new ScratchHoverProvider()),
         vscode.window.onDidChangeActiveTextEditor(onShown),
