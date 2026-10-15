@@ -192,11 +192,8 @@ export default function App() {
       }
 
       if (msg.query) {
+        // The Query tab is shown only when it is chosen
         setQuery(msg.query);
-        // If this is a preemptive query update without any results, show the query tab
-        if (!msg.results && !msg.noResults && !msg.errorMessage && !msg.showLoadingMessage && !msg.multiResults) {
-          setActiveTab('query');
-        }
       }
 
       if (msg.errorMessage && !msg.results) { // don't override assertion failure message
