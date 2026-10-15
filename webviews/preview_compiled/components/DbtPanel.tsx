@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { Check, ChevronDown, ChevronRight, Copy, Eye, Loader2, Network, Play, RotateCcw } from "lucide-react";
 import { HeaderTab, PanelHeader, ReportIssueLink } from "./PanelHeader";
@@ -27,7 +27,7 @@ import { useNow } from "./CompilationInfoBadge";
 import { formatRelativeTime } from "../utils/compilationInfoFormat";
 import type { ColumnMetadata, WorkflowUrlEntry } from "../../../src/types";
 import type { PanelSlices } from "../../../src/shared/panelState";
-import { SchemaTable } from "./SchemaTab";
+import { SchemaTarget, TargetSchemas } from "./SchemaTab";
 import { getUrlToNavigateToTableInBigQuery } from "../../utils/bigquery";
 import { vscode } from "../utils/vscode";
 import { DBT_SWITCH_TITLE, DeferralBanner } from "./DeferralBanner";
@@ -850,41 +850,54 @@ function schemaFields(action: PanelAction, fromDryRun: ColumnMetadata[] | undefi
   return withDescriptions(fromDryRun, "");
 }
 
-/** One action's table on the Schema tab: the same table as a Dataform file has, with a line saying where its columns come from */
-function ActionSchema({ state, action, alone }: { state: PanelSlices; action: PanelAction; alone: boolean }) {
-  const { running, result } = dbtDryRunOf(state, action);
-  const fromDryRun = result?.schema?.fields;
-  const fields = useMemo(() => schemaFields(action, fromDryRun), [action, fromDryRun]);
-  const { database, schema, name } = action.target;
-  return (
-    <div data-dbt="schema" className="flex flex-col min-h-0" style={{ height: alone ? "calc(100vh - 180px)" : "60vh" }}>
-      <div className="pb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-mono text-sm">{dbtNameOf(state, action)}</span>
-        <span className={clsx("text-xs", result?.error ? ERROR : MUTED)}>
-          {fromDryRun
-            ? "From the dry run of the compiled query, with the descriptions the model's YAML gives."
-            : running
-              ? "The dry run is out: types come with it."
-              : result?.error
-                ? "The dry run failed, so there are no types. See the Compiled query tab."
-                : "No dry run yet: these are the columns the model's YAML describes."}
-        </span>
-      </div>
-      <div className="flex-1 min-h-0">
-        <SchemaTable fields={fields} exportName={`${[database, schema, name].filter(Boolean).join("_")}.json`} />
-      </div>
-    </div>
-  );
+// The table works its rows out again when its columns change: the same columns must give the same array
+const described = new WeakMap<PanelAction, { fromDryRun: ColumnMetadata[] | undefined; fields: ColumnMetadata[] }>();
+
+function schemaFieldsOnce(action: PanelAction, fromDryRun: ColumnMetadata[] | undefined): ColumnMetadata[] {
+  const known = described.get(action);
+  if (known && known.fromDryRun === fromDryRun) {
+    return known.fields;
+  }
+  const fields = schemaFields(action, fromDryRun);
+  described.set(action, { fromDryRun, fields });
+  return fields;
 }
 
-/** The Schema tab of a dbt file: a table for each action that is not a test */
+/** One action's table on the Schema tab, with a line saying where its columns come from */
+function schemaTarget(state: PanelSlices, view: DbtView, action: PanelAction): SchemaTarget {
+  const { running, result } = dbtDryRunOf(state, action);
+  const fromDryRun = result?.schema?.fields;
+  const fields = schemaFieldsOnce(action, fromDryRun);
+  const name = dbtNameOf(state, action);
+  return {
+    id: action.id,
+    target: action.target,
+    ...(name !== action.target.name ? { name } : {}),
+    // With no columns in the YAML either, placeholder rows wait for the dry run
+    fields: fields.length === 0 && running ? null : fields,
+    loading: running || view.outdated,
+    failed: !!result?.error,
+    note: fromDryRun
+      ? { text: "From the dry run of the compiled query, with the descriptions the model's YAML gives." }
+      : running
+        ? { text: "The dry run is out: types come with it." }
+        : result?.error
+          ? { text: "The dry run failed, so there are no types. See the Compiled query tab.", error: true }
+          : { text: "No dry run yet: these are the columns the model's YAML describes." },
+  };
+}
+
+/** The Schema tab of a dbt file: a tab for each action that is not a test. While the file compiles, placeholder rows */
 function SchemaTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   const actions = view.actions.filter((action) => action.kind !== "test" && action.kind !== "unit test" && action.sections.length > 0);
   return (
-    <div className="p-4 space-y-4">
-      {actions.map((action) => (
-        <ActionSchema key={action.id} state={state} action={action} alone={actions.length === 1} />
-      ))}
+    <div className="p-4 h-full">
+      <TargetSchemas
+        file={view.file}
+        targets={actions.map((action) => schemaTarget(state, view, action))}
+        loading={view.skeleton}
+        none="This file builds no table, so there is no schema."
+      />
     </div>
   );
 }
@@ -893,8 +906,11 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
   const view = dbtView(state);
   const [chosen, setChosen] = useState<DbtTab>("compiled");
   useProjectInfoRequest(useCallback(() => setChosen("project"), []));
-  // A tab that the file on show does not have is not left selected
-  const tab = view.tabs.includes(chosen) ? chosen : "compiled";
+  // A tab that the file on show does not have is not left selected. While a file compiles it is not known whether it
+  // has a Schema tab: one that is chosen stays, and shows placeholder rows
+  const keepSchema = chosen === "schema" && view.skeleton && view.page === "panel" && !view.tabs.includes("schema");
+  const tabs = keepSchema ? view.tabs.flatMap((name) => (name === "compiled" ? [name, "schema" as const] : [name])) : view.tabs;
+  const tab = tabs.includes(chosen) ? chosen : "compiled";
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -921,9 +937,9 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
 
   return (
     <div data-backend="dbt" className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
-      {view.tabs.length > 0 && (
+      {tabs.length > 0 && (
         <PanelHeader
-          tabs={view.tabs.map((name) => (
+          tabs={tabs.map((name) => (
             <HeaderTab key={name} active={tab === name} onClick={() => setChosen(name)}>{TAB_LABEL[name]}</HeaderTab>
           ))}
           actions={<>

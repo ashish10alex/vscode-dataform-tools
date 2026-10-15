@@ -204,14 +204,14 @@ suite('project info: the slice', () => {
         assert.deepStrictEqual(row(projectInfoSlice({ ...dataform(), backend: 'dbt' }), 'google cloud', 'jobs run in'), { label: 'jobs run in', value: "each model's own project", note: 'as profiles.yml gives it' });
     });
 
-    test("a gcloud login that has expired is a note, not a warning, with the command that renews it", () => {
+    test('a gcloud login that has expired is a warning, with the command that renews it', () => {
         const expired = projectInfoSlice(dataform({ google: { credentials: signedIn, gcloud: { ...gcloud, loginExpired: true }, jobs: { projectId: 'dev-project', from: 'gcloud config' } } }));
         assert.deepStrictEqual(rowsOf(expired, 'google cloud').slice(-3), [
             { label: 'gcloud', value: 'me@example.com', note: 'project dev-project' },
-            { label: '', value: 'login expired', note: 'bq and gcloud in a terminal need it' },
+            { label: '', value: 'login expired', warning: 'bq and gcloud in a terminal need it: renew it with the command below' },
             { label: '', value: 'gcloud auth login', note: 'put it in a terminal', link: { kind: 'gcloud sign in' } },
         ]);
-        assert.strictEqual(warningsOf(expired), 0);
+        assert.strictEqual(warningsOf(expired), 1);
         assert.strictEqual(rowsOf(projectInfoSlice(dataform()), 'google cloud').some((candidate) => candidate.link?.kind === 'gcloud sign in'), false);
     });
 

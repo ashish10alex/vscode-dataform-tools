@@ -377,8 +377,8 @@ function gcloudRows(gcloud: GcloudAccount, credentials: Credentials): InfoRow[] 
         row.warning = 'not the account the extension uses';
     }
     if (gcloud.loginExpired) {
-        // Not a warning: the extension's own calls do not use this login
-        return [row, { label: '', value: 'login expired', note: 'bq and gcloud in a terminal need it' }, { label: '', value: GCLOUD_SIGN_IN_COMMAND, note: 'put it in a terminal', link: { kind: 'gcloud sign in' } }];
+        // The extension's own calls do not use this login, but bq and gcloud in a terminal do, so it is marked to be seen
+        return [row, { label: '', value: 'login expired', warning: 'bq and gcloud in a terminal need it: renew it with the command below' }, { label: '', value: GCLOUD_SIGN_IN_COMMAND, note: 'put it in a terminal', link: { kind: 'gcloud sign in' } }];
     }
     return [row];
 }
