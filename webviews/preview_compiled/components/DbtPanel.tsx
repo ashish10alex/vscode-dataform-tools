@@ -463,6 +463,7 @@ function CompileRow({ state, view }: { state: PanelSlices; view: DbtView }) {
     <SummaryRow
       label="Compile"
       tone={tone}
+      defaultOpen
       summary={<CompileSummary view={view} block={block} />}
       // Open, the tokens under the line say how it compiled: the line names the file they are of
       openSummary={failed || running ? undefined : (

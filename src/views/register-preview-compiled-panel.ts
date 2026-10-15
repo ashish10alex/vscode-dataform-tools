@@ -70,6 +70,7 @@ import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
 import { extensionConfiguration } from '../project/settings';
+import { ROW_LAYOUT_KEY, RowLayout, isRowLabel, withRow } from '../shared/rowLayout';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
 let recompileActiveDocument: (() => Promise<void>) | undefined;
@@ -239,6 +240,8 @@ function getLastRunView() {
 const impactHintSeq = new Map<string, number>();
 
 export function registerCompiledQueryPanel(context: ExtensionContext) {
+    // Which rows of the panel the user leaves open is theirs on every machine
+    context.globalState.setKeysForSync([ROW_LAYOUT_KEY]);
 
     context.subscriptions.push(
         onDidChangeLastRun(() => {
@@ -1291,6 +1294,11 @@ export class CompiledQueryPanel {
                 return;
               case 'reloadPage':
                 panel.reloadPage();
+                return;
+              case 'rememberRow':
+                if (isRowLabel(message.label) && typeof message.open === 'boolean') {
+                    await extensionContext.globalState.update(ROW_LAYOUT_KEY, withRow(panel.rowLayout(), message.label, message.open));
+                }
                 return;
               case 'dataform.startSnooze':
                 await vscode.commands.executeCommand('vscode-dataform-tools.snoozeCompilation');
@@ -2388,6 +2396,12 @@ export class CompiledQueryPanel {
     /** Looks now for the tool the panel says is missing. Undefined when none is */
     private lookForMissingTool?: () => Promise<boolean>;
 
+    /** Which rows the user left open, as kept for them across files, panels and machines */
+    private rowLayout(): RowLayout {
+        const kept = this.extensionContext.globalState.get<unknown>(ROW_LAYOUT_KEY);
+        return kept && typeof kept === 'object' ? kept as RowLayout : {};
+    }
+
     /** The panel's page, starting with the slices given */
     private pageWith(webview: vscode.Webview, initialState: Partial<PanelSlices>) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "dist", "preview_compiled.js"));
@@ -2412,6 +2426,7 @@ export class CompiledQueryPanel {
             </div>
             <script nonce="${nonce}">
                 window.initialState = ${JSON.stringify(initialState).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
+                window.rowLayout = ${JSON.stringify(this.rowLayout()).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')};
             </script>
             <script nonce="${nonce}" type="module" src="${scriptUri}" id="panel-script"></script>
             <script nonce="${nonce}">

@@ -407,6 +407,8 @@ export type SharedPanelMessage =
     | { command: 'ready' }
     /** The panel's page could not load its script, or failed while it drew: the host writes the page again */
     | { command: 'reloadPage' }
+    /** The user opened or closed a row: the host keeps it, and the row starts that way on the next page */
+    | { command: 'rememberRow'; label: string; open: boolean }
     /** Open the file that defines the action */
     | { command: 'openAction'; action: Target }
     /** Open a file of the Project, relative to its root with forward slashes, at a 1-based line where one is given */

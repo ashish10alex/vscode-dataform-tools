@@ -91,7 +91,15 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ type = 'default'
             <RowButton><Wand2 className="w-3 h-3" /> Format</RowButton>
             <RowButton><ShieldCheck className="w-3 h-3" /> Lint</RowButton>
           </>}
-        />
+          // Open as the row will be once compiled, with the line of its settings waiting, so that nothing moves then
+          defaultOpen
+        >
+          <div aria-hidden="true" className="animate-pulse flex flex-wrap items-center gap-1.5">
+            <Bar className="h-6 w-24" />
+            <Bar className="h-6 w-28" />
+            <Bar className="h-6 w-20" />
+          </div>
+        </SummaryRow>
 
         <SummaryRow
           label="Lineage"
