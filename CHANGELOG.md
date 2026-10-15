@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.6](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.5...v2.0.6) (2026-10-15)
+
+
+### Features
+
+* show lineage tables as project.dataset.table, and remember the lineage tab ([#539](https://github.com/ashish10alex/vscode-dataform-tools/issues/539)) ([de75f73](https://github.com/ashish10alex/vscode-dataform-tools/commit/de75f73ba65084debb8cc51839e8ee1caa149a7b))
+
 ### [2.0.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.4...v2.0.5) (2026-10-15)
 
 
