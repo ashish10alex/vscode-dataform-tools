@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import type { HostEvent, InfoLink, InfoRow, InfoSection } from "../../../src/shared/panelContract";
 import type { PanelSlices } from "../../../src/shared/panelState";
+import { warningsOf } from "../../../src/shared/panelProjectInfoView";
 import { vscode } from "../utils/vscode";
 
 const MUTED = "text-[var(--vscode-descriptionForeground)]";
@@ -91,7 +92,7 @@ export function ProjectInfoTab({ state }: { state: PanelSlices }) {
   // What was looked up for another Project than the one on show is not this one's
   const info = state.projectInfo && (!state.project || state.project.root === state.projectInfo.root) ? state.projectInfo : undefined;
   const looking = !info || info.sections.some((section) => section.looking);
-  const warnings = info?.sections.flatMap((section) => section.rows).filter((row) => row.warning).length ?? 0;
+  const warnings = warningsOf(info);
 
   return (
     <div data-tab="project info" className="space-y-6 select-text">

@@ -448,8 +448,3 @@ export function projectInfoSlice(input: ProjectInfoInput): ProjectInfoSlice {
 export function linksOf(slice: ProjectInfoSlice | undefined): InfoLink[] {
     return (slice?.sections ?? []).flatMap((section) => section.rows).flatMap((row) => [row.link, row.noteLink]).filter((link): link is InfoLink => link !== undefined);
 }
-
-/** How many rows of a slice are marked as a likely mistake */
-export function warningsOf(slice: ProjectInfoSlice | undefined): number {
-    return (slice?.sections ?? []).flatMap((section) => section.rows).filter((row) => row.warning).length;
-}
