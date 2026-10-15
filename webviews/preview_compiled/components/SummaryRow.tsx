@@ -1,5 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import { firstChoice } from "../../../src/shared/rowLayout";
+import { rememberRow, rowLeftOpen } from "../utils/rowLayout";
 
 /**
  * calm: nothing to say but the value. busy: at work. warning: a value worth knowing, that is no failure.
@@ -62,6 +64,8 @@ interface SummaryRowProps {
    * enough in its one line, and whose body is long, as the list of a run's jobs is
    */
   staysClosed?: boolean;
+  /** The row is open until the user closes it: for a row whose body is what most want to see */
+  defaultOpen?: boolean;
   /** The body is as wide as the panel, for content that needs the room */
   wide?: boolean;
   /** What the open row shows. It stays mounted while the row is closed, so what it holds is kept */
@@ -70,12 +74,13 @@ interface SummaryRowProps {
 
 /**
  * A section of the compiled query, as one line that says what it holds and opens to all of it. A row with a problem
- * opens by itself and closes when the problem is gone; a row the user opened or closed stays as they left it.
+ * opens by itself and closes when the problem is gone; a row the user opened or closed stays as they left it, for
+ * every file and on the next page too, except a row that stays closed.
  */
-export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openActions, openRequest, staysClosed, wide, children }: SummaryRowProps) {
+export function SummaryRow({ label, tone = "calm", summary, openSummary, actions, openActions, openRequest, staysClosed, defaultOpen, wide, children }: SummaryRowProps) {
   const problem = tone === "error" && !staysClosed;
-  // null: follows the problem. Otherwise what the user chose
-  const [chosen, setChosen] = useState<boolean | null>(null);
+  // null: follows the problem. Otherwise what the user chose, here or the last time they had the row on show
+  const [chosen, setChosen] = useState<boolean | null>(() => firstChoice({ left: rowLeftOpen(label), defaultOpen, problem, staysClosed }));
   const hadProblem = useRef(problem);
   useEffect(() => {
     // A problem that is new is shown, though the row was closed on the one before
@@ -107,7 +112,13 @@ export function SummaryRow({ label, tone = "calm", summary, openSummary, actions
       <div className="flex items-center gap-2 px-3">
         <button
           type="button"
-          onClick={() => setChosen(!open)}
+          onClick={() => {
+            setChosen(!open);
+            // Only a click is the user's choice: a row opened by a problem, or by a request, is not
+            if (!staysClosed) {
+              rememberRow(label, !open);
+            }
+          }}
           disabled={!canOpen}
           aria-expanded={canOpen ? open : undefined}
           title={canOpen ? (open ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`) : undefined}

@@ -538,6 +538,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
         <SummaryRow
           label="Compile"
           tone={compileTone}
+          defaultOpen
           summary={compileSummary}
           // Open, the tokens under the line say how it compiled: the line names the file they are of
           openSummary={compileFailed || compiling ? undefined : (
