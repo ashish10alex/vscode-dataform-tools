@@ -22,6 +22,7 @@ suite('panel: what is shown of the file, from the file slice', () => {
     test('the same slice gives the same view and the same models, so nothing looks to have changed between renders', () => {
         const file = slice('definitions/marts/dim_customers.sqlx');
         assert.strictEqual(fileView(file), fileView(file));
+        assert.deepStrictEqual(fileView(file).actionTypes, ['table', 'assertion']);
         assert.strictEqual(fileView(file).models[0], fileView(file).models[0]);
         // The next slice of the same file is another view
         assert.notStrictEqual(fileView(slice('definitions/marts/dim_customers.sqlx')), fileView(file));
