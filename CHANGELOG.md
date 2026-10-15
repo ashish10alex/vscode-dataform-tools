@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.5](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.4...v2.0.5) (2026-10-15)
+
+
+### Features
+
+* label refs to declarations when defer to prod is on ([#534](https://github.com/ashish10alex/vscode-dataform-tools/issues/534)) ([e53a95b](https://github.com/ashish10alex/vscode-dataform-tools/commit/e53a95b4797dedc42aadc7c8fdc4d284c2326f6d))
+* remember which rows of the compiled query panel the user leaves open ([#537](https://github.com/ashish10alex/vscode-dataform-tools/issues/537)) ([686d8f9](https://github.com/ashish10alex/vscode-dataform-tools/commit/686d8f93d4e8f1f12d2c91d079aa1d72f66abd57))
+
+
+### Bug Fixes
+
+* keep results headers solid while scrolling, and stay off the Query tab until it is chosen ([#535](https://github.com/ashish10alex/vscode-dataform-tools/issues/535)) ([6830899](https://github.com/ashish10alex/vscode-dataform-tools/commit/68308993c25d759f3612f440fbd3f5e79b979725))
+* normalize file path with slashPath for defer editor hints on Windows ([555f6d7](https://github.com/ashish10alex/vscode-dataform-tools/commit/555f6d716af2affcdf9e40cee0bab488a58a00b4))
+* run a scratch query when a run-file command is bound to Ctrl+Enter ([#536](https://github.com/ashish10alex/vscode-dataform-tools/issues/536)) ([ef70d82](https://github.com/ashish10alex/vscode-dataform-tools/commit/ef70d82f320552b0b06ad118d83d3a197d5b4ed2))
+
 ### [2.0.4](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.3...v2.0.4) (2026-10-15)
 
 
