@@ -201,6 +201,9 @@ export function DataTable<TData, TValue>({
   const stuck = (index: number, background: string) => stickyFirstColumn && index === 0
     ? ` sticky left-0 z-[5] ${background} group-hover/row:[background-image:linear-gradient(var(--vscode-list-hoverBackground),var(--vscode-list-hoverBackground))]`
     : '';
+  // The header and footer stay put while the rows scroll under them, but their colour is see-through in some themes,
+  // so it is laid over the editor's own
+  const opaqueHeaderBackground = 'bg-[var(--vscode-editor-background)] [background-image:linear-gradient(var(--vscode-sideBarSectionHeader-background),var(--vscode-sideBarSectionHeader-background))]';
   const hasPager = paginated && table.getPageCount() > 1;
   const hasFooter = table.getFooterGroups().some(fg => fg.headers.some(h => h.column.getIsVisible() && h.column.columnDef.footer));
 
@@ -216,7 +219,7 @@ export function DataTable<TData, TValue>({
                     <th 
                       key={header.id}
                       aria-sort={header.column.getIsSorted() === 'asc' ? 'ascending' : header.column.getIsSorted() === 'desc' ? 'descending' : undefined}
-                      className="px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] group bg-[var(--vscode-sideBarSectionHeader-background)]"
+                      className={`px-4 py-3 font-medium border-b border-[var(--vscode-widget-border)] group ${opaqueHeaderBackground}`}
                       style={{ width: header.getSize(), position: 'sticky', top: 0, zIndex: 10, ...(stickyFirstColumn && index === 0 ? { left: 0, zIndex: 11 } : {}) }}
                     >
                       {header.isPlaceholder ? null : (
@@ -268,7 +271,7 @@ export function DataTable<TData, TValue>({
             {hasFooter && footerPosition === 'top' && table.getFooterGroups().map((footerGroup) => (
               <tr key={footerGroup.id} className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)]">
                 {footerGroup.headers.map((header, index) => (
-                  <td key={header.id} className={`px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]${stuck(index, 'bg-[var(--vscode-sideBarSectionHeader-background)]')}`}>
+                  <td key={header.id} className={`px-4 py-2 break-words align-top border-b border-r border-[var(--vscode-widget-border)]${stuck(index, opaqueHeaderBackground)}`}>
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.footer, header.getContext())}
                   </td>
                 ))}
@@ -303,7 +306,7 @@ export function DataTable<TData, TValue>({
             )}
           </tbody>
           {hasFooter && footerPosition === 'bottom' && (
-             <tfoot className="bg-[var(--vscode-sideBarSectionHeader-background)] font-medium text-[var(--vscode-foreground)] border-t border-[var(--vscode-widget-border)] sticky bottom-0 z-10 shadow-sm">
+             <tfoot className={`${opaqueHeaderBackground} font-medium text-[var(--vscode-foreground)] border-t border-[var(--vscode-widget-border)] sticky bottom-0 z-10 shadow-sm`}>
                {table.getFooterGroups().map((footerGroup) => (
                  <tr key={footerGroup.id}>
                    {footerGroup.headers.map((header) => (
