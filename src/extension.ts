@@ -381,8 +381,21 @@ export async function activate(context: vscode.ExtensionContext) {
         await vscode.env.openExternal(vscode.Uri.parse(lastEntry.url));
     }));
 
+    // A scratch query is no file of the Project: a run command bound to a key (Ctrl+Enter, say) runs the query instead
+    const runScratchInstead = async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !isScratchDocument(editor.document)) {
+            return false;
+        }
+        await runScratchQuery(editor, queryResultsViewProvider);
+        return true;
+    };
+
     // In a dbt Project the run commands are `dbt build` in the extension's terminal (xf#63)
-    const runFile = (includeDependencies: boolean, includeDependents: boolean) => () => {
+    const runFile = (includeDependencies: boolean, includeDependents: boolean) => async () => {
+        if (await runScratchInstead()) {
+            return;
+        }
         const dbt = CompiledQueryPanel.activeDbtFile();
         return dbt ? dbtRunFile(dbt, { includeDependencies, includeDependents, fullRefresh: false }) : runCurrentFile(context, includeDependencies, includeDependents, false, "cli");
     };
@@ -390,21 +403,30 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDeps', runFile(true, false)));
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDownstreamDeps', runFile(false, true)));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtApi', async () => {
+        if (await runScratchInstead()) {
+            return;
+        }
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
         runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependenciesApi', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependenciesApi', async () => {
+        if (await runScratchInstead()) {
+            return;
+        }
         let transitiveDependenciesIncluded = true;
         let transitiveDependentsIncluded = false;
         let fullyRefreshIncrementalTablesEnabled = false;
         runCurrentFile(context, transitiveDependenciesIncluded, transitiveDependentsIncluded, fullyRefreshIncrementalTablesEnabled, "api");
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependentsApi', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.runCurrentFileWtDependentsApi', async () => {
+        if (await runScratchInstead()) {
+            return;
+        }
         let transitiveDependenciesIncluded = false;
         let transitiveDependentsIncluded = true;
         let fullyRefreshIncrementalTablesEnabled = false;
