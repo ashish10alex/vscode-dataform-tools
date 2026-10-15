@@ -1,6 +1,9 @@
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
-import { AlertCircle, Check, Clock, Copy, Loader2 } from "lucide-react";
+import { AlertCircle, Check, Clock, Copy, Loader2, SquareTerminal } from "lucide-react";
+import type { HostEvent } from "../../../src/shared/panelContract";
+import { Target, targetId } from "../../../src/shared/compiledGraph";
+import { vscode } from "../utils/vscode";
 import { ROW_LABEL, RowChip } from "./SummaryRow";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 import { UNKNOWN_ACCURACY_CHIP_STYLE, UNKNOWN_ACCURACY_STAT, UNKNOWN_ACCURACY_TOOLTIP } from "../../utils/dryRunAccuracy";
@@ -46,6 +49,54 @@ export function CopyTableIdButton({ onCopy }: { onCopy: () => void }) {
       title="Copy table ID with backticks"
     >
       {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
+/** How long the columns are read for before the button shows it is at work: most reads take less */
+const SPINNER_AFTER_MS = 200;
+
+/**
+ * Opens a new scratch query that selects from the table, its columns read from BigQuery. Seen, as the copy button
+ * is, when the action it is of is pointed at
+ */
+export function QueryInScratchButton({ target }: { target: Target }) {
+  const [waiting, setWaiting] = useState(false);
+  const [spinning, setSpinning] = useState(false);
+
+  useEffect(() => {
+    if (!waiting) { return; }
+    const timer = setTimeout(() => setSpinning(true), SPINNER_AFTER_MS);
+    const handleMessage = (event: MessageEvent) => {
+      const sent = event.data as HostEvent | undefined;
+      if (sent?.event === "scratch query opened" && targetId(sent.action) === targetId(target)) {
+        setWaiting(false);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => {
+      clearTimeout(timer);
+      setSpinning(false);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [waiting, target]);
+
+  return (
+    <button
+      type="button"
+      disabled={waiting}
+      onClick={() => {
+        setWaiting(true);
+        vscode.postMessage({ command: "queryInScratch", action: target });
+      }}
+      className={clsx(
+        "p-1 border-0 bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded transition-colors group-hover:opacity-100 focus:opacity-100",
+        spinning ? "opacity-100" : "opacity-0",
+      )}
+      title="Query this table in a new scratch query"
+      aria-label="Query this table in a new scratch query"
+    >
+      {spinning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SquareTerminal className="w-3.5 h-3.5" />}
     </button>
   );
 }

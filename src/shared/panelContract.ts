@@ -384,6 +384,8 @@ export type HostEvent =
     /** The user did not confirm a repeat of the last run */
     | { event: 'rerun aborted' }
     | { event: 'workflow cancel failed'; workflowInvocationId: string }
+    /** The scratch query asked for by `queryInScratch` is open, or could not be made */
+    | { event: 'scratch query opened'; action: Target }
     /** The user asked for the Project tab, with the command */
     | { event: 'show project info' };
 
@@ -420,6 +422,8 @@ export type SharedPanelMessage =
     | ({ command: 'runTags'; tags: string[] } & RunScope)
     | { command: 'repeatLastRun' }
     | { command: 'copyToClipboard'; text: string }
+    /** Open a new scratch query that selects from the action's Target */
+    | { command: 'queryInScratch'; action: Target }
     /** Save an action's schema to a file */
     | { command: 'exportSchema'; fileName: string; content: string }
     | { command: 'selectProject' }

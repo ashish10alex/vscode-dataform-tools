@@ -1368,6 +1368,15 @@ export class CompiledQueryPanel {
                 }
 
                 return;
+              case 'queryInScratch': {
+                const root = panel.dbtOnShow?.project.root ?? currentDataformRoot();
+                if (root) {
+                    await vscode.commands.executeCommand('vscode-dataform-tools.queryTableInScratch', message.action, root)
+                        .then(undefined, (error) => vscode.window.showErrorMessage(`Could not make the scratch query: ${error?.message ?? error}`));
+                }
+                panel.sendEvent({ event: 'scratch query opened', action: message.action });
+                return;
+              }
               case 'copyToClipboard':
                 const textToCopy = message.text;
                 await vscode.env.clipboard.writeText(textToCopy);
