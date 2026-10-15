@@ -417,3 +417,18 @@ export function builtInDevHint(entry: BuiltInDevEntry, now: number): DeferralEnt
     const label = entry.lastModified ? `✓ dev · built ${formatRelativeTime(entry.lastModified, now)}` : "✓ dev · built in dev";
     return { label, kind: "dev", hover: `**Defer to prod:** built in dev, so read from dev.\n\n\`${targetId(entry.dev)}\`${updated}` };
 }
+
+/** The dependencies that are declarations of the compile, which no Deferral lists as they read the same table in dev and prod */
+export function upstreamDeclarations(dependencies: GraphAction[], graph: DataformCompiledJson): Target[] {
+    const declared = new Set((graph.declarations ?? []).filter((declaration) => declaration?.target).map((declaration) => targetId(declaration.target)));
+    return dependencies.map((dependency) => dependency.target).filter((target) => declared.has(targetId(target)));
+}
+
+/** A declaration names a table the project does not build, so dev and prod read the same table */
+export function declarationHint(target: Target): DeferralEntryHint {
+    return {
+        label: "✓ declaration",
+        kind: "dev",
+        hover: `**Defer to prod:** a declaration, which the project does not build, so dev and prod read the same table.\n\n\`${targetId(target)}\`\n\n[Open table in BigQuery](${bigQueryConsoleUrl(target)})`,
+    };
+}

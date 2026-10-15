@@ -6,13 +6,13 @@ import { Target } from '../types';
 import { findRefs } from '../documentSymbols';
 import { getRelativePath } from '../utils/workspaceUtils';
 import { slashPath } from '../shared/compiledGraph';
-import { builtInDevHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId } from './deferRules';
+import { builtInDevHint, declarationHint, deferralEntryHint, DeferralEntryHint, indexGraphActions, matchRef, RefHintKind, targetId, upstreamDeclarations } from './deferRules';
 import { Deferral, findLeftoverProxies, isDeferEnabled, onDeferralResolved, onDeferralUpdated, resolveDeferralWithStaleFlags } from './index';
 import { extensionConfiguration } from '../project/settings';
 
 /*
  * A coloured label after each `${ref(...)}` in a .sqlx file that defer to prod reads from prod or from its built
- * Dev Target, or that a leftover Proxy View makes read prod. Inlay hints all share one theme colour, so these are decorations with
+ * Dev Target, that names a declaration, or that a leftover Proxy View makes read prod. Inlay hints all share one theme colour, so these are decorations with
  * their own theme colours. Worked out from the cached compile and the shared table lookup cache, so they add no
  * compile and, while defer to prod is off and no proxy views exist, no BigQuery calls. Stale Deferral flags can
  * land after the hints are drawn, so a document's hints are redrawn once they do.
@@ -57,7 +57,8 @@ function markdown(text: string, trustedCommands: string[] = []): vscode.Markdown
     return hover;
 }
 
-function deferralHints(deferral: Deferral | undefined): Map<string, RefHint> {
+/** `declared` are the document's upstream declarations, which get a hint when no deferral entry covers them */
+function deferralHints(deferral: Deferral | undefined, declared: Target[]): Map<string, RefHint> {
     const hints = new Map<string, RefHint>();
     const add = (dev: string, { label, kind, hover }: DeferralEntryHint, labelAt: (now: number) => string = () => label) =>
         hints.set(dev, { label: labelAt, kind, hover: markdown(hover) });
@@ -66,6 +67,11 @@ function deferralHints(deferral: Deferral | undefined): Map<string, RefHint> {
     }
     for (const entry of deferral?.entries ?? []) {
         add(targetId(entry.dev), deferralEntryHint(entry));
+    }
+    for (const target of declared) {
+        if (!hints.has(targetId(target))) {
+            add(targetId(target), declarationHint(target));
+        }
     }
     return hints;
 }
@@ -90,14 +96,15 @@ async function computeDocumentHints(document: vscode.TextDocument, onStaleFlags:
         .map((dependency: Target) => graphActions.get(targetId(dependency)) ?? { target: dependency });
 
     if (isDeferEnabled(workspaceFolder)) {
+        const declared = upstreamDeclarations(dependencies, graph);
         const { deferral, staleFlags } = await resolveDeferralWithStaleFlags(actions, graph, workspaceFolder);
         // The flags are set on the entries of this same deferral
         staleFlags?.then((flagged) => {
             if (flagged) {
-                onStaleFlags({ hints: deferralHints(deferral), dependencies });
+                onStaleFlags({ hints: deferralHints(deferral, declared), dependencies });
             }
         });
-        return { hints: deferralHints(deferral), dependencies };
+        return { hints: deferralHints(deferral, declared), dependencies };
     }
     const hints = new Map<string, RefHint>();
     for (const proxy of await findLeftoverProxies(actions)) {
