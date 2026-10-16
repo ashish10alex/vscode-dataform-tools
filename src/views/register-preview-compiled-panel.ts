@@ -99,11 +99,13 @@ export async function refreshCompiledQueryPanel() {
 /**
  * The document the panel is showing. A click inside the panel focuses the webview, which clears
  * `activeTextEditor`, and `activeDocumentObj` is unset until a save or editor switch (e.g. when the
- * panel was opened from the editor title button), so fall back to a Dataform file still visible beside it.
+ * panel was opened from the editor title button), so fall back to a Dataform file still visible beside it. A scratch
+ * query is never the panel's: the panel stays as it is beside one.
  */
 function getDocumentToRecompile(): vscode.TextDocument | undefined {
+    const active = vscode.window.activeTextEditor?.document;
     return activeDocumentObj
-        || vscode.window.activeTextEditor?.document
+        || (active && !isScratchPath(active.uri.fsPath) ? active : undefined)
         || vscode.window.visibleTextEditors.find((editor) => /\.(sqlx|js)$/.test(editor.document.fileName))?.document;
 }
 
