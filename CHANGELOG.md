@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.8...v2.0.9) (2026-10-16)
+
+
+### Features
+
+* show what a BigQuery function takes, as you type its arguments ([#541](https://github.com/ashish10alex/vscode-dataform-tools/issues/541)) ([8cf3218](https://github.com/ashish10alex/vscode-dataform-tools/commit/8cf3218fa350abd3695410cf2bdad3ce067bef53))
+
 ### [2.0.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.7...v2.0.8) (2026-10-16)
 
 
