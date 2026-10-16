@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ensureFreshCompilation, getCurrentFileMetadata, getWorkspaceFolder, handleSemicolonPrePostOps } from "./utils";
 import { CustomViewProvider } from './views/register-query-results-panel';
-import { QueryWtType, TablesWtFullQuery } from './types';
+import { DataformCompiledJson, QueryWtType, TablesWtFullQuery } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { countDeferred, Deferral, handleAccessDenied, resolveDeferralForActions } from './defer';
 import { applyDeferralToAction } from './defer/deferRules';
@@ -10,7 +10,7 @@ import { declarationPreviewSql, previewMethod, tableName } from './bigquery/tabl
 import { getTableType } from './bigqueryRunQuery';
 import { compiledGraph, compiledJson } from './project';
 import { resolveDataformOptions } from './project/dataformOptions';
-import { Kind, Target, actionsInFile, isMadeUpTarget, previewSection, targetId } from './shared/compiledGraph';
+import { Action, CompiledGraph, Kind, Target, actionsInFile, isMadeUpTarget, previewSection, targetId } from './shared/compiledGraph';
 import { withoutPreOperations } from './utils/dryRunOrchestrator';
 import { extensionConfiguration } from './project/settings';
 
@@ -53,7 +53,7 @@ function formatGiB(bytes: number): string {
 }
 
 /** A preview's query and the deferral its SQL was rewritten with */
-interface DeferredPreview {
+export interface DeferredPreview {
     query: string;
     deferral?: Deferral;
 }
@@ -174,6 +174,27 @@ function resultsType(kind: Kind): string {
 }
 
 /**
+ * The query that previews the section titled `section` of a Dataform action, made by `previewQuery` on the action as
+ * the panel shows and dry-runs it: reading Deferred Actions from prod, and without pre-operations when the
+ * `skipPreOpsInPreviewQuery` setting says so. Undefined when the section cannot be previewed.
+ */
+export async function dataformPreviewQuery(
+    graph: CompiledGraph, compiled: DataformCompiledJson, workspaceFolder: string, action: Action, section: string, alone?: boolean,
+): Promise<DeferredPreview | undefined> {
+    const skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
+    // Deferral is decided for the file's actions together, as it is for what the panel shows of the file
+    const selected = actionsInFile(graph, action.fileName).map((inFile) => ({
+        target: isMadeUpTarget(inFile.target) ? undefined : inFile.target,
+        dependencyTargets: inFile.dependencyTargets,
+        type: resultsType(inFile.kind),
+    }));
+    const deferral = await resolveDeferralForActions(selected, compiled, workspaceFolder);
+    const deferred = applyDeferralToAction(action, deferral?.entries ?? []);
+    const query = previewQuery(skipPreOps ? withoutPreOperations(deferred) : deferred, section, { alone })?.sql;
+    return query ? { query, deferral } : undefined;
+}
+
+/**
  * Previews the section titled `section` of the action at `target`, whichever file is open: what the panel asks for.
  * The query is that of `previewQuery`, on the action as the panel shows and dry-runs it: reading Deferred Actions
  * from prod, and without pre-operations when the `skipPreOpsInPreviewQuery` setting says so. The results view's
@@ -196,19 +217,7 @@ export async function previewAction(target: Target, section: string, alone?: boo
         section = previewSection(action, true) ?? section;
     }
 
-    const skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
-    // Deferral is decided for the file's actions together, as it is for what the panel shows of the file
-    const selected = actionsInFile(graph, action.fileName).map((inFile) => ({
-        target: isMadeUpTarget(inFile.target) ? undefined : inFile.target,
-        dependencyTargets: inFile.dependencyTargets,
-        type: resultsType(inFile.kind),
-    }));
-    const read = async () => {
-        const deferral = await resolveDeferralForActions(selected, compiled, workspaceFolder);
-        const deferred = applyDeferralToAction(action, deferral?.entries ?? []);
-        const query = previewQuery(skipPreOps ? withoutPreOperations(deferred) : deferred, section, { alone })?.sql;
-        return query ? { query, deferral } : undefined;
-    };
+    const read = () => dataformPreviewQuery(graph, compiled, workspaceFolder, action, section, alone);
 
     let preview = await read();
     if (!preview) {

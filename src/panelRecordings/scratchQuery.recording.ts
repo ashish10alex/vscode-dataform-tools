@@ -34,6 +34,36 @@ suite('Scratch queries', () => {
         fs.rmSync(hadExtensionFolder ? path.join(root, ...SCRATCH_FOLDER.split('/')) : extensionFolder, { recursive: true, force: true });
     });
 
+    test('from a model, the command asks what to start with, and Compiled SQL starts with the model\'s query', async () => {
+        const model = path.join(root, 'definitions', '0100_CLUBS.sqlx');
+        const picker = vscode.window.showQuickPick;
+        let asked: string | undefined;
+        // Compiled SQL is chosen; a pick of one of the file's tables, should it have more than one, takes the first
+        (vscode.window as { showQuickPick: unknown }).showQuickPick = (items: Array<{ start?: string }>, options?: vscode.QuickPickOptions) => {
+            if (items.some((item) => item.start)) {
+                asked = options?.title;
+                return Promise.resolve(items.find((item) => item.start === 'compiled'));
+            }
+            return Promise.resolve(items[0]);
+        };
+        try {
+            // Until the Project has compiled, the model has no table and the command makes an empty scratch query
+            for (let waited = 0; waited < 90_000 && !asked; waited += 500) {
+                await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(model), { viewColumn: vscode.ViewColumn.One });
+                await vscode.commands.executeCommand('vscode-dataform-tools.newScratchQuery');
+                if (!asked) {
+                    await sleep(500);
+                }
+            }
+        } finally {
+            (vscode.window as { showQuickPick: unknown }).showQuickPick = picker;
+        }
+        assert.strictEqual(asked, 'New scratch query from 0100_CLUBS');
+        const text = vscode.window.activeTextEditor!.document.getText();
+        assert.match(text, /^-- Scratch query.*\n-- The compiled SQL of [\w-]+\.[\w-]+\.0100_CLUBS\.\n\n/);
+        assert.match(text, /\bCLUBS`/);
+    });
+
     test('the command makes a dated .sql file in a folder that ignores itself, and opens it', async () => {
         await vscode.commands.executeCommand('vscode-dataform-tools.newScratchQuery');
         const document = vscode.window.activeTextEditor!.document;

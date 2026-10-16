@@ -6,19 +6,21 @@ import { queryDryRun } from '../bigqueryDryRun';
 import type { JobPlace } from '../bigquery/jobPlace';
 import { currencySymbolMapping } from '../constants';
 import { logger } from '../logger';
-import { runQueryInPanel } from '../previewQueryResults';
-import { fileBackendHints, projects, ProjectState } from '../project';
+import { dataformPreviewQuery, runQueryInPanel } from '../previewQueryResults';
+import { previewQuery } from '../bigquery/preview';
+import { countDeferred } from '../defer';
+import { compiledJson, fileBackendHints, projects, ProjectState } from '../project';
 import { extensionConfiguration } from '../project/settings';
 import { tableOfError, tableOfMetadata } from '../project/heldTable';
 import { tableHoverText } from '../project/tableHoverText';
 import { fetchTableMetadata, tableHoverMarkdown } from '../hoverProvider';
 import { formatTimestamp } from '../utils';
-import { CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable, slashPath, targetId } from '../shared/compiledGraph';
+import { Action, CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable, previewSection, slashPath, targetId } from '../shared/compiledGraph';
 import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse } from '../types';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
-    columnNamesText, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchHeaderText, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
+    columnNamesText, compiledQueryNote, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchHeaderText, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
     tableQueryText,
     tableNamesAt, tableNamesIn,
     type TableName,
@@ -113,53 +115,113 @@ async function newScratchQuery() {
         }
         return;
     }
+    // From a file that builds a table, the query can start from it
+    const ofFile = tablesOfActiveFile();
+    if ('tables' in ofFile && ofFile.project.root === project.root) {
+        const action = await pickTable(ofFile);
+        if (action) {
+            await makeScratchQueryOf(project.root, project, action.target, action, vscode.ViewColumn.Beside);
+        }
+        return;
+    }
     await openNewScratchQuery(project.root);
 }
 
-/**
- * The table the file in the editor builds, and the root of its Project: picked when the file builds more than one.
- * It is read from the Project's last compile. Undefined, with a warning, when the file builds none.
- */
-async function tableOfActiveFile(): Promise<{ target: Target; root: string } | undefined> {
+/** The file in the editor and the actions it builds a table with, from its Project's last compile */
+interface FileTables {
+    project: ProjectState;
+    fileName: string;
+    tables: Action[];
+}
+
+/** The tables the file in the editor builds, else why it has none to query */
+function tablesOfActiveFile(): FileTables | { reason: string } {
     const document = vscode.window.activeTextEditor?.document;
     const project = document?.uri.scheme === 'file' && !isScratchDocument(document) ? projectOf(document.uri.fsPath) : undefined;
     if (!document || !project) {
-        vscode.window.showWarningMessage('Open a file of a Dataform or dbt project to query the table it builds.');
-        return undefined;
+        return { reason: 'Open a file of a Dataform or dbt project to query the table it builds.' };
     }
     const graph = graphOf(project);
     if (!graph) {
-        vscode.window.showWarningMessage(`The project at ${project.root} has not compiled yet: there is no table to query.`);
-        return undefined;
+        return { reason: `The project at ${project.root} has not compiled yet: there is no table to query.` };
     }
     const fileName = path.basename(document.uri.fsPath);
     const tables = actionsInFile(graph, slashPath(path.relative(project.root, document.uri.fsPath))).filter(buildsTable);
-    if (tables.length === 0) {
-        vscode.window.showWarningMessage(`${fileName} builds no table to query.`);
-        return undefined;
-    }
+    return tables.length ? { project, fileName, tables } : { reason: `${fileName} builds no table to query.` };
+}
+
+/** One of the file's tables: the only one, else the one picked. Undefined when the pick is cancelled */
+async function pickTable({ fileName, tables }: FileTables): Promise<Action | undefined> {
     if (tables.length === 1) {
-        return { target: tables[0].target, root: project.root };
+        return tables[0];
     }
     const picked = await vscode.window.showQuickPick(
-        tables.map((action) => ({ label: action.target.name, description: `${action.target.database}.${action.target.schema}`, detail: action.kind, target: action.target })),
+        tables.map((action) => ({ label: action.target.name, description: `${action.target.database}.${action.target.schema}`, detail: action.kind, action })),
         { placeHolder: `The table of ${fileName} to query`, matchOnDescription: true },
     );
-    return picked && { target: picked.target, root: project.root };
+    return picked?.action;
+}
+
+/** What a scratch query made from a table starts with */
+type ScratchStart = 'compiled' | 'select';
+
+/**
+ * Asks whether a scratch query made from the table starts with the compiled SQL of the action that builds it, or
+ * with a SELECT of its columns. Only the SELECT is there to start with when the last compile has no query of the
+ * action to preview: a seed, a declaration, a dbt Project that was only parsed. Undefined when the user cancels.
+ */
+async function askScratchStart(target: Target, action: Action | undefined): Promise<ScratchStart | undefined> {
+    if (!action?.sqlPresent || previewSection(action) === undefined) {
+        return 'select';
+    }
+    const picked = await vscode.window.showQuickPick<vscode.QuickPickItem & { start: ScratchStart }>(
+        [
+            { label: '$(code) Compiled SQL', detail: `The query of ${target.name} as it runs.`, start: 'compiled' },
+            { label: '$(list-flat) SELECT its columns', detail: 'The columns of the table it built, one to a line. Needs that table to exist.', start: 'select' },
+        ],
+        { title: `New scratch query from ${target.name}`, placeHolder: 'Start it with' },
+    );
+    return picked?.start;
 }
 
 /**
- * Makes a scratch query of the Project at `root` that selects from the table: its columns as BigQuery has them now,
- * else `*` with a note of why. The compiled query panel calls it for the Target of its file's action, and the query
- * opens beside the panel; from the palette it is the table of the file in the editor, and opens beside that file.
+ * The compiled SQL of the action as a preview runs it, and the note that says what it is. A Dataform action's reads
+ * the Deferred Actions from prod, as the panel's preview does; a dbt model's was compiled deferred already.
  */
-async function queryTableInScratch(given?: Target, givenRoot?: string) {
-    const fromPanel = !!(given?.database && given.schema && given.name && givenRoot);
-    const table = fromPanel ? { target: given!, root: givenRoot! } : await tableOfActiveFile();
-    if (!table) {
+async function compiledSqlOf(project: ProjectState, action: Action): Promise<{ sql: string; note: string } | undefined> {
+    const section = previewSection(action);
+    const name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+    if (!section) {
+        return undefined;
+    }
+    if (project.backend === 'dbt') {
+        const sql = previewQuery(action, section)?.sql;
+        return sql ? { sql, note: compiledQueryNote(name, 0) } : undefined;
+    }
+    const graph = graphOf(project);
+    const compiled = compiledJson(project.root);
+    const preview = graph && compiled ? await dataformPreviewQuery(graph, compiled, project.root, action, section) : undefined;
+    return preview && { sql: preview.query, note: compiledQueryNote(name, countDeferred(preview.deferral)) };
+}
+
+/**
+ * Makes a scratch query of the Project at `root` from the table, starting as the user chooses: with the compiled SQL
+ * of `action`, or selecting the table's columns as BigQuery has them now, else `*` with a note of why.
+ */
+async function makeScratchQueryOf(root: string, project: ProjectState | undefined, target: Target, action: Action | undefined, viewColumn: vscode.ViewColumn) {
+    const start = await askScratchStart(target, action);
+    if (!start) {
         return;
     }
-    const { target, root } = table;
+    if (start === 'compiled') {
+        const compiled = project && action ? await compiledSqlOf(project, action) : undefined;
+        if (!compiled) {
+            vscode.window.showWarningMessage(`There is no compiled query of ${target.name} to start from.`);
+            return;
+        }
+        await openNewScratchQuery(root, compiled.sql.replace(/\n*$/, '\n'), compiled.note, viewColumn);
+        return;
+    }
     const name = `${target.database}.${target.schema}.${target.name}`;
     let columns: string[] = [];
     let note: string | undefined;
@@ -169,8 +231,29 @@ async function queryTableInScratch(given?: Target, givenRoot?: string) {
     } catch (error: any) {
         note = `Could not read the columns of ${name}: ${error?.message ?? error}`;
     }
-    // Beside the panel, as the files the panel opens are; else beside the file it is the table of
-    await openNewScratchQuery(root, tableQueryText(name, columns), note, fromPanel ? vscode.ViewColumn.One : vscode.ViewColumn.Beside);
+    await openNewScratchQuery(root, tableQueryText(name, columns), note, viewColumn);
+}
+
+/**
+ * Makes a scratch query from a table, which starts with its compiled SQL or a SELECT of its columns. The compiled
+ * query panel calls it for the Target of its file's action, and the query opens beside the panel; from the palette it
+ * is the table of the file in the editor, and opens beside that file.
+ */
+async function queryTableInScratch(given?: Target, givenRoot?: string) {
+    if (given?.database && given.schema && given.name && givenRoot) {
+        const project = projects.projects.find((each) => each.root === givenRoot) as ProjectState | undefined;
+        await makeScratchQueryOf(givenRoot, project, given, graphOf(project)?.actions[targetId(given)], vscode.ViewColumn.One);
+        return;
+    }
+    const ofFile = tablesOfActiveFile();
+    if (!('tables' in ofFile)) {
+        vscode.window.showWarningMessage(ofFile.reason);
+        return;
+    }
+    const action = await pickTable(ofFile);
+    if (action) {
+        await makeScratchQueryOf(ofFile.project.root, ofFile.project, action.target, action, vscode.ViewColumn.Beside);
+    }
 }
 
 // ---- Run
