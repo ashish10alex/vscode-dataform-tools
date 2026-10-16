@@ -99,6 +99,11 @@
                 "title": "Copy column names of a table"
             },
             {
+                "command": "vscode-dataform-tools.queryTableInScratch",
+                "category": "Dataform/dbt",
+                "title": "Query table in scratch query"
+            },
+            {
                 "command": "vscode-dataform-tools.cancelQuery",
                 "category": "Dataform/dbt",
                 "title": "Cancel query"
@@ -434,6 +439,10 @@
         ],
         "menus": {
             "commandPalette": [
+                {
+                    "command": "vscode-dataform-tools.queryTableInScratch",
+                    "when": "(resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt) && !vscode-dataform-tools.scratchQuery"
+                },
                 {
                     "command": "vscode-dataform-tools.selectWorkspaceFolder",
                     "when": "vscode-dataform-tools.multipleProjects"

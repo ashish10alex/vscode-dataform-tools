@@ -183,6 +183,12 @@ export function tableQueryText(table: string, columns: readonly string[]): strin
     return `${select}\nFROM \`${table}\`\nLIMIT ${TABLE_QUERY_LIMIT}\n`;
 }
 
+/** The note of a scratch query that starts with the compiled SQL of the table: whose it is, and what it reads from prod */
+export function compiledQueryNote(table: string, deferred: number): string {
+    const fromProd = deferred > 0 ? `, reading ${deferred} upstream table${deferred === 1 ? '' : 's'} from prod` : '';
+    return `The compiled SQL of ${table}${fromProd}.`;
+}
+
 /** The comment lines a new scratch query starts with: what it is, how to run it, and a note when there is one */
 export function scratchHeaderText(runKey: string, note?: string): string {
     const lines = [`-- Scratch query: plain BigQuery SQL. ${runKey} runs the selection, or the whole file.`];

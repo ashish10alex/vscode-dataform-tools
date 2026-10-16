@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { columnNameInQuery, columnNamesText, scratchHeaderText, tableQueryText, hasStatement, isScratchPath, tableNamesAt, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, tableNamePrefix, tableNamesIn, tableNameText } from '../../scratch/scratchQuery';
+import { columnNameInQuery, columnNamesText, compiledQueryNote, scratchHeaderText, tableQueryText, hasStatement, isScratchPath, tableNamesAt, runConfirmation, scanLevel, scratchFileName, scratchJobPlace, tableNamePrefix, tableNamesIn, tableNameText } from '../../scratch/scratchQuery';
 
 const GIB = 1024 ** 3;
 const names = (sql: string) => tableNamesIn(sql).map(tableNameText);
@@ -174,6 +174,17 @@ suite('scratchQuery.tableQueryText', () => {
 
     test('selects * when the columns are not known', () => {
         assert.strictEqual(tableQueryText('proj.sales.0500_orders', []), 'SELECT *\nFROM `proj.sales.0500_orders`\nLIMIT 100\n');
+    });
+});
+
+suite('scratchQuery.compiledQueryNote', () => {
+    test('says whose compiled SQL it is', () => {
+        assert.strictEqual(compiledQueryNote('proj.sales.orders', 0), 'The compiled SQL of proj.sales.orders.');
+    });
+
+    test('says how many upstream tables it reads from prod', () => {
+        assert.strictEqual(compiledQueryNote('proj.sales.orders', 1), 'The compiled SQL of proj.sales.orders, reading 1 upstream table from prod.');
+        assert.strictEqual(compiledQueryNote('proj.sales.orders', 3), 'The compiled SQL of proj.sales.orders, reading 3 upstream tables from prod.');
     });
 });
 
