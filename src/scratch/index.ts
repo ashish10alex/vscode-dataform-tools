@@ -176,8 +176,9 @@ async function askScratchStart(target: Target, action: Action | undefined): Prom
     }
     const picked = await vscode.window.showQuickPick<vscode.QuickPickItem & { start: ScratchStart }>(
         [
-            { label: '$(code) Compiled SQL', detail: `The query of ${target.name} as it runs.`, start: 'compiled' },
+            // First, so that it is what Enter chooses
             { label: '$(list-flat) SELECT its columns', detail: 'The columns of the table it built, one to a line. Needs that table to exist.', start: 'select' },
+            { label: '$(code) Compiled SQL', detail: `The query of ${target.name} as it runs.`, start: 'compiled' },
         ],
         { title: `New scratch query from ${target.name}`, placeHolder: 'Start it with' },
     );
