@@ -13,7 +13,7 @@ import { tableOfError, tableOfMetadata } from '../project/heldTable';
 import { tableHoverText } from '../project/tableHoverText';
 import { fetchTableMetadata, tableHoverMarkdown } from '../hoverProvider';
 import { formatTimestamp } from '../utils';
-import { CompiledGraph, Target, kindHasTable, targetId } from '../shared/compiledGraph';
+import { CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable, slashPath, targetId } from '../shared/compiledGraph';
 import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse } from '../types';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
@@ -117,10 +117,49 @@ async function newScratchQuery() {
 }
 
 /**
- * Makes a scratch query of the Project at `root` that selects from the table: its columns as BigQuery has them now,
- * else `*` with a note of why. The compiled query panel calls it for the Target of its file's action.
+ * The table the file in the editor builds, and the root of its Project: picked when the file builds more than one.
+ * It is read from the Project's last compile. Undefined, with a warning, when the file builds none.
  */
-async function queryTableInScratch(target: Target, root: string) {
+async function tableOfActiveFile(): Promise<{ target: Target; root: string } | undefined> {
+    const document = vscode.window.activeTextEditor?.document;
+    const project = document?.uri.scheme === 'file' && !isScratchDocument(document) ? projectOf(document.uri.fsPath) : undefined;
+    if (!document || !project) {
+        vscode.window.showWarningMessage('Open a file of a Dataform or dbt project to query the table it builds.');
+        return undefined;
+    }
+    const graph = graphOf(project);
+    if (!graph) {
+        vscode.window.showWarningMessage(`The project at ${project.root} has not compiled yet: there is no table to query.`);
+        return undefined;
+    }
+    const fileName = path.basename(document.uri.fsPath);
+    const tables = actionsInFile(graph, slashPath(path.relative(project.root, document.uri.fsPath))).filter(buildsTable);
+    if (tables.length === 0) {
+        vscode.window.showWarningMessage(`${fileName} builds no table to query.`);
+        return undefined;
+    }
+    if (tables.length === 1) {
+        return { target: tables[0].target, root: project.root };
+    }
+    const picked = await vscode.window.showQuickPick(
+        tables.map((action) => ({ label: action.target.name, description: `${action.target.database}.${action.target.schema}`, detail: action.kind, target: action.target })),
+        { placeHolder: `The table of ${fileName} to query`, matchOnDescription: true },
+    );
+    return picked && { target: picked.target, root: project.root };
+}
+
+/**
+ * Makes a scratch query of the Project at `root` that selects from the table: its columns as BigQuery has them now,
+ * else `*` with a note of why. The compiled query panel calls it for the Target of its file's action, and the query
+ * opens beside the panel; from the palette it is the table of the file in the editor, and opens beside that file.
+ */
+async function queryTableInScratch(given?: Target, givenRoot?: string) {
+    const fromPanel = !!(given?.database && given.schema && given.name && givenRoot);
+    const table = fromPanel ? { target: given!, root: givenRoot! } : await tableOfActiveFile();
+    if (!table) {
+        return;
+    }
+    const { target, root } = table;
     const name = `${target.database}.${target.schema}.${target.name}`;
     let columns: string[] = [];
     let note: string | undefined;
@@ -130,8 +169,8 @@ async function queryTableInScratch(target: Target, root: string) {
     } catch (error: any) {
         note = `Could not read the columns of ${name}: ${error?.message ?? error}`;
     }
-    // Beside the panel, as the files the panel opens are
-    await openNewScratchQuery(root, tableQueryText(name, columns), note, vscode.ViewColumn.One);
+    // Beside the panel, as the files the panel opens are; else beside the file it is the table of
+    await openNewScratchQuery(root, tableQueryText(name, columns), note, fromPanel ? vscode.ViewColumn.One : vscode.ViewColumn.Beside);
 }
 
 // ---- Run
