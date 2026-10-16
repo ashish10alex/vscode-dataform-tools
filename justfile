@@ -75,6 +75,11 @@ record-dbt-manifests +binaries:
     node scripts/dbt/record-manifests.mjs {{binaries}}
     git status --short src/test/fixtures/dbt-manifests
 
+# Write the snippets of the BigQuery functions from their catalog, after editing snippets/bigquery-functions.json
+bigquery-snippets:
+    npx tsc -p ./
+    node scripts/generate-bigquery-snippets.mjs
+
 # Re-record what the compiled query panel is sent for the test workspace, after an intended change (src/panelRecordings)
 record-panel:
     npm run compile

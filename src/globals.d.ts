@@ -82,15 +82,6 @@ declare global  {
 }
 
 declare global {
-  var bigQuerySnippetMetadata: {
-    [key: string]: {
-      prefix: string;
-      body: string;
-      description: string[];
-    };
-  };
-}
-declare global {
   var compilerOptionsMap: {
       assertionSchema?: string,
       databaseSuffix?: string,

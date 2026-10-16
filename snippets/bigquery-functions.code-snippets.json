@@ -1,0 +1,602 @@
+{
+  "CURRENT_DATE()": {
+    "prefix": "CURRENT_DATE",
+    "body": "CURRENT_DATE()",
+    "description": "CURRENT_DATE([time_zone: STRING]) → DATE\nReturns today's date, in the given time zone or UTC."
+  },
+  "DATE()": {
+    "prefix": "DATE",
+    "body": "DATE(${1:timestamp_expr})",
+    "description": "DATE(timestamp_expr: TIMESTAMP[, time_zone: STRING]) → DATE\nMakes a DATE from its parts, or takes the date of a TIMESTAMP or DATETIME."
+  },
+  "DATE_ADD()": {
+    "prefix": "DATE_ADD",
+    "body": "DATE_ADD(${1:date_expr}, INTERVAL ${2:1} ${3|DAY,WEEK,MONTH,QUARTER,YEAR|})",
+    "description": "DATE_ADD(date_expr: DATE, interval: INTERVAL) → DATE\nAdds a number of days, weeks, months, quarters or years to a date."
+  },
+  "DATE_SUB()": {
+    "prefix": "DATE_SUB",
+    "body": "DATE_SUB(${1:date_expr}, INTERVAL ${2:1} ${3|DAY,WEEK,MONTH,QUARTER,YEAR|})",
+    "description": "DATE_SUB(date_expr: DATE, interval: INTERVAL) → DATE\nSubtracts a number of days, weeks, months, quarters or years from a date."
+  },
+  "DATE_DIFF()": {
+    "prefix": "DATE_DIFF",
+    "body": "DATE_DIFF(${1:end_date}, ${2:start_date}, ${3|DAY,WEEK,WEEK(MONDAY),ISOWEEK,MONTH,QUARTER,YEAR,ISOYEAR|})",
+    "description": "DATE_DIFF(end_date: DATE, start_date: DATE, granularity: date part) → INT64\nReturns the number of `granularity` boundaries between two dates: `end_date` minus `start_date`."
+  },
+  "DATE_TRUNC()": {
+    "prefix": "DATE_TRUNC",
+    "body": "DATE_TRUNC(${1:date_value}, ${2|DAY,WEEK,WEEK(MONDAY),ISOWEEK,MONTH,QUARTER,YEAR,ISOYEAR|})",
+    "description": "DATE_TRUNC(date_value: DATE | DATETIME, granularity: date part) → same type as the value\nTruncates a date to the start of the given granularity."
+  },
+  "FORMAT_DATE()": {
+    "prefix": "FORMAT_DATE",
+    "body": "FORMAT_DATE('${1:%Y-%m-%d}', ${2:date_expr})",
+    "description": "FORMAT_DATE(format_string: STRING, date_expr: DATE) → STRING\nFormats a date as a string, by format elements."
+  },
+  "PARSE_DATE()": {
+    "prefix": "PARSE_DATE",
+    "body": "PARSE_DATE('${1:%Y-%m-%d}', ${2:date_string})",
+    "description": "PARSE_DATE(format_string: STRING, date_string: STRING) → DATE\nReads a DATE from a string, by format elements. The whole string must match the format."
+  },
+  "LAST_DAY()": {
+    "prefix": "LAST_DAY",
+    "body": "LAST_DAY(${1:date_expr})",
+    "description": "LAST_DAY(date_expr: DATE | DATETIME[, date_part: date part]) → DATE\nReturns the last day of the month, or of the given period, that holds the date."
+  },
+  "EXTRACT()": {
+    "prefix": "EXTRACT",
+    "body": "EXTRACT(${1|DAYOFWEEK,DAY,DAYOFYEAR,WEEK,WEEK(MONDAY),ISOWEEK,MONTH,QUARTER,YEAR,ISOYEAR,MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DATE,DATETIME,TIME|} FROM ${2:value})",
+    "description": "EXTRACT(part: date part FROM value: DATE | DATETIME | TIME | TIMESTAMP [AT TIME ZONE time_zone: STRING]) → INT64 (DATE, DATETIME or TIME for those parts)\nReturns one part of a date, datetime, time or timestamp."
+  },
+  "GENERATE_DATE_ARRAY()": {
+    "prefix": "GENERATE_DATE_ARRAY",
+    "body": "GENERATE_DATE_ARRAY(${1:start_date}, ${2:end_date})",
+    "description": "GENERATE_DATE_ARRAY(start_date: DATE, end_date: DATE[, interval: INTERVAL]) → ARRAY<DATE>\nReturns an array of dates from `start_date` to `end_date`, both included, a step apart."
+  },
+  "CURRENT_DATETIME()": {
+    "prefix": "CURRENT_DATETIME",
+    "body": "CURRENT_DATETIME()",
+    "description": "CURRENT_DATETIME([time_zone: STRING]) → DATETIME\nReturns the date and time now, in the given time zone or UTC, with no time zone kept."
+  },
+  "DATETIME()": {
+    "prefix": "DATETIME",
+    "body": "DATETIME(${1:timestamp_expr})",
+    "description": "DATETIME(timestamp_expr: TIMESTAMP[, time_zone: STRING]) → DATETIME\nMakes a DATETIME from its parts, from a DATE and a TIME, or from a TIMESTAMP in a time zone."
+  },
+  "DATETIME_ADD()": {
+    "prefix": "DATETIME_ADD",
+    "body": "DATETIME_ADD(${1:datetime_expr}, INTERVAL ${2:1} ${3|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY,WEEK,MONTH,QUARTER,YEAR|})",
+    "description": "DATETIME_ADD(datetime_expr: DATETIME, interval: INTERVAL) → DATETIME\nAdds an interval to a datetime."
+  },
+  "DATETIME_SUB()": {
+    "prefix": "DATETIME_SUB",
+    "body": "DATETIME_SUB(${1:datetime_expr}, INTERVAL ${2:1} ${3|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY,WEEK,MONTH,QUARTER,YEAR|})",
+    "description": "DATETIME_SUB(datetime_expr: DATETIME, interval: INTERVAL) → DATETIME\nSubtracts an interval from a datetime."
+  },
+  "DATETIME_DIFF()": {
+    "prefix": "DATETIME_DIFF",
+    "body": "DATETIME_DIFF(${1:end_datetime}, ${2:start_datetime}, ${3|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY,WEEK,WEEK(MONDAY),ISOWEEK,MONTH,QUARTER,YEAR,ISOYEAR|})",
+    "description": "DATETIME_DIFF(end_datetime: DATETIME, start_datetime: DATETIME, granularity: datetime part) → INT64\nReturns the number of `granularity` boundaries between two datetimes: `end_datetime` minus `start_datetime`."
+  },
+  "DATETIME_TRUNC()": {
+    "prefix": "DATETIME_TRUNC",
+    "body": "DATETIME_TRUNC(${1:datetime_value}, ${2|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY,WEEK,WEEK(MONDAY),ISOWEEK,MONTH,QUARTER,YEAR,ISOYEAR|})",
+    "description": "DATETIME_TRUNC(datetime_value: DATETIME, granularity: datetime part) → DATETIME\nTruncates a datetime to the start of the given granularity."
+  },
+  "FORMAT_DATETIME()": {
+    "prefix": "FORMAT_DATETIME",
+    "body": "FORMAT_DATETIME('${1:%Y-%m-%d %H:%M:%S}', ${2:datetime_expr})",
+    "description": "FORMAT_DATETIME(format_string: STRING, datetime_expr: DATETIME) → STRING\nFormats a datetime as a string, by format elements."
+  },
+  "PARSE_DATETIME()": {
+    "prefix": "PARSE_DATETIME",
+    "body": "PARSE_DATETIME('${1:%Y-%m-%d %H:%M:%S}', ${2:datetime_string})",
+    "description": "PARSE_DATETIME(format_string: STRING, datetime_string: STRING) → DATETIME\nReads a DATETIME from a string, by format elements. The whole string must match the format."
+  },
+  "CURRENT_TIMESTAMP()": {
+    "prefix": "CURRENT_TIMESTAMP",
+    "body": "CURRENT_TIMESTAMP()",
+    "description": "CURRENT_TIMESTAMP() → TIMESTAMP\nReturns the time now, as a TIMESTAMP."
+  },
+  "TIMESTAMP()": {
+    "prefix": "TIMESTAMP",
+    "body": "TIMESTAMP(${1:value})",
+    "description": "TIMESTAMP(value: STRING | DATE | DATETIME[, time_zone: STRING]) → TIMESTAMP\nMakes a TIMESTAMP from a string, a date or a datetime, read in the given time zone or UTC."
+  },
+  "TIMESTAMP_ADD()": {
+    "prefix": "TIMESTAMP_ADD",
+    "body": "TIMESTAMP_ADD(${1:timestamp_expr}, INTERVAL ${2:1} ${3|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY|})",
+    "description": "TIMESTAMP_ADD(timestamp_expr: TIMESTAMP, interval: INTERVAL) → TIMESTAMP\nAdds an interval to a timestamp."
+  },
+  "TIMESTAMP_SUB()": {
+    "prefix": "TIMESTAMP_SUB",
+    "body": "TIMESTAMP_SUB(${1:timestamp_expr}, INTERVAL ${2:1} ${3|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY|})",
+    "description": "TIMESTAMP_SUB(timestamp_expr: TIMESTAMP, interval: INTERVAL) → TIMESTAMP\nSubtracts an interval from a timestamp."
+  },
+  "TIMESTAMP_DIFF()": {
+    "prefix": "TIMESTAMP_DIFF",
+    "body": "TIMESTAMP_DIFF(${1:end_timestamp}, ${2:start_timestamp}, ${3|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY|})",
+    "description": "TIMESTAMP_DIFF(end_timestamp: TIMESTAMP, start_timestamp: TIMESTAMP, granularity: timestamp part) → INT64\nReturns the number of whole `granularity` intervals between two timestamps: `end_timestamp` minus `start_timestamp`."
+  },
+  "TIMESTAMP_TRUNC()": {
+    "prefix": "TIMESTAMP_TRUNC",
+    "body": "TIMESTAMP_TRUNC(${1:timestamp_value}, ${2|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY,WEEK,WEEK(MONDAY),ISOWEEK,MONTH,QUARTER,YEAR,ISOYEAR|})",
+    "description": "TIMESTAMP_TRUNC(timestamp_value: TIMESTAMP, granularity: timestamp part[, time_zone: STRING]) → TIMESTAMP\nTruncates a timestamp to the start of the given granularity, in the given time zone or UTC."
+  },
+  "FORMAT_TIMESTAMP()": {
+    "prefix": "FORMAT_TIMESTAMP",
+    "body": "FORMAT_TIMESTAMP('${1:%Y-%m-%d %H:%M:%S}', ${2:timestamp_expr})",
+    "description": "FORMAT_TIMESTAMP(format_string: STRING, timestamp_expr: TIMESTAMP[, time_zone: STRING]) → STRING\nFormats a timestamp as a string, by format elements, in the given time zone or UTC."
+  },
+  "PARSE_TIMESTAMP()": {
+    "prefix": "PARSE_TIMESTAMP",
+    "body": "PARSE_TIMESTAMP('${1:%Y-%m-%d %H:%M:%S}', ${2:timestamp_string})",
+    "description": "PARSE_TIMESTAMP(format_string: STRING, timestamp_string: STRING[, time_zone: STRING]) → TIMESTAMP\nReads a TIMESTAMP from a string, by format elements, in the given time zone or UTC."
+  },
+  "UNIX_SECONDS()": {
+    "prefix": "UNIX_SECONDS",
+    "body": "UNIX_SECONDS(${1:timestamp_expr})",
+    "description": "UNIX_SECONDS(timestamp_expr: TIMESTAMP) → INT64\nReturns the number of seconds since 1970-01-01 00:00:00 UTC."
+  },
+  "UNIX_MILLIS()": {
+    "prefix": "UNIX_MILLIS",
+    "body": "UNIX_MILLIS(${1:timestamp_expr})",
+    "description": "UNIX_MILLIS(timestamp_expr: TIMESTAMP) → INT64\nReturns the number of milliseconds since 1970-01-01 00:00:00 UTC."
+  },
+  "TIMESTAMP_SECONDS()": {
+    "prefix": "TIMESTAMP_SECONDS",
+    "body": "TIMESTAMP_SECONDS(${1:seconds})",
+    "description": "TIMESTAMP_SECONDS(seconds: INT64) → TIMESTAMP\nReads a number of seconds since 1970-01-01 00:00:00 UTC as a TIMESTAMP."
+  },
+  "TIMESTAMP_MILLIS()": {
+    "prefix": "TIMESTAMP_MILLIS",
+    "body": "TIMESTAMP_MILLIS(${1:milliseconds})",
+    "description": "TIMESTAMP_MILLIS(milliseconds: INT64) → TIMESTAMP\nReads a number of milliseconds since 1970-01-01 00:00:00 UTC as a TIMESTAMP."
+  },
+  "GENERATE_TIMESTAMP_ARRAY()": {
+    "prefix": "GENERATE_TIMESTAMP_ARRAY",
+    "body": "GENERATE_TIMESTAMP_ARRAY(${1:start_timestamp}, ${2:end_timestamp}, INTERVAL ${3:1} ${4|MICROSECOND,MILLISECOND,SECOND,MINUTE,HOUR,DAY|})",
+    "description": "GENERATE_TIMESTAMP_ARRAY(start_timestamp: TIMESTAMP, end_timestamp: TIMESTAMP, interval: INTERVAL) → ARRAY<TIMESTAMP>\nReturns an array of timestamps from `start_timestamp` to `end_timestamp`, both included, an interval apart."
+  },
+  "CONCAT()": {
+    "prefix": "CONCAT",
+    "body": "CONCAT(${1:value}, ${2:value})",
+    "description": "CONCAT(value: STRING | BYTES, value: STRING | BYTES, ...) → STRING | BYTES\nJoins values into one. Returns NULL if any value is NULL."
+  },
+  "LENGTH()": {
+    "prefix": "LENGTH",
+    "body": "LENGTH(${1:value})",
+    "description": "LENGTH(value: STRING | BYTES) → INT64\nReturns the length of a value: characters for a STRING, bytes for BYTES."
+  },
+  "LOWER()": {
+    "prefix": "LOWER",
+    "body": "LOWER(${1:value})",
+    "description": "LOWER(value: STRING | BYTES) → STRING | BYTES\nReturns the value in lower case."
+  },
+  "UPPER()": {
+    "prefix": "UPPER",
+    "body": "UPPER(${1:value})",
+    "description": "UPPER(value: STRING | BYTES) → STRING | BYTES\nReturns the value in upper case."
+  },
+  "INITCAP()": {
+    "prefix": "INITCAP",
+    "body": "INITCAP(${1:value})",
+    "description": "INITCAP(value: STRING[, delimiters: STRING]) → STRING\nUpper-cases the first character of each word and lower-cases the rest."
+  },
+  "TRIM()": {
+    "prefix": "TRIM",
+    "body": "TRIM(${1:value})",
+    "description": "TRIM(value: STRING | BYTES[, set_of_characters_to_remove: STRING | BYTES]) → STRING | BYTES\nRemoves whitespace, or the given characters, from both ends of a value."
+  },
+  "LTRIM()": {
+    "prefix": "LTRIM",
+    "body": "LTRIM(${1:value})",
+    "description": "LTRIM(value: STRING | BYTES[, set_of_characters_to_remove: STRING | BYTES]) → STRING | BYTES\nRemoves whitespace, or the given characters, from the start of a value."
+  },
+  "RTRIM()": {
+    "prefix": "RTRIM",
+    "body": "RTRIM(${1:value})",
+    "description": "RTRIM(value: STRING | BYTES[, set_of_characters_to_remove: STRING | BYTES]) → STRING | BYTES\nRemoves whitespace, or the given characters, from the end of a value."
+  },
+  "SUBSTR()": {
+    "prefix": "SUBSTR",
+    "body": "SUBSTR(${1:value}, ${2:position})",
+    "description": "SUBSTR(value: STRING | BYTES, position: INT64[, length: INT64]) → STRING | BYTES\nReturns the part of a value that starts at `position` and is `length` long."
+  },
+  "REPLACE()": {
+    "prefix": "REPLACE",
+    "body": "REPLACE(${1:original_value}, ${2:from_pattern}, ${3:to_pattern})",
+    "description": "REPLACE(original_value: STRING | BYTES, from_pattern: STRING | BYTES, to_pattern: STRING | BYTES) → STRING | BYTES\nReplaces every occurrence of `from_pattern` with `to_pattern`. Matches exact text, not a regular expression."
+  },
+  "SPLIT()": {
+    "prefix": "SPLIT",
+    "body": "SPLIT(${1:value})",
+    "description": "SPLIT(value: STRING | BYTES[, delimiter: STRING | BYTES]) → ARRAY<STRING> | ARRAY<BYTES>\nSplits a value at each delimiter into an array."
+  },
+  "STARTS_WITH()": {
+    "prefix": "STARTS_WITH",
+    "body": "STARTS_WITH(${1:value}, ${2:prefix})",
+    "description": "STARTS_WITH(value: STRING | BYTES, prefix: STRING | BYTES) → BOOL\nWhether a value starts with `prefix`."
+  },
+  "ENDS_WITH()": {
+    "prefix": "ENDS_WITH",
+    "body": "ENDS_WITH(${1:value}, ${2:suffix})",
+    "description": "ENDS_WITH(value: STRING | BYTES, suffix: STRING | BYTES) → BOOL\nWhether a value ends with `suffix`."
+  },
+  "CONTAINS_SUBSTR()": {
+    "prefix": "CONTAINS_SUBSTR",
+    "body": "CONTAINS_SUBSTR(${1:expression}, ${2:search_value})",
+    "description": "CONTAINS_SUBSTR(expression: ANY, search_value: STRING) → BOOL\nWhether `search_value` is in `expression`, ignoring case. The expression can also be a STRUCT, an ARRAY or JSON, searched in every field."
+  },
+  "STRPOS()": {
+    "prefix": "STRPOS",
+    "body": "STRPOS(${1:value}, ${2:subvalue})",
+    "description": "STRPOS(value: STRING | BYTES, subvalue: STRING | BYTES) → INT64\nReturns the 1-based position of the first `subvalue` in `value`, or 0 if it is not found."
+  },
+  "INSTR()": {
+    "prefix": "INSTR",
+    "body": "INSTR(${1:source_value}, ${2:search_value})",
+    "description": "INSTR(source_value: STRING | BYTES, search_value: STRING | BYTES[, position: INT64][, occurrence: INT64]) → INT64\nReturns the 1-based position of an occurrence of `search_value`, or 0 if it is not found."
+  },
+  "LPAD()": {
+    "prefix": "LPAD",
+    "body": "LPAD(${1:original_value}, ${2:return_length})",
+    "description": "LPAD(original_value: STRING | BYTES, return_length: INT64[, pattern: STRING | BYTES]) → STRING | BYTES\nPads the start of a value with `pattern` until it is `return_length` long."
+  },
+  "RPAD()": {
+    "prefix": "RPAD",
+    "body": "RPAD(${1:original_value}, ${2:return_length})",
+    "description": "RPAD(original_value: STRING | BYTES, return_length: INT64[, pattern: STRING | BYTES]) → STRING | BYTES\nPads the end of a value with `pattern` until it is `return_length` long."
+  },
+  "LEFT()": {
+    "prefix": "LEFT",
+    "body": "LEFT(${1:value}, ${2:length})",
+    "description": "LEFT(value: STRING | BYTES, length: INT64) → STRING | BYTES\nReturns the first `length` characters, or bytes, of a value."
+  },
+  "RIGHT()": {
+    "prefix": "RIGHT",
+    "body": "RIGHT(${1:value}, ${2:length})",
+    "description": "RIGHT(value: STRING | BYTES, length: INT64) → STRING | BYTES\nReturns the last `length` characters, or bytes, of a value."
+  },
+  "REPEAT()": {
+    "prefix": "REPEAT",
+    "body": "REPEAT(${1:original_value}, ${2:repetitions})",
+    "description": "REPEAT(original_value: STRING | BYTES, repetitions: INT64) → STRING | BYTES\nReturns a value repeated a number of times."
+  },
+  "REVERSE()": {
+    "prefix": "REVERSE",
+    "body": "REVERSE(${1:value})",
+    "description": "REVERSE(value: STRING | BYTES) → STRING | BYTES\nReturns a value with its characters, or bytes, in reverse order."
+  },
+  "FORMAT()": {
+    "prefix": "FORMAT",
+    "body": "FORMAT('${1:%s}', ${2:value})",
+    "description": "FORMAT(format_string: STRING, value: ANY, ...) → STRING\nFormats values into a string, printf style: `%s` a string, `%d` an integer, `%f` a float, `%t` any value as text."
+  },
+  "REGEXP_CONTAINS()": {
+    "prefix": "REGEXP_CONTAINS",
+    "body": "REGEXP_CONTAINS(${1:value}, r'${2:regex}')",
+    "description": "REGEXP_CONTAINS(value: STRING | BYTES, regexp: STRING) → BOOL\nWhether `value` has a match of the regular expression anywhere in it."
+  },
+  "REGEXP_EXTRACT()": {
+    "prefix": "REGEXP_EXTRACT",
+    "body": "REGEXP_EXTRACT(${1:value}, r'${2:regex}')",
+    "description": "REGEXP_EXTRACT(value: STRING | BYTES, regexp: STRING[, position: INT64][, occurrence: INT64]) → STRING | BYTES\nReturns the first part of `value` that matches the regular expression, or NULL. With a capturing group, returns what the group matched."
+  },
+  "REGEXP_EXTRACT_ALL()": {
+    "prefix": "REGEXP_EXTRACT_ALL",
+    "body": "REGEXP_EXTRACT_ALL(${1:value}, r'${2:regex}')",
+    "description": "REGEXP_EXTRACT_ALL(value: STRING | BYTES, regexp: STRING) → ARRAY<STRING> | ARRAY<BYTES>\nReturns every part of `value` that matches the regular expression."
+  },
+  "REGEXP_REPLACE()": {
+    "prefix": "REGEXP_REPLACE",
+    "body": "REGEXP_REPLACE(${1:value}, r'${2:regex}', ${3:replacement})",
+    "description": "REGEXP_REPLACE(value: STRING | BYTES, regexp: STRING, replacement: STRING | BYTES) → STRING | BYTES\nReplaces every match of the regular expression. In `replacement`, `\\1` is what the first group matched."
+  },
+  "COUNT()": {
+    "prefix": "COUNT",
+    "body": "COUNT(${1:expression})",
+    "description": "COUNT(expression: ANY) → INT64\nCounts the rows, or the rows where the expression is not NULL."
+  },
+  "COUNTIF()": {
+    "prefix": "COUNTIF",
+    "body": "COUNTIF(${1:condition})",
+    "description": "COUNTIF(condition: BOOL) → INT64\nCounts the rows where the condition is TRUE."
+  },
+  "SUM()": {
+    "prefix": "SUM",
+    "body": "SUM(${1:expression})",
+    "description": "SUM(expression: INT64 | NUMERIC | BIGNUMERIC | FLOAT64 | INTERVAL) → INT64 | NUMERIC | BIGNUMERIC | FLOAT64 | INTERVAL\nReturns the sum of the values that are not NULL, or NULL if there are none."
+  },
+  "AVG()": {
+    "prefix": "AVG",
+    "body": "AVG(${1:expression})",
+    "description": "AVG(expression: INT64 | NUMERIC | BIGNUMERIC | FLOAT64 | INTERVAL) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns the average of the values that are not NULL."
+  },
+  "MIN()": {
+    "prefix": "MIN",
+    "body": "MIN(${1:expression})",
+    "description": "MIN(expression: any orderable type) → same type as the expression\nReturns the smallest value that is not NULL."
+  },
+  "MAX()": {
+    "prefix": "MAX",
+    "body": "MAX(${1:expression})",
+    "description": "MAX(expression: any orderable type) → same type as the expression\nReturns the largest value that is not NULL."
+  },
+  "MAX_BY()": {
+    "prefix": "MAX_BY",
+    "body": "MAX_BY(${1:x}, ${2:y})",
+    "description": "MAX_BY(x: ANY, y: any orderable type) → same type as x\nReturns the value of `x` on the row where `y` is largest."
+  },
+  "MIN_BY()": {
+    "prefix": "MIN_BY",
+    "body": "MIN_BY(${1:x}, ${2:y})",
+    "description": "MIN_BY(x: ANY, y: any orderable type) → same type as x\nReturns the value of `x` on the row where `y` is smallest."
+  },
+  "ANY_VALUE()": {
+    "prefix": "ANY_VALUE",
+    "body": "ANY_VALUE(${1:expression})",
+    "description": "ANY_VALUE(expression: ANY) → same type as the expression\nReturns the expression for some row of the group, chosen by BigQuery. NULL only if every row has NULL."
+  },
+  "ARRAY_AGG()": {
+    "prefix": "ARRAY_AGG",
+    "body": "ARRAY_AGG(${1:expression})",
+    "description": "ARRAY_AGG(expression: any type but ARRAY) → ARRAY\nCollects the values of a group into an array."
+  },
+  "STRING_AGG()": {
+    "prefix": "STRING_AGG",
+    "body": "STRING_AGG(${1:expression})",
+    "description": "STRING_AGG(expression: STRING | BYTES[, delimiter: STRING | BYTES]) → STRING | BYTES\nJoins the values of a group into one string."
+  },
+  "LOGICAL_AND()": {
+    "prefix": "LOGICAL_AND",
+    "body": "LOGICAL_AND(${1:condition})",
+    "description": "LOGICAL_AND(condition: BOOL) → BOOL\nWhether the condition is TRUE for every row where it is not NULL."
+  },
+  "LOGICAL_OR()": {
+    "prefix": "LOGICAL_OR",
+    "body": "LOGICAL_OR(${1:condition})",
+    "description": "LOGICAL_OR(condition: BOOL) → BOOL\nWhether the condition is TRUE for at least one row."
+  },
+  "APPROX_COUNT_DISTINCT()": {
+    "prefix": "APPROX_COUNT_DISTINCT",
+    "body": "APPROX_COUNT_DISTINCT(${1:expression})",
+    "description": "APPROX_COUNT_DISTINCT(expression: ANY) → INT64\nEstimates the number of different values: faster and cheaper than COUNT(DISTINCT ...) on many rows."
+  },
+  "APPROX_QUANTILES()": {
+    "prefix": "APPROX_QUANTILES",
+    "body": "APPROX_QUANTILES(${1:expression}, ${2:number})",
+    "description": "APPROX_QUANTILES(expression: any orderable type, number: INT64) → ARRAY\nEstimates the boundaries of `number` equal groups of the values: `number + 1` values, from the minimum to the maximum."
+  },
+  "ROW_NUMBER()": {
+    "prefix": "ROW_NUMBER",
+    "body": "ROW_NUMBER() OVER (PARTITION BY ${1:partition_expr} ORDER BY ${2:order_expr})",
+    "description": "ROW_NUMBER() OVER (...) → INT64\nNumbers the rows of each partition 1, 2, 3, ... in the order of ORDER BY, with no ties."
+  },
+  "RANK()": {
+    "prefix": "RANK",
+    "body": "RANK() OVER (PARTITION BY ${1:partition_expr} ORDER BY ${2:order_expr})",
+    "description": "RANK() OVER (...) → INT64\nRanks the rows of each partition; ties get the same rank and leave a gap (1, 1, 3)."
+  },
+  "DENSE_RANK()": {
+    "prefix": "DENSE_RANK",
+    "body": "DENSE_RANK() OVER (PARTITION BY ${1:partition_expr} ORDER BY ${2:order_expr})",
+    "description": "DENSE_RANK() OVER (...) → INT64\nRanks the rows of each partition; ties get the same rank and leave no gap (1, 1, 2)."
+  },
+  "PERCENT_RANK()": {
+    "prefix": "PERCENT_RANK",
+    "body": "PERCENT_RANK() OVER (PARTITION BY ${1:partition_expr} ORDER BY ${2:order_expr})",
+    "description": "PERCENT_RANK() OVER (...) → FLOAT64\nReturns the rank of the row in its partition as a fraction from 0 to 1."
+  },
+  "NTILE()": {
+    "prefix": "NTILE",
+    "body": "NTILE(${1:n}) OVER (PARTITION BY ${2:partition_expr} ORDER BY ${3:order_expr})",
+    "description": "NTILE(n: INT64) OVER (...) → INT64\nSplits the rows of each partition into `n` buckets as equal as can be, and returns the bucket of the row, from 1."
+  },
+  "LAG()": {
+    "prefix": "LAG",
+    "body": "LAG(${1:value}) OVER (PARTITION BY ${2:partition_expr} ORDER BY ${3:order_expr})",
+    "description": "LAG(value: ANY[, offset: INT64][, default: same type as value]) OVER (...) → same type as the value\nReturns the value from a row before the current one in the partition."
+  },
+  "LEAD()": {
+    "prefix": "LEAD",
+    "body": "LEAD(${1:value}) OVER (PARTITION BY ${2:partition_expr} ORDER BY ${3:order_expr})",
+    "description": "LEAD(value: ANY[, offset: INT64][, default: same type as value]) OVER (...) → same type as the value\nReturns the value from a row after the current one in the partition."
+  },
+  "FIRST_VALUE()": {
+    "prefix": "FIRST_VALUE",
+    "body": "FIRST_VALUE(${1:value}) OVER (PARTITION BY ${2:partition_expr} ORDER BY ${3:order_expr})",
+    "description": "FIRST_VALUE(value: ANY) OVER (...) → same type as the value\nReturns the value on the first row of the window frame."
+  },
+  "LAST_VALUE()": {
+    "prefix": "LAST_VALUE",
+    "body": "LAST_VALUE(${1:value}) OVER (PARTITION BY ${2:partition_expr} ORDER BY ${3:order_expr})",
+    "description": "LAST_VALUE(value: ANY) OVER (...) → same type as the value\nReturns the value on the last row of the window frame."
+  },
+  "NTH_VALUE()": {
+    "prefix": "NTH_VALUE",
+    "body": "NTH_VALUE(${1:value}, ${2:n}) OVER (PARTITION BY ${3:partition_expr} ORDER BY ${4:order_expr})",
+    "description": "NTH_VALUE(value: ANY, n: INT64) OVER (...) → same type as the value\nReturns the value on the `n`th row of the window frame, from 1."
+  },
+  "PERCENTILE_CONT()": {
+    "prefix": "PERCENTILE_CONT",
+    "body": "PERCENTILE_CONT(${1:value}, ${2:percentile}) OVER (PARTITION BY ${3:partition_expr})",
+    "description": "PERCENTILE_CONT(value: INT64 | NUMERIC | BIGNUMERIC | FLOAT64, percentile: FLOAT64) OVER (...) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns the given percentile of the values in the partition, interpolating between rows."
+  },
+  "IF()": {
+    "prefix": "IF",
+    "body": "IF(${1:condition}, ${2:true_result}, ${3:else_result})",
+    "description": "IF(condition: BOOL, true_result: ANY, else_result: ANY) → the type of the results\nReturns `true_result` if the condition is TRUE, else `else_result`."
+  },
+  "IFNULL()": {
+    "prefix": "IFNULL",
+    "body": "IFNULL(${1:expr}, ${2:null_result})",
+    "description": "IFNULL(expr: ANY, null_result: ANY) → the type of the arguments\nReturns `expr`, or `null_result` when `expr` is NULL."
+  },
+  "COALESCE()": {
+    "prefix": "COALESCE",
+    "body": "COALESCE(${1:expr}, ${2:expr})",
+    "description": "COALESCE(expr: ANY, expr: ANY, ...) → the type of the arguments\nReturns the first argument that is not NULL."
+  },
+  "NULLIF()": {
+    "prefix": "NULLIF",
+    "body": "NULLIF(${1:expr}, ${2:expr_to_match})",
+    "description": "NULLIF(expr: ANY, expr_to_match: ANY) → the type of expr\nReturns NULL if `expr` equals `expr_to_match`, else `expr`."
+  },
+  "CAST()": {
+    "prefix": "CAST",
+    "body": "CAST(${1:expression} AS ${2|STRING,INT64,NUMERIC,BIGNUMERIC,FLOAT64,BOOL,DATE,DATETIME,TIMESTAMP,TIME,BYTES,JSON|})",
+    "description": "CAST(expression: ANY AS type: type name [FORMAT format: STRING]) → the type named\nConverts a value to another type. Fails the query when it cannot; SAFE_CAST returns NULL instead."
+  },
+  "SAFE_CAST()": {
+    "prefix": "SAFE_CAST",
+    "body": "SAFE_CAST(${1:expression} AS ${2|STRING,INT64,NUMERIC,BIGNUMERIC,FLOAT64,BOOL,DATE,DATETIME,TIMESTAMP,TIME,BYTES,JSON|})",
+    "description": "SAFE_CAST(expression: ANY AS type: type name [FORMAT format: STRING]) → the type named\nConverts a value to another type, or returns NULL when it cannot."
+  },
+  "JSON_VALUE()": {
+    "prefix": "JSON_VALUE",
+    "body": "JSON_VALUE(${1:json_expr})",
+    "description": "JSON_VALUE(json_expr: STRING | JSON[, json_path: STRING]) → STRING\nReturns the scalar value at a JSON path as a STRING, without quotes. NULL for an object or an array."
+  },
+  "JSON_QUERY()": {
+    "prefix": "JSON_QUERY",
+    "body": "JSON_QUERY(${1:json_expr}, '${2:\\$.field}')",
+    "description": "JSON_QUERY(json_expr: STRING | JSON, json_path: STRING) → STRING | JSON\nReturns the JSON value at a JSON path: an object, an array or a scalar, as JSON text."
+  },
+  "JSON_EXTRACT()": {
+    "prefix": "JSON_EXTRACT",
+    "body": "JSON_EXTRACT(${1:json_expr}, '${2:\\$.field}')",
+    "description": "JSON_EXTRACT(json_expr: STRING | JSON, json_path: STRING) → STRING | JSON\nReturns the JSON value at a JSON path. JSON_QUERY is its newer name."
+  },
+  "JSON_EXTRACT_SCALAR()": {
+    "prefix": "JSON_EXTRACT_SCALAR",
+    "body": "JSON_EXTRACT_SCALAR(${1:json_expr})",
+    "description": "JSON_EXTRACT_SCALAR(json_expr: STRING | JSON[, json_path: STRING]) → STRING\nReturns the scalar value at a JSON path as a STRING. JSON_VALUE is its newer name."
+  },
+  "JSON_QUERY_ARRAY()": {
+    "prefix": "JSON_QUERY_ARRAY",
+    "body": "JSON_QUERY_ARRAY(${1:json_expr})",
+    "description": "JSON_QUERY_ARRAY(json_expr: STRING | JSON[, json_path: STRING]) → ARRAY<STRING> | ARRAY<JSON>\nReturns the JSON array at a JSON path as an ARRAY of its elements."
+  },
+  "JSON_VALUE_ARRAY()": {
+    "prefix": "JSON_VALUE_ARRAY",
+    "body": "JSON_VALUE_ARRAY(${1:json_expr})",
+    "description": "JSON_VALUE_ARRAY(json_expr: STRING | JSON[, json_path: STRING]) → ARRAY<STRING>\nReturns the JSON array of scalars at a JSON path as an ARRAY<STRING>."
+  },
+  "PARSE_JSON()": {
+    "prefix": "PARSE_JSON",
+    "body": "PARSE_JSON(${1:json_string})",
+    "description": "PARSE_JSON(json_string: STRING) → JSON\nReads a JSON string as a JSON value."
+  },
+  "TO_JSON_STRING()": {
+    "prefix": "TO_JSON_STRING",
+    "body": "TO_JSON_STRING(${1:value})",
+    "description": "TO_JSON_STRING(value: ANY[, pretty_print: BOOL]) → STRING\nReturns any value as JSON text."
+  },
+  "ARRAY_LENGTH()": {
+    "prefix": "ARRAY_LENGTH",
+    "body": "ARRAY_LENGTH(${1:array_expr})",
+    "description": "ARRAY_LENGTH(array_expr: ARRAY) → INT64\nReturns the number of elements of an array, or NULL for a NULL array."
+  },
+  "ARRAY_TO_STRING()": {
+    "prefix": "ARRAY_TO_STRING",
+    "body": "ARRAY_TO_STRING(${1:array_expr}, ${2:delimiter})",
+    "description": "ARRAY_TO_STRING(array_expr: ARRAY<STRING> | ARRAY<BYTES>, delimiter: STRING | BYTES[, null_text: STRING | BYTES]) → STRING | BYTES\nJoins the elements of an array of strings with a delimiter."
+  },
+  "ARRAY_CONCAT()": {
+    "prefix": "ARRAY_CONCAT",
+    "body": "ARRAY_CONCAT(${1:array_expr}, ${2:array_expr})",
+    "description": "ARRAY_CONCAT(array_expr: ARRAY, array_expr: ARRAY, ...) → ARRAY\nJoins arrays of the same element type into one."
+  },
+  "ARRAY_REVERSE()": {
+    "prefix": "ARRAY_REVERSE",
+    "body": "ARRAY_REVERSE(${1:array_expr})",
+    "description": "ARRAY_REVERSE(array_expr: ARRAY) → ARRAY\nReturns the array with its elements in reverse order."
+  },
+  "GENERATE_ARRAY()": {
+    "prefix": "GENERATE_ARRAY",
+    "body": "GENERATE_ARRAY(${1:start}, ${2:end})",
+    "description": "GENERATE_ARRAY(start: INT64 | NUMERIC | BIGNUMERIC | FLOAT64, end: INT64 | NUMERIC | BIGNUMERIC | FLOAT64[, step: INT64 | NUMERIC | BIGNUMERIC | FLOAT64]) → ARRAY\nReturns an array of numbers from `start` to `end`, both included, `step` apart."
+  },
+  "SAFE_DIVIDE()": {
+    "prefix": "SAFE_DIVIDE",
+    "body": "SAFE_DIVIDE(${1:X}, ${2:Y})",
+    "description": "SAFE_DIVIDE(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64, Y: INT64 | NUMERIC | BIGNUMERIC | FLOAT64) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nDivides `X` by `Y`, like `X / Y`, but returns NULL instead of failing when `Y` is 0."
+  },
+  "ROUND()": {
+    "prefix": "ROUND",
+    "body": "ROUND(${1:X})",
+    "description": "ROUND(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64[, N: INT64][, rounding_mode: STRING]) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nRounds `X` to `N` decimal places; halfway cases round away from zero."
+  },
+  "TRUNC()": {
+    "prefix": "TRUNC",
+    "body": "TRUNC(${1:X})",
+    "description": "TRUNC(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64[, N: INT64]) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nDrops the decimal places of `X` beyond `N`, rounding toward zero."
+  },
+  "ABS()": {
+    "prefix": "ABS",
+    "body": "ABS(${1:X})",
+    "description": "ABS(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64) → same type as X\nReturns the absolute value of `X`."
+  },
+  "CEIL()": {
+    "prefix": "CEIL",
+    "body": "CEIL(${1:X})",
+    "description": "CEIL(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns the smallest whole number not less than `X`."
+  },
+  "FLOOR()": {
+    "prefix": "FLOOR",
+    "body": "FLOOR(${1:X})",
+    "description": "FLOOR(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns the largest whole number not greater than `X`."
+  },
+  "MOD()": {
+    "prefix": "MOD",
+    "body": "MOD(${1:X}, ${2:Y})",
+    "description": "MOD(X: INT64 | NUMERIC | BIGNUMERIC, Y: INT64 | NUMERIC | BIGNUMERIC) → INT64 | NUMERIC | BIGNUMERIC\nReturns the remainder of `X` divided by `Y`, with the sign of `X`."
+  },
+  "DIV()": {
+    "prefix": "DIV",
+    "body": "DIV(${1:X}, ${2:Y})",
+    "description": "DIV(X: INT64 | NUMERIC | BIGNUMERIC, Y: INT64 | NUMERIC | BIGNUMERIC) → INT64 | NUMERIC | BIGNUMERIC\nDivides `X` by `Y` and returns the whole part, rounding toward zero."
+  },
+  "POW()": {
+    "prefix": "POW",
+    "body": "POW(${1:X}, ${2:Y})",
+    "description": "POW(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64, Y: INT64 | NUMERIC | BIGNUMERIC | FLOAT64) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns `X` raised to the power `Y`."
+  },
+  "SQRT()": {
+    "prefix": "SQRT",
+    "body": "SQRT(${1:X})",
+    "description": "SQRT(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns the square root of `X`."
+  },
+  "LOG()": {
+    "prefix": "LOG",
+    "body": "LOG(${1:X})",
+    "description": "LOG(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64[, Y: INT64 | NUMERIC | BIGNUMERIC | FLOAT64]) → FLOAT64 (NUMERIC or BIGNUMERIC for those)\nReturns the logarithm of `X` to base `Y`, or the natural logarithm with no `Y`."
+  },
+  "GREATEST()": {
+    "prefix": "GREATEST",
+    "body": "GREATEST(${1:X}, ${2:X})",
+    "description": "GREATEST(X: any orderable type, X: any orderable type, ...) → the type of the arguments\nReturns the largest of the arguments; NULL if any of them is NULL."
+  },
+  "LEAST()": {
+    "prefix": "LEAST",
+    "body": "LEAST(${1:X}, ${2:X})",
+    "description": "LEAST(X: any orderable type, X: any orderable type, ...) → the type of the arguments\nReturns the smallest of the arguments; NULL if any of them is NULL."
+  },
+  "RAND()": {
+    "prefix": "RAND",
+    "body": "RAND()",
+    "description": "RAND() → FLOAT64\nReturns a random number from 0 (included) to 1 (not included)."
+  },
+  "GENERATE_UUID()": {
+    "prefix": "GENERATE_UUID",
+    "body": "GENERATE_UUID()",
+    "description": "GENERATE_UUID() → STRING\nReturns a random UUID as a STRING of 36 characters."
+  },
+  "FARM_FINGERPRINT()": {
+    "prefix": "FARM_FINGERPRINT",
+    "body": "FARM_FINGERPRINT(${1:value})",
+    "description": "FARM_FINGERPRINT(value: STRING | BYTES) → INT64\nReturns a stable INT64 hash of a value, the same on every run."
+  }
+}

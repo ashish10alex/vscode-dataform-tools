@@ -545,37 +545,3 @@ export class DataformColumnHoverProvider implements vscode.HoverProvider {
     return undefined;
   }
 }
-
-export class DataformBigQueryHoverProvider implements vscode.HoverProvider {
-    provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.Hover> {
-            const range = document.getWordRangeAtPosition(position);
-            if (!range) {
-                return null;
-            }
-            
-            const word = document.getText(range);
-            
-            if (bigQuerySnippetMetadata[`${word}()`]) {
-                const snippet = bigQuerySnippetMetadata[`${word}()`];
-                
-                const hoverContent = new vscode.MarkdownString();
-                
-                if (Array.isArray(snippet.description)) {
-                    const markdownDescription = snippet.description.join('\n\n');
-                    hoverContent.appendMarkdown(markdownDescription);
-                } else if (snippet.description) {
-                    hoverContent.appendMarkdown(snippet.description);
-                }
-                
-                if (Array.isArray(snippet.body)) {
-                    hoverContent.appendCodeblock(snippet.body.join('\n'), 'sqlx');
-                } else {
-                    hoverContent.appendCodeblock(snippet.body, 'sqlx');
-                }
-                
-                return new vscode.Hover(hoverContent, range);
-            }
-            
-            return null;
-        }
-};
