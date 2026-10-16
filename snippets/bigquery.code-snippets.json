@@ -378,36 +378,10 @@
       "body": "RETURN;",
       "description": "RETURN terminates execution of the current script."
     },
-    "ANY_VALUE()": {
-      "prefix": "ANY_VALUE",
-      "body": "ANY_VALUE(${1:expr}) ${2:[OVER (...)]}",
-      "description": "Returns any value from the input or NULL if there are zero input rows."
-    },
-    "ARRAY_AGG()": {
-      "prefix": "ARRAY_AGG",
-      "body": [
-        "ARRAY_AGG(${1:[DISTINCT] expression [{IGNORE|RESPECT\\} NULLS]",
-        "          [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
-        "${2:[OVER (...)]}"
-      ],
-      "description": [
-        "Returns an ARRAY of `expression` values.",
-        "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#array_agg",
-        "",
-        "Examples:",
-        "`SELECT ARRAY_AGG(fruit) AS array_agg FROM UNNEST(['apple', 'pear', 'banana', 'pear']) AS fruit;`",
-        "```markdown           \n| array_agg                   |\n|-----------------------------|\n| [apple, pear, banana, pear] |\n```"
-      ]
-    },
     "ARRAY_CONCAT_AGG()": {
       "prefix": "ARRAY_CONCAT_AGG",
       "body": "ARRAY_CONCAT_AGG(${1:expression [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
       "description": "Concatenates elements from `expression` of type ARRAY, returning a single ARRAY as a result."
-    },
-    "AVG()": {
-      "prefix": "AVG",
-      "body": "AVG(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
-      "description": "Returns the average of non-NULL input values, or NaN if the input contains a NaN."
     },
     "BIT_AND()": {
       "prefix": "BIT_AND",
@@ -423,65 +397,6 @@
       "prefix": "BIT_XOR",
       "body": "BIT_XOR(${1:expression})",
       "description": "Performs a bitwise XOR operation on `expression` and returns the result."
-    },
-    "COUNT(*)": {
-      "prefix": "COUNT",
-      "body": "COUNT(*)",
-      "description": "Returns the number of rows in the input."
-    },
-    "COUNT(expr)": {
-      "prefix": "COUNT EXPR",
-      "body": "COUNT(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
-      "description": "Returns the number of rows with `expression` evaluated to any value other than NULL."
-    },
-    "COUNTIF()": {
-      "prefix": "COUNTIF",
-      "body": "COUNTIF(${1:expression}) ${2:[OVER (...)]}",
-      "description": "Returns the count of TRUE values for `expression`."
-    },
-    "LOGICAL_AND()": {
-      "prefix": "LOGICAL_AND",
-      "body": "LOGICAL_AND(${1:expression})",
-      "description": "Returns the logical AND of all non-NULL expressions."
-    },
-    "LOGICAL_OR()": {
-      "prefix": "LOGICAL_OR",
-      "body": "LOGICAL_OR(${1:expression})",
-      "description": "Returns the logical OR of all non-NULL expressions."
-    },
-    "MAX()": {
-      "prefix": "MAX",
-      "body": "MAX(${1:expression}) ${2:[OVER (...)]}",
-      "description": "Returns the maximum value of non-NULL expressions."
-    },
-    "MIN()": {
-      "prefix": "MIN",
-      "body": "MIN(${1:expression}) ${2:[OVER (...)]}",
-      "description": "Returns the minimum value of non-NULL expressions."
-    },
-    "STRING_AGG()": {
-      "prefix": "STRING_AGG",
-      "body": [
-        "STRING_AGG(${1:[DISTINCT] expression [, delimiter] [ORDER BY key [{ASC|DESC\\}] [, ... ]] [LIMIT n]})",
-        "${2:[OVER (...)]}"
-      ],
-      "description": [
-        "Returns a value (either STRING or BYTES) obtained by concatenating non-NULL values. If a delimiter is specified, concatenated values are separated by that delimiter; otherwise, a comma is used as a delimiter.",
-        "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#string_agg",
-        "",
-        "Examples:",
-        "SELECT STRING_AGG(fruit) AS string_agg FROM UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit; ",
-        "```markdown \n| string_agg                |\n|---------------------------|\n| apple, pear, banana, pear |\n```",
-        "SELECT STRING_AGG(fruit, ' & ') AS string_agg FROM UNNEST(['apple', NULL, 'pear', 'banana', 'pear']) AS fruit; ",
-        "```markdown \n| string_agg                   |\n|------------------------------|\n| apple & pear & banana & pear |\n```"
-      ]
-    },
-    "SUM()": {
-      "prefix": "SUM",
-      "body": "SUM(${1:expression}) ${2:[OVER (...)]}",
-      "description": [
-        "Returns the sum of non-null values."
-      ]
     },
     "CORR()": {
       "prefix": "CORR",
@@ -542,18 +457,6 @@
       "body": "VARIANCE(${1:[DISTINCT] expression}) ${2:[OVER (...)]}",
       "description": "An alias of VAR_SAMP."
     },
-    "APPROX_COUNT_DISTINCT()": {
-      "prefix": "APPROX_COUNT_DISTINCT",
-      "body": "APPROX_COUNT_DISTINCT(${1:expression})",
-      "description": [
-        "Returns the approximate result for `COUNT(DISTINCT expression)`."
-      ]
-    },
-    "APPROX_QUANTILES()": {
-      "prefix": "APPROX_QUANTILES",
-      "body": "APPROX_QUANTILES(${1:[DISTINCT] expression, number [{IGNORE|RESPECT\\} NULLS]})",
-      "description": "Returns the approximate boundaries for a group of `expression` values, where `number` represents the number of quantiles to create."
-    },
     "APPROX_TOP_COUNT()": {
       "prefix": "APPROX_TOP_COUNT",
       "body": "APPROX_TOP_COUNT(${1:expression}, ${2:number})",
@@ -592,119 +495,10 @@
         "A scalar function that extracts an cardinality estimate of a single HyperLogLog++ sketch."
       ]
     },
-    "RANK()": {
-      "prefix": "RANK",
-      "body": "RANK()",
-      "description": [
-        "Returns the ordinal (1-based) rank of each row within the ordered partition. All peer rows receive the same rank value. The next row or set of peer rows receives a rank value which increments by the number of peers with the previous rank value, instead of DENSE_RANK, which always increments by 1.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#rank",
-        "",
-        "Examples:",
-        "`RANK() OVER (PARTITION BY division ORDER BY finish_time ASC)`returns the rank of each row within the partition. [INT64]"
-      ]
-    },
-    "DENSE_RANK()": {
-      "prefix": "DENSE_RANK",
-      "body": "DENSE_RANK()",
-      "description": [
-        "Returns the ordinal (1-based) rank of each row within the window partition. All peer rows receive the same rank value, and the subsequent rank value is incremented by one.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#dense_rank",
-        "",
-        "Examples:",
-        "`DENSE_RANK() OVER (PARTITION BY division ORDER BY finish_time ASC)`returns the rank of each row within the partition. [INT64]"
-      ]
-    },
-    "PERCENT_RANK()": {
-      "prefix": "PERCENT_RANK",
-      "body": "PERCENT_RANK()",
-      "description": [
-        "Return the percentile rank of a row defined as (RK-1)/(NR-1), where RK is the `RANK` of the row and NR is the number of rows in the partition. Returns 0 if NR=1.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#percent_rank",
-        "Examples:",
-        "`PERCENT_RANK() OVER (PARTITION BY division ORDER BY finish_time ASC)`returns the percentile rank of each row within the partition. [FLOAT64]"
-      ]
-    },
     "CUME_DIST()": {
       "prefix": "CUME_DIST",
       "body": "CUME_DIST()",
       "description": "Return the relative rank of a row defined as NP/NR. NP is defined to be the number of rows that either precede or are peers with the current row. NR is the number of rows in the partition."
-    },
-    "NTILE()": {
-      "prefix": "NTILE",
-      "body": "NTILE(${1:constant_integer_expression})",
-      "description": "This function divides the rows into `constant_integer_expression` buckets based on row ordering and returns the 1-based bucket number that is assigned to each row."
-    },
-    "ROW_NUMBER()": {
-      "prefix": "ROW_NUMBER",
-      "body": "ROW_NUMBER()",
-      "description": [
-        "Doesn't require the ORDER BY clause. Returns the sequential row ordinal (1-based) of each row for each ordered partition. If the ORDER BY clause is unspecified then the result is non-deterministic.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#row_number",
-        "",
-        "Examples:",
-        "`ROW_NUMBER() over (order by name) as row_number`",
-        "`ROW_NUMBER() over (partition by name order by age) as row_number`"
-      ]
-    },
-    "FIRST_VALUE()": {
-      "prefix": "FIRST_VALUE",
-      "body": "FIRST_VALUE(${1:value_expression [{RESPECT | IGNORE\\} NULLS]})",
-      "description": [
-        "Returns the value of the `value_expression` for the first row in the current window frame.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#first_value"
-      ]
-    },
-    "LAST_VALUE()": {
-      "prefix": "LAST_VALUE",
-      "body": "LAST_VALUE(${1:value_expression [{RESPECT | IGNORE\\} NULLS]})",
-      "description": [
-        "Returns the value of the `value_expression` for the last row in the current window frame.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#last_value"
-      ]
-    },
-    "NTH_VALUE()": {
-      "prefix": "NTH_VALUE",
-      "body": "NTH_VALUE(${1:value_expression, constant_integer_expression [{RESPECT | IGNORE\\} NULLS]})",
-      "description": [
-        "Returns the value of `value_expression` at the Nth row of the current window frame, where Nth is defined by `constant_integer_expression`. Returns NULL if there is no such row.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#nth_value"
-      ]
-    },
-    "LEAD()": {
-      "prefix": "LEAD",
-      "body": "LEAD(${1:value_expression, [, offset [, default_expression]]})",
-      "description": [
-        "Returns the value of the `value_expression` on a subsequent row.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#lead"
-      ]
-    },
-    "LAG()": {
-      "prefix": "LAG",
-      "body": "LAG(${1:value_expression, [, offset [, default_expression]]})",
-      "description": [
-        "Returns the value of the `value_expression` on a preceding row.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#lag"
-      ]
-    },
-    "PERCENTILE_CONT()": {
-      "prefix": "PERCENTILE_CONT",
-      "body": "PERCENTILE_CONT(${1:value_expression, percentile [{RESPECT | IGNORE\\} NULLS]})",
-      "description": [
-        "Computes the specified percentile value for the value_expression, with linear interpolation.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#percentile_cont",
-        "",
-        "Examples:",
-        "",
-        "SELECT",
-        "  PERCENTILE_CONT(x, 0) OVER() AS min,",
-        "  PERCENTILE_CONT(x, 0.01) OVER() AS percentile1,",
-        "  PERCENTILE_CONT(x, 0.5) OVER() AS median,",
-        "  PERCENTILE_CONT(x, 0.9) OVER() AS percentile90,",
-        "  PERCENTILE_CONT(x, 1) OVER() AS max",
-        "FROM UNNEST([0, 3, NULL, 1, 2]) AS x LIMIT 1;",
-        "",
-        "```markdown \n| min | percentile1 | median | percentile90 | max |\n|-----|-------------|--------|--------------|-----|\n| 0   | 0.03        | 1.5    | 2.7          | 3   |\n```"
-      ]
     },
     "PERCENTILE_DISC()": {
       "prefix": "PERCENTILE_DISC",
@@ -719,11 +513,6 @@
       "description": [
         "The input, `expression`, must be an integer or BYTES."
       ]
-    },
-    "ABS()": {
-      "prefix": "ABS",
-      "body": "ABS(${1:X})",
-      "description": "Computes absolute value."
     },
     "SIGN()": {
       "prefix": "sign",
@@ -747,21 +536,6 @@
         "Divides X by Y; never fails. Returns FLOAT64. Unlike division operator (/), does not generate errors for division by zero or overflow."
       ]
     },
-    "RAND()": {
-      "prefix": "RAND",
-      "body": "RAND()",
-      "description": "Generates a pseudo-random value of type FLOAT64 in the range of [0, 1), inclusive of 0 and exclusive of 1."
-    },
-    "SQRT()": {
-      "prefix": "SQRT",
-      "body": "SQRT(${1:X})",
-      "description": "Computes the square root of X."
-    },
-    "POW()": {
-      "prefix": "POW",
-      "body": "POW(${1:X}, ${2:Y})",
-      "description": "Power function: returns the value of X raised to the power of Y."
-    },
     "POWER()": {
       "prefix": "POWER",
       "body": "POWER(${1:X}, ${2:Y})",
@@ -777,48 +551,10 @@
       "body": "LN(${1:X})",
       "description": "Computes the natural logarithm of X."
     },
-    "LOG(X)": {
-      "prefix": "logln",
-      "body": "LOG(${1:X})",
-      "description": "Synonym of LN(X)"
-    },
-    "LOG(X, Y)": {
-      "prefix": "LOG",
-      "body": "LOG(${1:X}, ${2:Y})",
-      "description": "Computes logarithm of X to base Y."
-    },
     "LOG10()": {
       "prefix": "log10",
       "body": "LOG10(${1:X})",
       "description": "Similar to LOG(X) but computes logarithm to base 10."
-    },
-    "GREATEST()": {
-      "prefix": "GREATEST",
-      "body": "GREATEST(${1:X1,...,XN})",
-      "description": "Returns `NULL` if any of the inputs is `NULL`."
-    },
-    "LEAST()": {
-      "prefix": "least",
-      "body": "LEAST(${1:X1,...,XN})",
-      "description": "Returns `NULL` if any of the inputs is `NULL`."
-    },
-    "DIV()": {
-      "prefix": "DIV",
-      "body": "DIV(${1:X}, ${2:Y})",
-      "description": "Returns the result of integer division of X by Y."
-    },
-    "SAFE_DIVIDE()": {
-      "prefix": "safe_divide",
-      "body": "SAFE_DIVIDE(${1:X}, ${2:Y})",
-      "description": [
-        "Equivalent to the division operator `(X / Y)`, but returns NULL if an error occurs, such as a division by zero error.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#safe_divide"
-    ]
-    },
-    "MOD()": {
-      "prefix": "MOD",
-      "body": "MOD(${1:X}, ${2:Y})",
-      "description": "Modulo function: returns the remainder of the division of X by Y."
     },
     "COS()": {
       "prefix": "cos",
@@ -890,12 +626,6 @@
       "body": "RANGE_BUCKET(${1:point}, ${2:boundaries_array})",
       "description": "Scans through a sorted array and returns the 0-based position of the point's upper bound."
     },
-    "FARM_FINGERPRINT()": {
-      "prefix": "farm_fingerprint",
-      "body": "FARM_FINGERPRINT(${1:value})",
-      "type": "function",
-      "description": "Computes the fingerprint of the STRING or BYTES input using the Fingerprint64 function from the open-source FarmHash library."
-    },
     "MD5()": {
       "prefix": "MD5",
       "body": "MD5(${1:input})",
@@ -922,37 +652,6 @@
       "body": "SHA512(${1:input})",
       "description": [
         "Computes the hash of the input using the SHA-512 algorithm."
-      ]
-    },
-    "CAST()": {
-      "prefix": "CAST",
-      "body": "CAST(${1:expr} AS ${2:type})",
-      "description": [
-        "Cast syntax is used in a query to indicate that the result type of an expression should be converted to some other type.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#cast",
-        "",
-        "Examples:",
-        "CAST(1 AS STRING) returns '1'",
-        "CAST('1' AS INT64) returns 1"
-      ]
-    },
-    "CAST(... FORMAT)": {
-      "prefix": "cast format",
-      "body": "CAST(${1:expr} AS ${2:STRING|BYTES} FORMAT \"${3:format_string_expression}\")",
-      "description": "The format clause can be used in some CAST functions."
-    },
-    "SAFE_CAST()": {
-      "prefix": "SAFE_CAST",
-      "body": "SAFE_CAST(${1:expr} AS ${3:type})",
-      "description": [
-        "SAFE_CAST is identical to CAST, except it returns NULL instead of raising an error.",
-        "",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#safe_casting",
-        "",
-        "Examples:",
-        "SAFE_CAST(1.5 AS INT64) returns 2",
-        "SAFE_CAST('1.5' AS INT64) returns NULL",
-        "SAFE_CAST('apple' AS INT64) returns NULL"
       ]
     },
     "PARSE_BIGNUMERIC()": {
@@ -1004,21 +703,6 @@
         "Takes an array of Unicode code points (ARRAY of INT64) and returns a STRING."
       ]
     },
-    "CONCAT()": {
-      "prefix": "CONCAT",
-      "body": "CONCAT(${1:value1[, ...]})",
-      "description": "Concatenates one or more values into a single result."
-    },
-    "ENDS_WITH()": {
-      "prefix": "ends_with",
-      "body": "ENDS_WITH(${1:value1}, ${2:value2})",
-      "description": "Takes two values. Returns TRUE if the second value is a suffix of the first."
-    },
-    "FORMAT()": {
-      "prefix": "FORMAT",
-      "body": "FORMAT(${1:<format_string>, ...})",
-      "description": "BigQuery supports a FORMAT() function for formatting strings. This function is similar to the C printf function."
-    },
     "FROM_BASE32()": {
       "prefix": "from_base32",
       "body": "FROM_BASE32(${1:string_expr})",
@@ -1033,54 +717,6 @@
       "prefix": "from_hex",
       "body": "FROM_HEX(${1:string})",
       "description": "Converts a hexadecimal-encoded STRING into BYTES format."
-    },
-    "INITCAP()": {
-      "prefix": "INITCAP",
-      "body": "INITCAP(${1:value}${2:[, delimiters]})",
-      "description": "Returns it with the first character in each word in uppercase and all other characters in lowercase."
-    },
-    "INSTR()": {
-      "prefix": "instr",
-      "body": "INSTR(${1:source_value}, ${2:search_value}${3:[, position[, occurrence]]})",
-      "description": "Returns the lowest 1-based index of search_value in source_value."
-    },
-    "LEFT()": {
-      "prefix": "LEFT",
-      "body": "LEFT(${1:value}, ${2:length})",
-      "description": [
-        "Returns a STRING or BYTES value that consists of the specified number of leftmost characters or bytes from value. The length is an INT64 that specifies the length of the returned value.",
-        "If value is of type BYTES, length is the number of leftmost bytes to return. If value is STRING, length is the number of leftmost characters to return.",
-        "If length is 0, an empty STRING or BYTES value will be returned. If length is negative, an error will be returned. If length exceeds the number of characters or bytes from value, the original value will be returned.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#left",
-        "",
-        "Examples:",
-        "`SELECT LEFT('banana', 3)` returns 'ban'"
-      ]
-
-    },
-    "LENGTH()": {
-      "prefix": "length",
-      "body": "LENGTH(${1:value})",
-      "description": "Returns the length of the value."
-    },
-    "LPAD()": {
-      "prefix": "LPAD",
-      "body": "LPAD(${1:original_value}, ${2:return_length[, pattern]})",
-      "description": [
-        "Returns a value that consists of `original_value` prepended with `pattern`."
-      ]
-    },
-    "LOWER()": {
-      "prefix": "lower",
-      "body": "LOWER(${1:value})",
-      "description": [
-        "For STRING arguments, returns the original string with all alphabetic characters in lowercase."
-      ]
-    },
-    "LTRIM()": {
-      "prefix": "LTRIM",
-      "body": "LTRIM(${1:value1[, value2]})",
-      "description": "Identical to TRIM, but only removes leading characters."
     },
     "NORMALIZE()": {
       "prefix": "normalize",
@@ -1099,27 +735,6 @@
       "body": "OCTET_LENGTH(${1:value})",
       "description": "Alias for BYTE_LENGTH."
     },
-    "REGEXP_CONTAINS()": {
-      "prefix": "REGEXP_CONTAINS",
-      "body": "REGEXP_CONTAINS(${1:value}, r\"${2:regex}\")",
-      "description": "Returns TRUE if `value` is a partial match for the regular expression, `regex`."
-    },
-    "REGEXP_EXTRACT()": {
-      "prefix": "regexp_extract",
-      "body": "REGEXP_EXTRACT(${1:value}, r\"${2:regex}\"${3:[, position[, occurrence]]})",
-      "description": [
-        "Returns the first substring in `value` that matches the regular expression, `regex`. Returns NULL if there is no match.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_extract"
-      ]
-    },
-    "REGEXP_EXTRACT_ALL()": {
-      "prefix": "REGEXP_EXTRACT_ALL",
-      "body": "REGEXP_EXTRACT_ALL(${1:value}, r\"${2:regex}\")",
-      "description": [
-        "Returns an array of all substrings of `value` that match the regular expression, `regex`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_extract_all"
-      ]
-    },
     "REGEXP_INSTR()": {
       "prefix": "regexp_instr",
       "body": "REGEXP_INSTR(${1:source_value}, r\"${2:regex}\"${3:[, position[, occurrence, [occurrence_position]]]})",
@@ -1127,14 +742,6 @@
         "Returns the lowest 1-based index of a regular expression, regexp, in source_value.",
         "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_instr"
 
-      ]
-    },
-    "REGEXP_REPLACE()": {
-      "prefix": "REGEXP_REPLACE",
-      "body": "REGEXP_REPLACE(${1:value}, r\"${2:regex}\", ${3:replacement})",
-      "description": [
-        "Returns a STRING where all substrings of `value` that match regular expression `regex` are replaced with `replacement`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_replace"
       ]
     },
     "REGEXP_SUBSTR()": {
@@ -1145,52 +752,6 @@
         "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_substr"
       ]
     },
-    "REPLACE()": {
-      "prefix": "REPLACE",
-      "body": "REPLACE(${1:original_value}, ${2:from_value}, ${3:to_value})",
-      "description": [
-        "Replaces all occurrences of `from_value` with `to_value` in `original_value`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#replace",
-        "",
-        "Examples:",
-        "`SELECT REPLACE('hello world', 'world', 'there')` returns 'hello there'",
-        "`SELECT REPLACE('hello world', 'l', 'L')` returns 'heLLo worLd'"
-      ]
-    },
-    "REPEAT()": {
-      "prefix": "repeat",
-      "body": "REPEAT(${1:original_value}, ${2:repetitions})",
-      "description": [
-        "Returns a value that consists of `original_value`, repeated.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#repeat",
-        "",
-        "Examples:",
-        "`SELECT REPEAT('hello', 3)` returns 'hellohellohello'",
-        "`SELECT REPEAT('abc', 2)` returns 'abcabc'"
-      ]
-    },
-    "REVERSE()": {
-      "prefix": "REVERSE",
-      "body": "REVERSE(${1:value})",
-      "description": "Returns the reverse of the input STRING or BYTES."
-    },
-    "RIGHT()": {
-      "prefix": "right",
-      "body": "RIGHT(${1:value}, ${2:length})",
-      "description": "Return the specified rightmost number of characters."
-    },
-    "RPAD()": {
-      "prefix": "RPAD",
-      "body": "RPAD(${1:original_value}, ${2:return_length[, pattern]})",
-      "description": [
-        "Returns a value that consists of `original_value` appended with pattern."
-      ]
-    },
-    "RTRIM()": {
-      "prefix": "rtrim",
-      "body": "RTRIM(${1:value1[, value2]})",
-      "description": "Identical to TRIM, but only removes trailing characters."
-    },
     "SAFE_CONVERT_BYTES_TO_STRING()": {
       "prefix": "SAFE_CONVERT_BYTES_TO_STRING",
       "body": "SAFE_CONVERT_BYTES_TO_STRING(${1:value})",
@@ -1200,43 +761,6 @@
       "prefix": "soundex",
       "body": "SOUNDEX(${1:value})",
       "description": "Returns a STRING that represents the Soundex code for value."
-    },
-    "SPLIT()": {
-      "prefix": "SPLIT",
-      "body": "SPLIT(${1:value[, delimiter]})",
-      "description": [
-        "Splits `value` using the `delimiter` argument."
-      ]
-    },
-    "STARTS_WITH()": {
-      "prefix": "starts_with",
-      "body": "STARTS_WITH(${1:value1}, ${2:value2})",
-      "description": "Takes two values. Returns TRUE if the second value is a prefix of the first."
-    },
-    "STRPOS()": {
-      "prefix": "STRPOS",
-      "body": "STRPOS(${1:string}, ${2:substring})",
-      "description": [
-        "Takes two STRING or BYTES values. Returns the 1-based position of the first occurrence of subvalue inside value. Returns 0 if subvalue isn't found.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#strpos",
-        "",
-        "Examples:",
-        "`SELECT STRPOS('foo@example.com', '@')` returns 4",
-        "`SELECT STRPOS('foo@example.com', 'z')` returns 0"
-      ]
-    },
-    "SUBSTR()": {
-      "prefix": "substr",
-      "body": "SUBSTR(${1:value}, ${2:position}${3:[, length]})",
-      "description": [
-        "Returns a substring of the supplied `value`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#substr",
-        "",
-        "Examples:",
-        "`SELECT SUBSTR('Hello, world!', 8, 5)` returns 'world'",
-        "`SELECT SUBSTR('Hello, world!', 8)` returns 'world!'",
-        "`SELECT SUBSTR('Hello, world!', -5)` returns 'orld!'"
-      ]
     },
     "SUBSTRING()": {
       "prefix": "SUBSTRING",
@@ -1278,125 +802,20 @@
       "body": "TRANSLATE(${1:expression}, ${2:source_characters}, ${3:target_characters})",
       "description": "In `expression`, replaces each character in `source_characters` with the corresponding character in `target_characters`."
     },
-    "TRIM()": {
-      "prefix": "TRIM",
-      "body": "TRIM(${1:value1[, value2]})",
-      "description": [
-        "Removes all leading and trailing characters that match `value2`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#trim",
-        "",
-        "Examples:",
-        "`SELECT TRIM('   apple   ')` returns 'apple'",
-        "`SELECT TRIM('***apple***', '*')` returns 'apple'",
-        "`SELECT TRIM('xzxapplexxy', 'xyz')` returns 'apple'"
-      ]
-    },
     "UNICODE()": {
       "prefix": "unicode",
       "body": "UNICODE(${1:value})",
       "description": "Returns the Unicode code point for the first character in value."
-    },
-    "UPPER()": {
-      "prefix": "UPPER",
-      "body": "UPPER(${1:value})",
-      "description": [
-        "For STRING arguments, returns the original string with all alphabetic characters in uppercase."
-      ]
-    },
-    "JSON_EXTRACT()": {
-      "prefix": "json_extract",
-      "body": "JSON_EXTRACT(${1:'json_string_expr'}, ${2:'json_path'})",
-      "description": "Extracts a JSON values. (Legacy JSON function, recommend using `JSON_QUERY`)"
-    },
-    "JSON_QUERY()": {
-      "prefix": "JSON_QUERY",
-      "body": "JSON_QUERY(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
-      "description": "Extracts a JSON values."
-    },
-    "JSON_EXTRACT_SCALAR()": {
-      "prefix": "json_extract_scalar",
-      "body": "JSON_EXTRACT_SCALAR(${1:'json_string_expr'}, ${2:'json_path'})",
-      "description": "Extracts a scalar value. (Legacy JSON function, recommend using `JSON_VALUE`)"
-    },
-    "JSON_VALUE()": {
-      "prefix": "JSON_VALUE",
-      "body": "JSON_VALUE(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
-      "description": "Extracts a scalar value."
     },
     "JSON_EXTRACT_ARRAY()": {
       "prefix": "json_extract_array",
       "body": "JSON_EXTRACT_ARRAY(${1:'json_string_expr'}, ${2:'json_path'})",
       "description": "Extracts an array of JSON values. (Legacy JSON function, recommend using `JSON_QUERY_ARRAY`)"
     },
-    "JSON_QUERY_ARRAY()": {
-      "prefix": "JSON_QUERY_ARRAY",
-      "body": "JSON_QUERY_ARRAY(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
-      "description": "Extracts an array of JSON values."
-    },
     "JSON_EXTRACT_STRING_ARRAY()": {
       "prefix": "json_extract_string_array",
       "body": "JSON_EXTRACT_STRING_ARRAY(${1:'json_string_expr'}, ${2:'json_path'})",
       "description": "Extracts an array of scalar values. (Legacy JSON function, recommend using `JSON_VALUE_ARRAY`)"
-    },
-    "JSON_VALUE_ARRAY()": {
-      "prefix": "JSON_VALUE_ARRAY",
-      "body": "JSON_VALUE_ARRAY(${1:\"json_string_expr\"}, ${2:\"json_path\"})",
-      "description": "Extracts an array of scalar values."
-    },
-    "TO_JSON_STRING()": {
-      "prefix": "to_json_string",
-      "body": "TO_JSON_STRING(${1:value[, pretty_print]})",
-      "description": "Returns a JSON-formatted string representation of the value."
-    },
-    "ARRAY_CONCAT()": {
-      "prefix": "ARRAY_CONCAT",
-      "body": "ARRAY_CONCAT(${1:array_expression_1 [, array_expression_n]})",
-      "description": "Concatenates one or more arrays with the same element type into a single array."
-    },
-    "ARRAY_LENGTH()": {
-      "prefix": "array_length",
-      "body": "ARRAY_LENGTH(${1:array_expression})",
-      "description": "Returns the size of the array."
-    },
-    "ARRAY_TO_STRING()": {
-      "prefix": "ARRAY_TO_STRING",
-      "body": "ARRAY_TO_STRING(${1:array_expression}, ${2:delimiter[, null_text]})",
-      "description": [
-        "Returns a concatenation of the elements in `array_expression` as a STRING. The value for `array_expression` can either be an array of STRING or BYTES data types.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#array_to_string",
-        "",
-        "Examples:",
-        "`SELECT ARRAY_TO_STRING(['foo', 'bar', 'baz'], ',')` returns 'foo,bar,baz'",
-        "`SELECT ARRAY_TO_STRING(['coffee', 'tea', 'milk', NULL], '--', 'MISSING')` returns 'coffee--tea--milk--MISSING'"
-      ]
-    },
-    "GENERATE_ARRAY()": {
-      "prefix": "generate_array",
-      "body": "GENERATE_ARRAY(${1:start_expression})",
-      "description": [
-        "Returns an array of values. The `start_expression` and `end_expression` parameters determine the inclusive start and end of the array.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_array",
-        "",
-        "Examples:",
-        "`SELECT GENERATE_ARRAY(1, 5)`",
-        "```markdown \n| foo |\n|-----|\n| 1   |\n| 2   |\n| 3   |\n| 4   |\n| 5   |\n```",
-        "`SELECT GENERATE_ARRAY(1, 5, 2)`",
-        "```markdown \n| foo |\n|-----|\n| 1   |\n| 3   |\n| 5   |\n```"
-      ]
-    },
-    "GENERATE_DATE_ARRAY()": {
-      "prefix": "GENERATE_DATE_ARRAY",
-      "body": "GENERATE_DATE_ARRAY(${1:start_date}, ${2:end_date[, INTERVAL INT64_expr date_part]})",
-      "description": [
-        "Returns an array of dates. The `start_date` and `end_date` parameters determine the inclusive start and end of the array.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_date_array",
-        "",
-        "Examples:",
-        "`SELECT GENERATE_DATE_ARRAY('2023-01-01', '2023-01-03')`",
-        "```markdown \n| foo        |\n|------------|\n| 2023-01-01 |\n| 2023-01-02 |\n| 2023-01-03 |\n```",  
-        "`SELECT GENERATE_DATE_ARRAY('2023-01-01', '2023-01-05', INTERVAL 2 DAY)`",
-        "```markdown \n| foo        |\n|------------|\n| 2023-01-01 |\n| 2023-01-03 |\n| 2023-01-05 |\n```"
-      ]
     },
     "UNNEST()": {
       "prefix": "UNNEST",
@@ -1413,16 +832,6 @@
         "```markdown \n| foo |\n|-----|\n| 2   |\n| 4   |\n| 6   |\n```"
       ]
     },
-    "GENERATE_TIMESTAMP_ARRAY()": {
-      "prefix": "generate_timestamp_array",
-      "body": "GENERATE_TIMESTAMP_ARRAY(${1:start_timestamp}, ${2:end_timestamp[, INTERVAL step_expression date_part]})",
-      "description": [
-        "Returns an `ARRAY` of `TIMESTAMPS` separated by a given interval.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_timestamp_array",
-        "Examples:",
-        "`GENERATE_TIMESTAMP_ARRAY('2023-01-01 00:00:00', '2023-01-05 00:00:00', INTERVAL 2 DAY)` returns ['2023-01-01 00:00:00', '2023-01-03 00:00:00', '2023-01-05 00:00:00']"
-      ]
-    },
     "[OFFSET(zero_based_offset)]": {
       "prefix": "OFFSET",
       "body": "OFFSET(${1:zero_based_offset})",
@@ -1432,11 +841,6 @@
       "prefix": "ordinal",
       "body": "ORDINAL(${1:one_based_offset})",
       "description": "Accesses an ARRAY element by position and returns the element."
-    },
-    "ARRAY_REVERSE()": {
-      "prefix": "ARRAY_REVERSE",
-      "body": "ARRAY_REVERSE(${1:value})",
-      "description": "Returns the input ARRAY with elements in reverse order."
     },
     "[SAFE_OFFSET(zero_based_offset)]": {
       "prefix": "safe_offset",
@@ -1448,184 +852,15 @@
       "body": "SAFE_ORDINAL(${1:one_based_offset})",
       "description": "Identical to `OFFSET` and `ORDINAL`, except returns `NULL` if the index is out of range."
     },
-    "CURRENT_DATE()": {
-      "prefix": "CURRENT_DATE",
-      "body": "CURRENT_DATE(${1:[time_zone]})",
-      "description": [
-        "Returns the current date as of the specified or default timezone."
-      ]
-    },
-    "EXTRACT(part FROM date_expression)": {
-      "prefix": "EXTRACT DATE",
-      "body": "EXTRACT(${1:part} FROM ${2:date_expression})",
-      "description": [
-        "Returns the value corresponding to the specified date part. The `part` must be one of:"
-      ]
-    },
-    "DATE(year, month, day)": {
-      "prefix": "DATE USE INT",
-      "body": "DATE(${1:year}, ${2:month}, ${3:day})",
-      "description": "Constructs a `DATE` from `INT64` values representing the year, month, and day."
-    },
-    "DATE(timestamp)": {
-      "prefix": "DATE USE TIMESTAMP",
-      "body": "DATE(${1:timestamp_expression[, timezone]})",
-      "description": "Converts a `timestamp_expression` to a `DATE` data type."
-    },
-    "DATE_ADD()": {
-      "prefix": "DATE_ADD",
-      "body": "DATE_ADD(${1:date_expression}, INTERVAL ${2:INT64_expr date_part})",
-      "description": [
-        "Adds a specified time interval to a DATE.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_add",
-        "",
-        "Examples:",
-        "`SELECT DATE_ADD('2023-01-01', INTERVAL 1 DAY)` returns 2023-01-02"
-      ]
-    },
-    "DATE_SUB()": {
-      "prefix": "DATE_SUB",
-      "body": "DATE_SUB(${1:date_expression}, INTERVAL ${2:INT64_expr date_part})",
-      "description": [
-        "Subtracts a specified time interval from a DATE.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_sub",
-        "",
-        "Examples:",
-        "`SELECT DATE_SUB('2023-01-01', INTERVAL 1 DAY)` returns 2022-12-31"
-      ]
-    },
-    "DATE_DIFF()": {
-      "prefix": "DATE_DIFF",
-      "body": "DATE_DIFF(${1:date_expression}, ${2:date_expression}, ${3:date_part})",
-      "description": [
-        "Returns the number of `date_part` boundaries between the two `date_expression`s.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_diff",
-        "",
-        "Example:",
-        "DATE_DIFF('2023-12-31', '2023-01-01', MONTH) returns 11"
-      ]
-    },
-    "DATE_TRUNC()": {
-      "prefix": "DATE_TRUNC",
-      "body": "DATE_TRUNC(${1:date_value}, ${2:date_granularity})",
-      "description": [
-        "Truncates the date to the specified granularity.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc",
-        "",
-        "Examples:",
-        "`SELECT DATE_TRUNC('2023-12-13', MONTH)` returns 2023-12-01",
-        "",
-        "Date granularity definitions:",
-        "DAY, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR",
-        "WEEK(WEEKDAY): The first day in the week that contains the value to truncate. Weeks begin on WEEKDAY. WEEKDAY must be one of the following: SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, or SATURDAY. Default: WEEK(SUNDAY)"
-      ]
-    },
     "DATE_FROM_UNIX_DATE()": {
       "prefix": "DATE_FROM_UNIX_DATE",
       "body": "DATE_FROM_UNIX_DATE(${1:INT64_expression})",
       "description": "Interprets `INT64_expression` as the number of days since 1970-01-01."
     },
-    "FORMAT_DATE()": {
-      "prefix": "FORMAT_DATE",
-      "body": "FORMAT_DATE(${1:format_string}, ${2:date_expr})",
-      "description": [
-        "Formats the `date_expr` according to the specified `format_string`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#format_date",
-        "",
-        "Examples:",
-        "`SELECT FORMAT_DATE('%Y-%m-%d', '2023-12-13')` returns 2023-12-13",
-        "`SELECT FORMAT_DATE('%A, %B %d, %Y', '2023-12-13')` returns Wednesday, December 13, 2023",
-        "`SELECT FORMAT_DATE('%Q', '2023-12-13')` returns 4"
-      ]
-    },
-    "LAST_DAY()": {
-      "prefix": "LAST_DAY",
-      "body": "LAST_DAY(${1:date_expression}${2:[, date_part]})",
-      "description": [
-          "Returns the last day from a date expression.",
-          "",
-          "Examples:",
-          "SELECT LAST_DAY('2023-10-13') `returns 2023-10-30`",
-          "SELECT LAST_DAY('2023-10-13', WEEK) `returns 2023-10-14`",
-          "SELECT LAST_DAY('2023-10-13', QUARTER) `returns 2023-12-31`",
-          "SELECT LAST_DAY('2023-10-13', YEAR) `returns 2023-12-31`"
-      ]
-    },
-    "PARSE_DATE()": {
-      "prefix": "PARSE_DATE",
-      "body": "PARSE_DATE(${1:format_string}, ${2:date_string})",
-      "description": [
-        "Uses a `format_string` and a string representation of a date to return a DATE object."
-      ]
-    },
     "UNIX_DATE()": {
       "prefix": "UNIX_DATE",
       "body": "UNIX_DATE(${1:date_expression})",
       "description": "Returns the number of days since 1970-01-01."
-    },
-    "CURRENT_DATETIME()": {
-      "prefix": "CURRENT_DATETIME",
-      "body": "CURRENT_DATETIME(${1:[timezone]})",
-      "description": [
-        "Returns the current time as a DATETIME object."
-      ]
-    },
-    "DATETIME(year, month, day, hour, minute, second)": {
-      "prefix": "DATETIME USE INT",
-      "body": "DATETIME(${1:year}, ${2:month}, ${3:day}, ${4:hour}, ${5:minute}, ${6:second})",
-      "description": "Constructs a `DATETIME` object using `INT64` values representing the year, month, day, hour, minute, and second."
-    },
-    "DATETIME(date, time)": {
-      "prefix": "DATETIME USE DATETIME",
-      "body": "DATETIME(${1:date_expression}, ${2:time_expression})",
-      "description": "Constructs a `DATETIME` object using a `DATE` object and a `TIME` object."
-    },
-    "DATETIME(timestamp)": {
-      "prefix": "DATETIME USE TIMESTAMP",
-      "body": "DATETIME(${1:timestamp_expression[, timezone]})",
-      "description": "Constructs a `DATETIME` object using a `TIMESTAMP` object."
-    },
-    "DATETIME_ADD()": {
-      "prefix": "DATETIME_ADD",
-      "body": "DATETIME_ADD(${1:datetime_expression}, INTERVAL ${2:INT64_expr part})",
-      "description": [
-        "Adds `INT64_expr` units of `part` to the DATETIME object."
-      ]
-    },
-    "DATETIME_SUB()": {
-      "prefix": "DATETIME_SUB",
-      "body": "DATETIME_SUB(${1:datetime_expression}, INTERVAL ${2:INT64_expr part})",
-      "description": [
-        "Subtracts `INT64_expr` units of `part` from the DATETIME."
-      ]
-    },
-    "DATETIME_DIFF()": {
-      "prefix": "DATETIME_DIFF",
-      "body": "DATETIME_DIFF(${1:datetime_expression}, ${2:datetime_expression}, ${3:part})",
-      "description": [
-        "Returns the number of `part` boundaries between the two `datetime_expressions`."
-      ]
-    },
-    "DATETIME_TRUNC()": {
-      "prefix": "DATETIME_TRUNC",
-      "body": "DATETIME_TRUNC(${1:datetime_expression}, ${2:part})",
-      "description": [
-        "Truncates a `DATETIME` object to the granularity of `part`."
-      ]
-    },
-    "FORMAT_DATETIME()": {
-      "prefix": "FORMAT_DATETIME",
-      "body": "FORMAT_DATETIME(${1:format_string}, ${2:datetime_expression})",
-      "description": [
-        "Formats a DATETIME object according to the specified `format_string`."
-      ]
-    },
-    "PARSE_DATETIME()": {
-      "prefix": "PARSE_DATETIME",
-      "body": "PARSE_DATETIME(${1:format_string}, ${2:datetime_string})",
-      "description": [
-        "Uses a `format_string` and a `string` representation of a timestamp to return a TIMESTAMP object."
-      ]
     },
     "CURRENT_TIME()": {
       "prefix": "CURRENT_TIME",
@@ -1689,18 +924,6 @@
         "Uses a `format_string` and a string to return a TIME object."
       ]
     },
-    "CURRENT_TIMESTAMP()": {
-      "prefix": "CURRENT_TIMESTAMP",
-      "body": "CURRENT_TIMESTAMP()",
-      "description": "Parentheses are optional."
-    },
-    "EXTRACT(part FROM timestamp)": {
-      "prefix": "EXTRACT TIMESTAMP",
-      "body": "EXTRACT(${1:part} FROM ${2:timestamp_expression [AT TIME ZONE tz_spec]})",
-      "description": [
-        "Returns an `INT64` value that corresponds to the specified `part` from a supplied `timestamp_expression`."
-      ]
-    },
     "STRING()": {
       "prefix": "STRING",
       "body": "STRING(${1:timestamp_expression[, timezone]})",
@@ -1708,87 +931,10 @@
         "Converts a `timestamp_expression` to a STRING data type."
       ]
     },
-    "TIMESTAMP(string)": {
-      "prefix": "TIMESTAMP USE STRING",
-      "body": "TIMESTAMP(${1:string_expression[, timezone]})",
-      "description": "Converts a STRING expression to a TIMESTAMP data type."
-    },
-    "TIMESTAMP(date)": {
-      "prefix": "TIMESTAMP USE DATE",
-      "body": "TIMESTAMP(${1:date_expression[, timezone]})",
-      "description": "Converts a DATE object to a TIMESTAMP data type."
-    },
-    "TIMESTAMP(datetime)": {
-      "prefix": "TIMESTAMP USE DATETIME",
-      "body": "TIMESTAMP(${1:datetime_expression[, timezone]})",
-      "description": "Converts a DATETIME object to a TIMESTAMP data type."
-    },
-    "TIMESTAMP_ADD()": {
-      "prefix": "TIMESTAMP_ADD",
-      "body": "TIMESTAMP_ADD(${1:timestamp_expression}, INTERVAL ${2:INT64_expr date_part})",
-      "description": [
-        "Adds `INT64_expr` units of `date_part` to the timestamp, independent of any time zone."
-      ]
-    },
-    "TIMESTAMP_SUB()": {
-      "prefix": "TIMESTAMP_SUB",
-      "body": "TIMESTAMP_SUB(${1:timestamp_expression}, INTERVAL ${2:INT64_expr date_part})",
-      "description": [
-        "Subtracts `INT64_expr` units of `date_part` from the timestamp, independent of any time zone."
-      ]
-    },
-    "TIMESTAMP_DIFF()": {
-      "prefix": "TIMESTAMP_DIFF",
-      "body": "TIMESTAMP_DIFF(${1:timestamp_expression}, ${2:timestamp_expression}, ${3:date_part})",
-      "description": [
-        "Returns the number of whole specified `date_part` intervals between two timestamps."
-      ]
-    },
-    "TIMESTAMP_TRUNC()": {
-      "prefix": "TIMESTAMP_TRUNC",
-      "body": "TIMESTAMP_TRUNC(${1:timestamp_expression}, ${2:date_part, [, time_zone]})",
-      "description": [
-        "Truncates a timestamp to the granularity of `date_part`."
-      ]
-    },
-    "FORMAT_TIMESTAMP()": {
-      "prefix": "FORMAT_TIMESTAMP",
-      "body": "FORMAT_TIMESTAMP(${1:format_string}, ${2:timestamp[, time_zone]})",
-      "description": [
-        "Formats a timestamp according to the specified `format_string`."
-      ]
-    },
-    "PARSE_TIMESTAMP()": {
-      "prefix": "PARSE_TIMESTAMP",
-      "body": "PARSE_TIMESTAMP(${1:format_string}, ${2:string[, time_zone]})",
-      "description": [
-        "Uses a `format_string` and a string representation of a timestamp to return a TIMESTAMP object."
-      ]
-    },
-    "TIMESTAMP_SECONDS()": {
-      "prefix": "TIMESTAMP_SECONDS",
-      "body": "TIMESTAMP_SECONDS(${1:int64_expression})",
-      "description": "Interprets `int64_expression` as the number of seconds since 1970-01-01 00:00:00 UTC."
-    },
-    "TIMESTAMP_MILLIS()": {
-      "prefix": "TIMESTAMP_MILLIS",
-      "body": "TIMESTAMP_MILLIS(${1:int64_expression})",
-      "description": "Interprets `int64_expression` as the number of milliseconds since 1970-01-01 00:00:00 UTC."
-    },
     "TIMESTAMP_MICROS()": {
       "prefix": "TIMESTAMP_MICROS",
       "body": "TIMESTAMP_MICROS(${1:int64_expression})",
       "description": "Interprets `int64_expression` as the number of microseconds since 1970-01-01 00:00:00 UTC."
-    },
-    "UNIX_SECONDS()": {
-      "prefix": "UNIX_SECONDS",
-      "body": "UNIX_SECONDS(${1:timestamp_expression})",
-      "description": "Returns the number of seconds since 1970-01-01 00:00:00 UTC."
-    },
-    "UNIX_MILLIS()": {
-      "prefix": "UNIX_MILLIS",
-      "body": "UNIX_MILLIS(${1:timestamp_expression})",
-      "description": "Returns the number of milliseconds since 1970-01-01 00:00:00 UTC."
     },
     "UNIX_MICROS()": {
       "prefix": "UNIX_MICROS",
@@ -1884,113 +1030,6 @@
         "\tELSE ${6:else_result}",
         "END"
       ]
-    },
-    "COALESCE()": {
-      "prefix": "coalesce",
-      "body": "COALESCE(${1:expr1, ..., exprN})",
-      "description": "Returns the value of the first non-null expression."
-    },
-    "IF()": {
-      "prefix": "IF",
-      "body": "IF(${1:cond}, ${2:true_result}, ${3:else_result})",
-      "description": [
-        "If `cond` is true, returns `true_result`, else returns `else_result`.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#if",
-        "",
-        "Examples:",
-        "`SELECT IF(1 = 2, 'yes', 'no')` returns 'no'",
-        "`SELECT IF(1 = 1, 'yes', 'no')` returns 'yes'"
-      ]
-    },
-    "IFNULL()": {
-      "prefix": "ifnull",
-      "body": "IFNULL(${1:expr}, ${2:null_result})",
-      "description": "If `expr` is `NULL`, return `null_result`."
-    },
-    "NULLIF()": {
-      "prefix": "NULLIF",
-      "body": "NULLIF(${1:expression}, ${2:expression_to_match})",
-      "description": "Returns `NULL` if `expression = expression_to_match` is true, otherwise returns `expression`."
-    },
-    "EXTRACT()": {
-      "prefix": "EXTRACT",
-      "body": "EXTRACT(${1:date_part} FROM ${2:date_expression})",
-      "description": [
-        "Extracts date part from a date expression.",
-        "Docs: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#extract",
-        "",
-        "Examples:",
-        "`SELECT EXTRACT(DAY FROM DATE '2013-12-25')` returns 25",
-        "`SELECT EXTRACT(DAYOFWEEK FROM DATE '2013-12-25')` returns 4",
-        "`SELECT EXTRACT(DAYOFYEAR FROM DATE '2013-12-25')` returns 359",
-        "`SELECT EXTRACT(WEEK FROM DATE '2013-12-25')` returns 51",
-        "`SELECT EXTRACT(WEEK(MONDAY) FROM DATE '2013-12-25')` returns 51",
-        "`SELECT EXTRACT(ISOWEEK FROM DATE '2013-12-25')` returns 52",
-        "`SELECT EXTRACT(QUARTER FROM DATE '2013-12-25')` returns 4",
-        "`SELECT EXTRACT(YEAR FROM DATE '2013-12-25')` returns 2013",
-        "",
-        "Valid date_part values: DAY, DAYOFWEEK, DAYOFYEAR, WEEK, WEEK(WEEKDAY), ISOWEEK, MONTH, QUARTER, YEAR, ISOYEAR"
-      ]
-    },
-    "EXTRACT(DAYOFWEEK FROM date_expression)": {
-      "prefix": "dayofweek",
-      "body": "EXTRACT(DAYOFWEEK FROM ${1:date_expression})"
-    },
-    "EXTRACT(DAY FROM date_expression)": {
-      "prefix": "DAY",
-      "body": "EXTRACT(DAY FROM ${1:date_expression})"
-    },
-    "EXTRACT(DAYOFYEAR FROM date_expression)": {
-      "prefix": "dayofyear",
-      "body": "EXTRACT(DAYOFYEAR FROM ${1:date_expression})"
-    },
-    "EXTRACT(WEEK FROM date_expression)": {
-      "prefix": "WEEK",
-      "body": "EXTRACT(WEEK FROM ${1:date_expression})"
-    },
-    "EXTRACT(WEEK<WEEKDAY> FROM date_expression)": {
-      "prefix": "weekday",
-      "body": "EXTRACT(WEEK(${1:<WEEKDAY>}) FROM ${2:date_expression})"
-    },
-    "EXTRACT(ISOWEEK FROM date_expression)": {
-      "prefix": "ISOWEEK",
-      "body": "EXTRACT(ISOWEEK FROM ${1:date_expression})"
-    },
-    "EXTRACT(MONTH FROM date_expression)": {
-      "prefix": "month",
-      "body": "EXTRACT(MONTH FROM ${1:date_expression})"
-    },
-    "EXTRACT(QUARTER FROM date_expression)": {
-      "prefix": "QUARTER",
-      "body": "EXTRACT(QUARTER FROM ${1:date_expression})"
-    },
-    "EXTRACT(YEAR FROM date_expression)": {
-      "prefix": "year",
-      "body": "EXTRACT(YEAR FROM ${1:date_expression})"
-    },
-    "EXTRACT(ISOYEAR FROM date_expression)": {
-      "prefix": "ISOYEAR",
-      "body": "EXTRACT(ISOYEAR FROM ${1:date_expression})"
-    },
-    "EXTRACT(MICROSECOND FROM timestamp_expression)": {
-      "prefix": "microsecond",
-      "body": "EXTRACT(MICROSECOND FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
-    },
-    "EXTRACT(MILLISECOND FROM timestamp_expression)": {
-      "prefix": "MILLISECOND",
-      "body": "EXTRACT(MILLISECOND FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
-    },
-    "EXTRACT(SECOND FROM timestamp_expression)": {
-      "prefix": "second",
-      "body": "EXTRACT(SECOND FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
-    },
-    "EXTRACT(MINUTE FROM timestamp_expression)": {
-      "prefix": "MINUTE",
-      "body": "EXTRACT(MINUTE FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
-    },
-    "EXTRACT(HOUR FROM timestamp_expression)": {
-      "prefix": "hour",
-      "body": "EXTRACT(HOUR FROM ${1:timestamp_expression [AT TIME ZONE tz_spec]})"
     },
     "ERROR()": {
       "prefix": "ERROR",

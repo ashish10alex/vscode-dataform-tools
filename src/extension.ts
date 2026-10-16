@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import os from 'os';
-import fs from 'fs';
-import path from 'path';
 import { QueryWtType, Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
-import { DataformColumnHoverProvider, DataformHoverProvider, DataformBigQueryHoverProvider } from './hoverProvider';
+import { DataformColumnHoverProvider, DataformHoverProvider } from './hoverProvider';
+import { registerBigQueryFunctionProviders } from './bigquery/functionProviders';
 import { registerConfigBlockFeatures } from './configBlock/providers';
 import { defaultCdnLinks } from './constants';
 import { getWorkspaceFolder, getCurrentFileMetadata, sendNotificationToUserOnExtensionUpdate, selectWorkspaceFolder } from './utils';
@@ -101,10 +100,6 @@ export async function activate(context: vscode.ExtensionContext) {
     globalThis.errorInPreOpsDenyList = false;
     globalThis.compilerOptionsMap = {};
     globalThis.DEBOUNCE_WAIT = 750;
-
-    const snippetsPath = path.join(context.extensionPath, "snippets", "bigquery.code-snippets.json");
-    const snippetsContent = fs.readFileSync(snippetsPath, 'utf8');
-    globalThis.bigQuerySnippetMetadata = JSON.parse(snippetsContent)[".source.sql-bigquery"];
 
     initRemoteCompiler(context);
     initLastRun(context);
@@ -316,10 +311,8 @@ export async function activate(context: vscode.ExtensionContext) {
         new SqlxDocumentSymbolProvider()
     ));
 
-    context.subscriptions.push(vscode.languages.registerHoverProvider(
-        { language: 'sqlx' },
-        new DataformBigQueryHoverProvider()
-    ));
+    // Completions come from the snippet files in package.json
+    context.subscriptions.push(...registerBigQueryFunctionProviders({ language: 'sqlx' }, false));
 
     context.subscriptions.push(vscode.languages.registerHoverProvider(
         { language: 'sqlx' },

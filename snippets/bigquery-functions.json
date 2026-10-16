@@ -1,0 +1,3038 @@
+{
+  "$comment": "The BigQuery functions the editor explains. Edit this file, then run `just bigquery-snippets` to write bigquery-functions.code-snippets.json. See snippets/README.md.",
+  "valueSets": {
+    "date_part": [
+      "DAY",
+      "WEEK",
+      "MONTH",
+      "QUARTER",
+      "YEAR"
+    ],
+    "date_granularity": [
+      "DAY",
+      "WEEK",
+      "WEEK(MONDAY)",
+      "ISOWEEK",
+      "MONTH",
+      "QUARTER",
+      "YEAR",
+      "ISOYEAR"
+    ],
+    "datetime_part": [
+      "MICROSECOND",
+      "MILLISECOND",
+      "SECOND",
+      "MINUTE",
+      "HOUR",
+      "DAY",
+      "WEEK",
+      "MONTH",
+      "QUARTER",
+      "YEAR"
+    ],
+    "datetime_granularity": [
+      "MICROSECOND",
+      "MILLISECOND",
+      "SECOND",
+      "MINUTE",
+      "HOUR",
+      "DAY",
+      "WEEK",
+      "WEEK(MONDAY)",
+      "ISOWEEK",
+      "MONTH",
+      "QUARTER",
+      "YEAR",
+      "ISOYEAR"
+    ],
+    "timestamp_part": [
+      "MICROSECOND",
+      "MILLISECOND",
+      "SECOND",
+      "MINUTE",
+      "HOUR",
+      "DAY"
+    ],
+    "extract_part": [
+      "DAYOFWEEK",
+      "DAY",
+      "DAYOFYEAR",
+      "WEEK",
+      "WEEK(MONDAY)",
+      "ISOWEEK",
+      "MONTH",
+      "QUARTER",
+      "YEAR",
+      "ISOYEAR",
+      "MICROSECOND",
+      "MILLISECOND",
+      "SECOND",
+      "MINUTE",
+      "HOUR",
+      "DATE",
+      "DATETIME",
+      "TIME"
+    ],
+    "last_day_part": [
+      "MONTH",
+      "WEEK",
+      "WEEK(MONDAY)",
+      "ISOWEEK",
+      "QUARTER",
+      "YEAR",
+      "ISOYEAR"
+    ]
+  },
+  "functions": [
+    {
+      "name": "CURRENT_DATE",
+      "doc": "Returns today's date, in the given time zone or UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "DATE"
+        }
+      ],
+      "example": {
+        "sql": "CURRENT_DATE('Europe/London')",
+        "result": "the date in London now"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#current_date"
+    },
+    {
+      "name": "DATE",
+      "doc": "Makes a DATE from its parts, or takes the date of a TIMESTAMP or DATETIME.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "DATE"
+        },
+        {
+          "params": [
+            {
+              "name": "year",
+              "type": "INT64"
+            },
+            {
+              "name": "month",
+              "type": "INT64"
+            },
+            {
+              "name": "day",
+              "type": "INT64"
+            }
+          ],
+          "returns": "DATE"
+        },
+        {
+          "params": [
+            {
+              "name": "datetime_expr",
+              "type": "DATETIME"
+            }
+          ],
+          "returns": "DATE"
+        }
+      ],
+      "example": {
+        "sql": "DATE(2024, 3, 31)",
+        "result": "2024-03-31"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date"
+    },
+    {
+      "name": "DATE_ADD",
+      "doc": "Adds a number of days, weeks, months, quarters or years to a date.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "date_expr",
+              "type": "DATE"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 7 DAY`; part is DAY, WEEK, MONTH, QUARTER or YEAR",
+              "snippet": "INTERVAL {1} {DAY|WEEK|MONTH|QUARTER|YEAR}"
+            }
+          ],
+          "returns": "DATE"
+        }
+      ],
+      "example": {
+        "sql": "DATE_ADD(DATE '2024-01-31', INTERVAL 1 MONTH)",
+        "result": "2024-02-29"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_add"
+    },
+    {
+      "name": "DATE_SUB",
+      "doc": "Subtracts a number of days, weeks, months, quarters or years from a date.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "date_expr",
+              "type": "DATE"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 7 DAY`; part is DAY, WEEK, MONTH, QUARTER or YEAR",
+              "snippet": "INTERVAL {1} {DAY|WEEK|MONTH|QUARTER|YEAR}"
+            }
+          ],
+          "returns": "DATE"
+        }
+      ],
+      "example": {
+        "sql": "DATE_SUB(DATE '2024-03-01', INTERVAL 1 DAY)",
+        "result": "2024-02-29"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_sub"
+    },
+    {
+      "name": "DATE_DIFF",
+      "doc": "Returns the number of `granularity` boundaries between two dates: `end_date` minus `start_date`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "end_date",
+              "type": "DATE"
+            },
+            {
+              "name": "start_date",
+              "type": "DATE"
+            },
+            {
+              "name": "granularity",
+              "type": "date part",
+              "values": "date_granularity"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "DATE_DIFF(DATE '2023-12-31', DATE '2023-01-01', MONTH)",
+        "result": "11"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_diff"
+    },
+    {
+      "name": "DATE_TRUNC",
+      "doc": "Truncates a date to the start of the given granularity.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "date_value",
+              "type": "DATE | DATETIME"
+            },
+            {
+              "name": "granularity",
+              "type": "date part",
+              "values": "date_granularity"
+            }
+          ],
+          "returns": "same type as the value"
+        },
+        {
+          "params": [
+            {
+              "name": "timestamp_value",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "granularity",
+              "type": "date part",
+              "values": "date_granularity"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "notes": [
+        "`WEEK` weeks start on Sunday; `WEEK(MONDAY)` (or any weekday) starts them on that day, and `ISOWEEK` on Monday."
+      ],
+      "example": {
+        "sql": "DATE_TRUNC(DATE '2023-12-13', MONTH)",
+        "result": "2023-12-01"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc"
+    },
+    {
+      "name": "FORMAT_DATE",
+      "doc": "Formats a date as a string, by format elements.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "doc": "format elements such as '%Y-%m-%d'; see the docs for every element",
+              "snippet": "'{%Y-%m-%d}'"
+            },
+            {
+              "name": "date_expr",
+              "type": "DATE"
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "example": {
+        "sql": "FORMAT_DATE('%A, %B %d, %Y', DATE '2023-12-13')",
+        "result": "Wednesday, December 13, 2023"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#format_date"
+    },
+    {
+      "name": "PARSE_DATE",
+      "doc": "Reads a DATE from a string, by format elements. The whole string must match the format.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "doc": "format elements such as '%Y-%m-%d'; see the docs for every element",
+              "snippet": "'{%Y-%m-%d}'"
+            },
+            {
+              "name": "date_string",
+              "type": "STRING"
+            }
+          ],
+          "returns": "DATE"
+        }
+      ],
+      "example": {
+        "sql": "PARSE_DATE('%d/%m/%Y', '13/12/2023')",
+        "result": "2023-12-13"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#parse_date"
+    },
+    {
+      "name": "LAST_DAY",
+      "doc": "Returns the last day of the month, or of the given period, that holds the date.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "date_expr",
+              "type": "DATE | DATETIME"
+            },
+            {
+              "name": "date_part",
+              "type": "date part",
+              "doc": "MONTH when left out",
+              "optional": true,
+              "values": "last_day_part"
+            }
+          ],
+          "returns": "DATE"
+        }
+      ],
+      "example": {
+        "sql": "LAST_DAY(DATE '2024-02-10')",
+        "result": "2024-02-29"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#last_day"
+    },
+    {
+      "name": "EXTRACT",
+      "doc": "Returns one part of a date, datetime, time or timestamp.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "part",
+              "type": "date part",
+              "values": "extract_part"
+            },
+            {
+              "name": "value",
+              "type": "DATE | DATETIME | TIME | TIMESTAMP",
+              "before": "FROM"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "for a TIMESTAMP: the time zone to read it in, UTC when left out",
+              "optional": true,
+              "before": "AT TIME ZONE"
+            }
+          ],
+          "returns": "INT64 (DATE, DATETIME or TIME for those parts)"
+        }
+      ],
+      "example": {
+        "sql": "EXTRACT(DAYOFWEEK FROM DATE '2023-12-13')",
+        "result": "4 (Sunday is 1)"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#extract"
+    },
+    {
+      "name": "GENERATE_DATE_ARRAY",
+      "doc": "Returns an array of dates from `start_date` to `end_date`, both included, a step apart.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "start_date",
+              "type": "DATE"
+            },
+            {
+              "name": "end_date",
+              "type": "DATE"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`; part is DAY, WEEK, MONTH, QUARTER or YEAR. One day when left out",
+              "optional": true
+            }
+          ],
+          "returns": "ARRAY<DATE>"
+        }
+      ],
+      "notes": [
+        "Use it with `UNNEST` to make one row for each date: `SELECT day FROM UNNEST(GENERATE_DATE_ARRAY(...)) AS day`."
+      ],
+      "example": {
+        "sql": "GENERATE_DATE_ARRAY('2024-01-01', '2024-03-01', INTERVAL 1 MONTH)",
+        "result": "[2024-01-01, 2024-02-01, 2024-03-01]"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_date_array"
+    },
+    {
+      "name": "CURRENT_DATETIME",
+      "doc": "Returns the date and time now, in the given time zone or UTC, with no time zone kept.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "DATETIME"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#current_datetime"
+    },
+    {
+      "name": "DATETIME",
+      "doc": "Makes a DATETIME from its parts, from a DATE and a TIME, or from a TIMESTAMP in a time zone.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "DATETIME"
+        },
+        {
+          "params": [
+            {
+              "name": "date_expr",
+              "type": "DATE"
+            },
+            {
+              "name": "time_expr",
+              "type": "TIME",
+              "doc": "midnight when left out",
+              "optional": true
+            }
+          ],
+          "returns": "DATETIME"
+        },
+        {
+          "params": [
+            {
+              "name": "year",
+              "type": "INT64"
+            },
+            {
+              "name": "month",
+              "type": "INT64"
+            },
+            {
+              "name": "day",
+              "type": "INT64"
+            },
+            {
+              "name": "hour",
+              "type": "INT64"
+            },
+            {
+              "name": "minute",
+              "type": "INT64"
+            },
+            {
+              "name": "second",
+              "type": "INT64"
+            }
+          ],
+          "returns": "DATETIME"
+        }
+      ],
+      "example": {
+        "sql": "DATETIME(DATE '2024-03-31', TIME '12:30:00')",
+        "result": "2024-03-31T12:30:00"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#datetime"
+    },
+    {
+      "name": "DATETIME_ADD",
+      "doc": "Adds an interval to a datetime.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "datetime_expr",
+              "type": "DATETIME"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 2 HOUR`; part is MICROSECOND to YEAR",
+              "snippet": "INTERVAL {1} {MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|MONTH|QUARTER|YEAR}"
+            }
+          ],
+          "returns": "DATETIME"
+        }
+      ],
+      "example": {
+        "sql": "DATETIME_ADD(DATETIME '2024-01-01 23:00:00', INTERVAL 2 HOUR)",
+        "result": "2024-01-02T01:00:00"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#datetime_add"
+    },
+    {
+      "name": "DATETIME_SUB",
+      "doc": "Subtracts an interval from a datetime.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "datetime_expr",
+              "type": "DATETIME"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 2 HOUR`; part is MICROSECOND to YEAR",
+              "snippet": "INTERVAL {1} {MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY|WEEK|MONTH|QUARTER|YEAR}"
+            }
+          ],
+          "returns": "DATETIME"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#datetime_sub"
+    },
+    {
+      "name": "DATETIME_DIFF",
+      "doc": "Returns the number of `granularity` boundaries between two datetimes: `end_datetime` minus `start_datetime`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "end_datetime",
+              "type": "DATETIME"
+            },
+            {
+              "name": "start_datetime",
+              "type": "DATETIME"
+            },
+            {
+              "name": "granularity",
+              "type": "datetime part",
+              "values": "datetime_granularity"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "DATETIME_DIFF(DATETIME '2024-01-02 01:00:00', DATETIME '2024-01-01 23:00:00', HOUR)",
+        "result": "2"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#datetime_diff"
+    },
+    {
+      "name": "DATETIME_TRUNC",
+      "doc": "Truncates a datetime to the start of the given granularity.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "datetime_value",
+              "type": "DATETIME"
+            },
+            {
+              "name": "granularity",
+              "type": "datetime part",
+              "values": "datetime_granularity"
+            }
+          ],
+          "returns": "DATETIME"
+        },
+        {
+          "params": [
+            {
+              "name": "timestamp_value",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "granularity",
+              "type": "datetime part",
+              "values": "datetime_granularity"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "example": {
+        "sql": "DATETIME_TRUNC(DATETIME '2024-03-31 12:34:56', HOUR)",
+        "result": "2024-03-31T12:00:00"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#datetime_trunc"
+    },
+    {
+      "name": "FORMAT_DATETIME",
+      "doc": "Formats a datetime as a string, by format elements.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "doc": "format elements such as '%Y-%m-%d %H:%M'",
+              "snippet": "'{%Y-%m-%d %H:%M:%S}'"
+            },
+            {
+              "name": "datetime_expr",
+              "type": "DATETIME"
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#format_datetime"
+    },
+    {
+      "name": "PARSE_DATETIME",
+      "doc": "Reads a DATETIME from a string, by format elements. The whole string must match the format.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "doc": "format elements such as '%Y-%m-%d %H:%M'",
+              "snippet": "'{%Y-%m-%d %H:%M:%S}'"
+            },
+            {
+              "name": "datetime_string",
+              "type": "STRING"
+            }
+          ],
+          "returns": "DATETIME"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions#parse_datetime"
+    },
+    {
+      "name": "CURRENT_TIMESTAMP",
+      "doc": "Returns the time now, as a TIMESTAMP.",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#current_timestamp"
+    },
+    {
+      "name": "TIMESTAMP",
+      "doc": "Makes a TIMESTAMP from a string, a date or a datetime, read in the given time zone or UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | DATE | DATETIME"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "example": {
+        "sql": "TIMESTAMP('2024-03-31 12:00:00', 'Europe/London')",
+        "result": "2024-03-31 11:00:00 UTC"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp"
+    },
+    {
+      "name": "TIMESTAMP_ADD",
+      "doc": "Adds an interval to a timestamp.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 30 MINUTE`; part is MICROSECOND to DAY",
+              "snippet": "INTERVAL {1} {MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY}"
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "example": {
+        "sql": "TIMESTAMP_ADD(TIMESTAMP '2024-01-01 00:00:00 UTC', INTERVAL 30 MINUTE)",
+        "result": "2024-01-01 00:30:00 UTC"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_add"
+    },
+    {
+      "name": "TIMESTAMP_SUB",
+      "doc": "Subtracts an interval from a timestamp.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 30 MINUTE`; part is MICROSECOND to DAY",
+              "snippet": "INTERVAL {1} {MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY}"
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_sub"
+    },
+    {
+      "name": "TIMESTAMP_DIFF",
+      "doc": "Returns the number of whole `granularity` intervals between two timestamps: `end_timestamp` minus `start_timestamp`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "end_timestamp",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "start_timestamp",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "granularity",
+              "type": "timestamp part",
+              "values": "timestamp_part"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "TIMESTAMP_DIFF(TIMESTAMP '2024-01-01 02:30:00', TIMESTAMP '2024-01-01 00:00:00', HOUR)",
+        "result": "2"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_diff"
+    },
+    {
+      "name": "TIMESTAMP_TRUNC",
+      "doc": "Truncates a timestamp to the start of the given granularity, in the given time zone or UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_value",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "granularity",
+              "type": "timestamp part",
+              "values": "datetime_granularity"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "TIMESTAMP"
+        },
+        {
+          "params": [
+            {
+              "name": "datetime_value",
+              "type": "DATETIME"
+            },
+            {
+              "name": "granularity",
+              "type": "timestamp part",
+              "values": "datetime_granularity"
+            }
+          ],
+          "returns": "DATETIME"
+        }
+      ],
+      "example": {
+        "sql": "TIMESTAMP_TRUNC(TIMESTAMP '2024-03-31 12:34:56 UTC', DAY)",
+        "result": "2024-03-31 00:00:00 UTC"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_trunc"
+    },
+    {
+      "name": "FORMAT_TIMESTAMP",
+      "doc": "Formats a timestamp as a string, by format elements, in the given time zone or UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "doc": "format elements such as '%Y-%m-%d %H:%M:%S %Z'",
+              "snippet": "'{%Y-%m-%d %H:%M:%S}'"
+            },
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#format_timestamp"
+    },
+    {
+      "name": "PARSE_TIMESTAMP",
+      "doc": "Reads a TIMESTAMP from a string, by format elements, in the given time zone or UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "doc": "format elements such as '%Y-%m-%d %H:%M:%S'",
+              "snippet": "'{%Y-%m-%d %H:%M:%S}'"
+            },
+            {
+              "name": "timestamp_string",
+              "type": "STRING"
+            },
+            {
+              "name": "time_zone",
+              "type": "STRING",
+              "doc": "a time zone name such as 'Europe/London', or an offset such as '+01:00'",
+              "optional": true
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#parse_timestamp"
+    },
+    {
+      "name": "UNIX_SECONDS",
+      "doc": "Returns the number of seconds since 1970-01-01 00:00:00 UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#unix_seconds"
+    },
+    {
+      "name": "UNIX_MILLIS",
+      "doc": "Returns the number of milliseconds since 1970-01-01 00:00:00 UTC.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "timestamp_expr",
+              "type": "TIMESTAMP"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#unix_millis"
+    },
+    {
+      "name": "TIMESTAMP_SECONDS",
+      "doc": "Reads a number of seconds since 1970-01-01 00:00:00 UTC as a TIMESTAMP.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "seconds",
+              "type": "INT64"
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "example": {
+        "sql": "TIMESTAMP_SECONDS(1700000000)",
+        "result": "2023-11-14 22:13:20 UTC"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_seconds"
+    },
+    {
+      "name": "TIMESTAMP_MILLIS",
+      "doc": "Reads a number of milliseconds since 1970-01-01 00:00:00 UTC as a TIMESTAMP.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "milliseconds",
+              "type": "INT64"
+            }
+          ],
+          "returns": "TIMESTAMP"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_millis"
+    },
+    {
+      "name": "GENERATE_TIMESTAMP_ARRAY",
+      "doc": "Returns an array of timestamps from `start_timestamp` to `end_timestamp`, both included, an interval apart.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "start_timestamp",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "end_timestamp",
+              "type": "TIMESTAMP"
+            },
+            {
+              "name": "interval",
+              "type": "INTERVAL",
+              "doc": "`INTERVAL n part`, e.g. `INTERVAL 1 HOUR`; part is MICROSECOND to DAY",
+              "snippet": "INTERVAL {1} {MICROSECOND|MILLISECOND|SECOND|MINUTE|HOUR|DAY}"
+            }
+          ],
+          "returns": "ARRAY<TIMESTAMP>"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_timestamp_array"
+    },
+    {
+      "name": "CONCAT",
+      "doc": "Joins values into one. Returns NULL if any value is NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "value",
+              "type": "STRING | BYTES",
+              "repeated": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "notes": [
+        "The `||` operator does the same: `'data' || 'form'`."
+      ],
+      "example": {
+        "sql": "CONCAT('data', 'form')",
+        "result": "'dataform'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#concat"
+    },
+    {
+      "name": "LENGTH",
+      "doc": "Returns the length of a value: characters for a STRING, bytes for BYTES.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "LENGTH('dataform')",
+        "result": "8"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#length"
+    },
+    {
+      "name": "LOWER",
+      "doc": "Returns the value in lower case.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#lower"
+    },
+    {
+      "name": "UPPER",
+      "doc": "Returns the value in upper case.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#upper"
+    },
+    {
+      "name": "INITCAP",
+      "doc": "Upper-cases the first character of each word and lower-cases the rest.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING"
+            },
+            {
+              "name": "delimiters",
+              "type": "STRING",
+              "doc": "the characters that separate words; whitespace and most punctuation when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "example": {
+        "sql": "INITCAP('hello WORLD')",
+        "result": "'Hello World'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#initcap"
+    },
+    {
+      "name": "TRIM",
+      "doc": "Removes whitespace, or the given characters, from both ends of a value.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "set_of_characters_to_remove",
+              "type": "STRING | BYTES",
+              "doc": "whitespace when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "TRIM('***apple***', '*')",
+        "result": "'apple'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#trim"
+    },
+    {
+      "name": "LTRIM",
+      "doc": "Removes whitespace, or the given characters, from the start of a value.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "set_of_characters_to_remove",
+              "type": "STRING | BYTES",
+              "doc": "whitespace when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#ltrim"
+    },
+    {
+      "name": "RTRIM",
+      "doc": "Removes whitespace, or the given characters, from the end of a value.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "set_of_characters_to_remove",
+              "type": "STRING | BYTES",
+              "doc": "whitespace when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#rtrim"
+    },
+    {
+      "name": "SUBSTR",
+      "doc": "Returns the part of a value that starts at `position` and is `length` long.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "position",
+              "type": "INT64",
+              "doc": "1 is the first character; a negative number counts from the end"
+            },
+            {
+              "name": "length",
+              "type": "INT64",
+              "doc": "to the end when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "SUBSTR('dataform', 1, 4)",
+        "result": "'data'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#substr"
+    },
+    {
+      "name": "REPLACE",
+      "doc": "Replaces every occurrence of `from_pattern` with `to_pattern`. Matches exact text, not a regular expression.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "original_value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "from_pattern",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "to_pattern",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "REPLACE('a-b-c', '-', '_')",
+        "result": "'a_b_c'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#replace"
+    },
+    {
+      "name": "SPLIT",
+      "doc": "Splits a value at each delimiter into an array.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "delimiter",
+              "type": "STRING | BYTES",
+              "doc": "',' when left out",
+              "optional": true
+            }
+          ],
+          "returns": "ARRAY<STRING> | ARRAY<BYTES>"
+        }
+      ],
+      "example": {
+        "sql": "SPLIT('a,b,c')",
+        "result": "['a', 'b', 'c']"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#split"
+    },
+    {
+      "name": "STARTS_WITH",
+      "doc": "Whether a value starts with `prefix`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "prefix",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "BOOL"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#starts_with"
+    },
+    {
+      "name": "ENDS_WITH",
+      "doc": "Whether a value ends with `suffix`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "suffix",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "BOOL"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#ends_with"
+    },
+    {
+      "name": "CONTAINS_SUBSTR",
+      "doc": "Whether `search_value` is in `expression`, ignoring case. The expression can also be a STRUCT, an ARRAY or JSON, searched in every field.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "ANY"
+            },
+            {
+              "name": "search_value",
+              "type": "STRING",
+              "doc": "a literal string"
+            }
+          ],
+          "returns": "BOOL"
+        }
+      ],
+      "example": {
+        "sql": "CONTAINS_SUBSTR('the blue house', 'Blue')",
+        "result": "TRUE"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#contains_substr"
+    },
+    {
+      "name": "STRPOS",
+      "doc": "Returns the 1-based position of the first `subvalue` in `value`, or 0 if it is not found.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "subvalue",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "STRPOS('dataform', 'form')",
+        "result": "5"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#strpos"
+    },
+    {
+      "name": "INSTR",
+      "doc": "Returns the 1-based position of an occurrence of `search_value`, or 0 if it is not found.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "source_value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "search_value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "position",
+              "type": "INT64",
+              "doc": "where to start; a negative number searches back from the end. 1 when left out",
+              "optional": true
+            },
+            {
+              "name": "occurrence",
+              "type": "INT64",
+              "doc": "which occurrence to find. 1 when left out",
+              "optional": true
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#instr"
+    },
+    {
+      "name": "LPAD",
+      "doc": "Pads the start of a value with `pattern` until it is `return_length` long.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "original_value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "return_length",
+              "type": "INT64"
+            },
+            {
+              "name": "pattern",
+              "type": "STRING | BYTES",
+              "doc": "a space when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "LPAD('7', 3, '0')",
+        "result": "'007'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#lpad"
+    },
+    {
+      "name": "RPAD",
+      "doc": "Pads the end of a value with `pattern` until it is `return_length` long.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "original_value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "return_length",
+              "type": "INT64"
+            },
+            {
+              "name": "pattern",
+              "type": "STRING | BYTES",
+              "doc": "a space when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#rpad"
+    },
+    {
+      "name": "LEFT",
+      "doc": "Returns the first `length` characters, or bytes, of a value.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "length",
+              "type": "INT64"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "LEFT('dataform', 4)",
+        "result": "'data'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#left"
+    },
+    {
+      "name": "RIGHT",
+      "doc": "Returns the last `length` characters, or bytes, of a value.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "length",
+              "type": "INT64"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "RIGHT('dataform', 4)",
+        "result": "'form'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#right"
+    },
+    {
+      "name": "REPEAT",
+      "doc": "Returns a value repeated a number of times.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "original_value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "repetitions",
+              "type": "INT64"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#repeat"
+    },
+    {
+      "name": "REVERSE",
+      "doc": "Returns a value with its characters, or bytes, in reverse order.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#reverse"
+    },
+    {
+      "name": "FORMAT",
+      "doc": "Formats values into a string, printf style: `%s` a string, `%d` an integer, `%f` a float, `%t` any value as text.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "format_string",
+              "type": "STRING",
+              "snippet": "'{%s}'"
+            },
+            {
+              "name": "value",
+              "type": "ANY",
+              "repeated": true
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "example": {
+        "sql": "FORMAT('%s has %d rows', 'orders', 42)",
+        "result": "'orders has 42 rows'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#format_string"
+    },
+    {
+      "name": "REGEXP_CONTAINS",
+      "doc": "Whether `value` has a match of the regular expression anywhere in it.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "regexp",
+              "type": "STRING",
+              "doc": "a regular expression (RE2); a raw string r'...' saves escaping backslashes",
+              "snippet": "r'{regex}'"
+            }
+          ],
+          "returns": "BOOL"
+        }
+      ],
+      "example": {
+        "sql": "REGEXP_CONTAINS('foo@example.com', r'@example\\.com$')",
+        "result": "TRUE"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_contains"
+    },
+    {
+      "name": "REGEXP_EXTRACT",
+      "doc": "Returns the first part of `value` that matches the regular expression, or NULL. With a capturing group, returns what the group matched.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "regexp",
+              "type": "STRING",
+              "doc": "a regular expression (RE2); a raw string r'...' saves escaping backslashes",
+              "snippet": "r'{regex}'"
+            },
+            {
+              "name": "position",
+              "type": "INT64",
+              "doc": "where to start searching. 1 when left out",
+              "optional": true
+            },
+            {
+              "name": "occurrence",
+              "type": "INT64",
+              "doc": "which match to return. 1 when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "REGEXP_EXTRACT('order-123', r'\\d+')",
+        "result": "'123'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_extract"
+    },
+    {
+      "name": "REGEXP_EXTRACT_ALL",
+      "doc": "Returns every part of `value` that matches the regular expression.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "regexp",
+              "type": "STRING",
+              "doc": "a regular expression (RE2); a raw string r'...' saves escaping backslashes",
+              "snippet": "r'{regex}'"
+            }
+          ],
+          "returns": "ARRAY<STRING> | ARRAY<BYTES>"
+        }
+      ],
+      "example": {
+        "sql": "REGEXP_EXTRACT_ALL('a1b22c333', r'\\d+')",
+        "result": "['1', '22', '333']"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_extract_all"
+    },
+    {
+      "name": "REGEXP_REPLACE",
+      "doc": "Replaces every match of the regular expression. In `replacement`, `\\1` is what the first group matched.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "regexp",
+              "type": "STRING",
+              "doc": "a regular expression (RE2); a raw string r'...' saves escaping backslashes",
+              "snippet": "r'{regex}'"
+            },
+            {
+              "name": "replacement",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "REGEXP_REPLACE('2024-03-31', r'(\\d+)-(\\d+)-(\\d+)', r'\\3/\\2/\\1')",
+        "result": "'31/03/2024'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/string_functions#regexp_replace"
+    },
+    {
+      "name": "COUNT",
+      "doc": "Counts the rows, or the rows where the expression is not NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "ANY",
+              "doc": "`*` counts every row"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "window": "optional",
+      "notes": [
+        "Takes `DISTINCT` before the expression to count each value once."
+      ],
+      "example": {
+        "sql": "COUNT(DISTINCT customer_id)",
+        "result": "the number of different customers"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#count"
+    },
+    {
+      "name": "COUNTIF",
+      "doc": "Counts the rows where the condition is TRUE.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "condition",
+              "type": "BOOL"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "window": "optional",
+      "example": {
+        "sql": "COUNTIF(amount > 100)",
+        "result": "the number of rows with an amount over 100"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#countif"
+    },
+    {
+      "name": "SUM",
+      "doc": "Returns the sum of the values that are not NULL, or NULL if there are none.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64 | INTERVAL"
+            }
+          ],
+          "returns": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64 | INTERVAL"
+        }
+      ],
+      "window": "optional",
+      "notes": [
+        "Takes `DISTINCT` before the expression to add each value once."
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#sum"
+    },
+    {
+      "name": "AVG",
+      "doc": "Returns the average of the values that are not NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64 | INTERVAL"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "window": "optional",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#avg"
+    },
+    {
+      "name": "MIN",
+      "doc": "Returns the smallest value that is not NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "any orderable type"
+            }
+          ],
+          "returns": "same type as the expression"
+        }
+      ],
+      "window": "optional",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#min"
+    },
+    {
+      "name": "MAX",
+      "doc": "Returns the largest value that is not NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "any orderable type"
+            }
+          ],
+          "returns": "same type as the expression"
+        }
+      ],
+      "window": "optional",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#max"
+    },
+    {
+      "name": "MAX_BY",
+      "doc": "Returns the value of `x` on the row where `y` is largest.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "x",
+              "type": "ANY",
+              "doc": "the value to return"
+            },
+            {
+              "name": "y",
+              "type": "any orderable type",
+              "doc": "the value to compare"
+            }
+          ],
+          "returns": "same type as x"
+        }
+      ],
+      "example": {
+        "sql": "MAX_BY(status, updated_at)",
+        "result": "the latest status"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#max_by"
+    },
+    {
+      "name": "MIN_BY",
+      "doc": "Returns the value of `x` on the row where `y` is smallest.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "x",
+              "type": "ANY",
+              "doc": "the value to return"
+            },
+            {
+              "name": "y",
+              "type": "any orderable type",
+              "doc": "the value to compare"
+            }
+          ],
+          "returns": "same type as x"
+        }
+      ],
+      "example": {
+        "sql": "MIN_BY(status, updated_at)",
+        "result": "the first status"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#min_by"
+    },
+    {
+      "name": "ANY_VALUE",
+      "doc": "Returns the expression for some row of the group, chosen by BigQuery. NULL only if every row has NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "ANY"
+            }
+          ],
+          "returns": "same type as the expression"
+        }
+      ],
+      "window": "optional",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#any_value"
+    },
+    {
+      "name": "ARRAY_AGG",
+      "doc": "Collects the values of a group into an array.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "any type but ARRAY"
+            }
+          ],
+          "returns": "ARRAY"
+        }
+      ],
+      "window": "optional",
+      "notes": [
+        "Also takes `DISTINCT`, `IGNORE NULLS` (it fails on a NULL otherwise), `ORDER BY key` and `LIMIT n` inside the parentheses."
+      ],
+      "example": {
+        "sql": "ARRAY_AGG(fruit ORDER BY fruit LIMIT 2)",
+        "result": "['apple', 'banana']"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#array_agg"
+    },
+    {
+      "name": "STRING_AGG",
+      "doc": "Joins the values of a group into one string.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "delimiter",
+              "type": "STRING | BYTES",
+              "doc": "',' when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "window": "optional",
+      "notes": [
+        "Also takes `DISTINCT`, `ORDER BY key` and `LIMIT n` inside the parentheses."
+      ],
+      "example": {
+        "sql": "STRING_AGG(fruit, ', ' ORDER BY fruit)",
+        "result": "'apple, banana, pear'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#string_agg"
+    },
+    {
+      "name": "LOGICAL_AND",
+      "doc": "Whether the condition is TRUE for every row where it is not NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "condition",
+              "type": "BOOL"
+            }
+          ],
+          "returns": "BOOL"
+        }
+      ],
+      "window": "optional",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#logical_and"
+    },
+    {
+      "name": "LOGICAL_OR",
+      "doc": "Whether the condition is TRUE for at least one row.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "condition",
+              "type": "BOOL"
+            }
+          ],
+          "returns": "BOOL"
+        }
+      ],
+      "window": "optional",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/aggregate_functions#logical_or"
+    },
+    {
+      "name": "APPROX_COUNT_DISTINCT",
+      "doc": "Estimates the number of different values: faster and cheaper than COUNT(DISTINCT ...) on many rows.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "ANY"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/approximate_aggregate_functions#approx_count_distinct"
+    },
+    {
+      "name": "APPROX_QUANTILES",
+      "doc": "Estimates the boundaries of `number` equal groups of the values: `number + 1` values, from the minimum to the maximum.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "any orderable type"
+            },
+            {
+              "name": "number",
+              "type": "INT64",
+              "doc": "how many groups; 100 gives percentiles"
+            }
+          ],
+          "returns": "ARRAY"
+        }
+      ],
+      "example": {
+        "sql": "APPROX_QUANTILES(amount, 2)[OFFSET(1)]",
+        "result": "the approximate median"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/approximate_aggregate_functions#approx_quantiles"
+    },
+    {
+      "name": "ROW_NUMBER",
+      "doc": "Numbers the rows of each partition 1, 2, 3, ... in the order of ORDER BY, with no ties.",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "INT64"
+        }
+      ],
+      "window": "required",
+      "notes": [
+        "Keep the latest row of each key with `QUALIFY ROW_NUMBER() OVER (PARTITION BY key ORDER BY updated_at DESC) = 1`."
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#row_number"
+    },
+    {
+      "name": "RANK",
+      "doc": "Ranks the rows of each partition; ties get the same rank and leave a gap (1, 1, 3).",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "INT64"
+        }
+      ],
+      "window": "required",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#rank"
+    },
+    {
+      "name": "DENSE_RANK",
+      "doc": "Ranks the rows of each partition; ties get the same rank and leave no gap (1, 1, 2).",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "INT64"
+        }
+      ],
+      "window": "required",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#dense_rank"
+    },
+    {
+      "name": "PERCENT_RANK",
+      "doc": "Returns the rank of the row in its partition as a fraction from 0 to 1.",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "FLOAT64"
+        }
+      ],
+      "window": "required",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#percent_rank"
+    },
+    {
+      "name": "NTILE",
+      "doc": "Splits the rows of each partition into `n` buckets as equal as can be, and returns the bucket of the row, from 1.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "n",
+              "type": "INT64",
+              "doc": "a constant"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "window": "required",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/numbering_functions#ntile"
+    },
+    {
+      "name": "LAG",
+      "doc": "Returns the value from a row before the current one in the partition.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "ANY"
+            },
+            {
+              "name": "offset",
+              "type": "INT64",
+              "doc": "how many rows back. 1 when left out",
+              "optional": true
+            },
+            {
+              "name": "default",
+              "type": "same type as value",
+              "doc": "returned when there is no such row. NULL when left out",
+              "optional": true
+            }
+          ],
+          "returns": "same type as the value"
+        }
+      ],
+      "window": "required",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#lag"
+    },
+    {
+      "name": "LEAD",
+      "doc": "Returns the value from a row after the current one in the partition.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "ANY"
+            },
+            {
+              "name": "offset",
+              "type": "INT64",
+              "doc": "how many rows on. 1 when left out",
+              "optional": true
+            },
+            {
+              "name": "default",
+              "type": "same type as value",
+              "doc": "returned when there is no such row. NULL when left out",
+              "optional": true
+            }
+          ],
+          "returns": "same type as the value"
+        }
+      ],
+      "window": "required",
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#lead"
+    },
+    {
+      "name": "FIRST_VALUE",
+      "doc": "Returns the value on the first row of the window frame.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "ANY"
+            }
+          ],
+          "returns": "same type as the value"
+        }
+      ],
+      "window": "required",
+      "notes": [
+        "Takes `IGNORE NULLS` after the value to skip NULLs.",
+        "With ORDER BY, the default window frame ends at the current row: add `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` to look at the whole partition."
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#first_value"
+    },
+    {
+      "name": "LAST_VALUE",
+      "doc": "Returns the value on the last row of the window frame.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "ANY"
+            }
+          ],
+          "returns": "same type as the value"
+        }
+      ],
+      "window": "required",
+      "notes": [
+        "Takes `IGNORE NULLS` after the value to skip NULLs.",
+        "With ORDER BY, the default window frame ends at the current row: add `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` to look at the whole partition."
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#last_value"
+    },
+    {
+      "name": "NTH_VALUE",
+      "doc": "Returns the value on the `n`th row of the window frame, from 1.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "ANY"
+            },
+            {
+              "name": "n",
+              "type": "INT64"
+            }
+          ],
+          "returns": "same type as the value"
+        }
+      ],
+      "window": "required",
+      "notes": [
+        "With ORDER BY, the default window frame ends at the current row: add `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` to look at the whole partition."
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#nth_value"
+    },
+    {
+      "name": "PERCENTILE_CONT",
+      "doc": "Returns the given percentile of the values in the partition, interpolating between rows.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "percentile",
+              "type": "FLOAT64",
+              "doc": "from 0 to 1; 0.5 is the median"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "window": "required",
+      "over": "PARTITION BY {partition_expr}",
+      "notes": [
+        "Its OVER clause takes PARTITION BY only, no ORDER BY."
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#percentile_cont"
+    },
+    {
+      "name": "IF",
+      "doc": "Returns `true_result` if the condition is TRUE, else `else_result`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "condition",
+              "type": "BOOL"
+            },
+            {
+              "name": "true_result",
+              "type": "ANY"
+            },
+            {
+              "name": "else_result",
+              "type": "ANY",
+              "doc": "the same type as true_result"
+            }
+          ],
+          "returns": "the type of the results"
+        }
+      ],
+      "example": {
+        "sql": "IF(amount > 0, 'paid', 'free')",
+        "result": "'paid' when the amount is over 0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#if"
+    },
+    {
+      "name": "IFNULL",
+      "doc": "Returns `expr`, or `null_result` when `expr` is NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expr",
+              "type": "ANY"
+            },
+            {
+              "name": "null_result",
+              "type": "ANY",
+              "doc": "the same type as expr"
+            }
+          ],
+          "returns": "the type of the arguments"
+        }
+      ],
+      "example": {
+        "sql": "IFNULL(discount, 0)",
+        "result": "0 when there is no discount"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#ifnull"
+    },
+    {
+      "name": "COALESCE",
+      "doc": "Returns the first argument that is not NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expr",
+              "type": "ANY"
+            },
+            {
+              "name": "expr",
+              "type": "ANY",
+              "doc": "the same type as the others",
+              "repeated": true
+            }
+          ],
+          "returns": "the type of the arguments"
+        }
+      ],
+      "example": {
+        "sql": "COALESCE(nickname, first_name, 'unknown')",
+        "result": "the first of them that is set"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#coalesce"
+    },
+    {
+      "name": "NULLIF",
+      "doc": "Returns NULL if `expr` equals `expr_to_match`, else `expr`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expr",
+              "type": "ANY"
+            },
+            {
+              "name": "expr_to_match",
+              "type": "ANY"
+            }
+          ],
+          "returns": "the type of expr"
+        }
+      ],
+      "example": {
+        "sql": "SAFE_DIVIDE(total, NULLIF(count, 0))",
+        "result": "NULL instead of an error when count is 0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/conditional_expressions#nullif"
+    },
+    {
+      "name": "CAST",
+      "doc": "Converts a value to another type. Fails the query when it cannot; SAFE_CAST returns NULL instead.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "ANY"
+            },
+            {
+              "name": "type",
+              "type": "type name",
+              "doc": "e.g. INT64, STRING, DATE, ARRAY<STRING>",
+              "before": "AS",
+              "snippet": "{STRING|INT64|NUMERIC|BIGNUMERIC|FLOAT64|BOOL|DATE|DATETIME|TIMESTAMP|TIME|BYTES|JSON}"
+            },
+            {
+              "name": "format",
+              "type": "STRING",
+              "doc": "how to read or write a string, e.g. 'YYYY-MM-DD'",
+              "optional": true,
+              "before": "FORMAT"
+            }
+          ],
+          "returns": "the type named"
+        }
+      ],
+      "example": {
+        "sql": "CAST('42' AS INT64)",
+        "result": "42"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#cast"
+    },
+    {
+      "name": "SAFE_CAST",
+      "doc": "Converts a value to another type, or returns NULL when it cannot.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "expression",
+              "type": "ANY"
+            },
+            {
+              "name": "type",
+              "type": "type name",
+              "doc": "e.g. INT64, STRING, DATE, ARRAY<STRING>",
+              "before": "AS",
+              "snippet": "{STRING|INT64|NUMERIC|BIGNUMERIC|FLOAT64|BOOL|DATE|DATETIME|TIMESTAMP|TIME|BYTES|JSON}"
+            },
+            {
+              "name": "format",
+              "type": "STRING",
+              "doc": "how to read or write a string, e.g. 'YYYY-MM-DD'",
+              "optional": true,
+              "before": "FORMAT"
+            }
+          ],
+          "returns": "the type named"
+        }
+      ],
+      "example": {
+        "sql": "SAFE_CAST('apple' AS INT64)",
+        "result": "NULL"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#safe_casting"
+    },
+    {
+      "name": "JSON_VALUE",
+      "doc": "Returns the scalar value at a JSON path as a STRING, without quotes. NULL for an object or an array.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_expr",
+              "type": "STRING | JSON"
+            },
+            {
+              "name": "json_path",
+              "type": "STRING",
+              "doc": "a JSONPath such as '$.user.name'. '$' when left out",
+              "optional": true,
+              "snippet": "'{$.field}'"
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "example": {
+        "sql": "JSON_VALUE('{\"name\": \"Ada\"}', '$.name')",
+        "result": "'Ada'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#json_value"
+    },
+    {
+      "name": "JSON_QUERY",
+      "doc": "Returns the JSON value at a JSON path: an object, an array or a scalar, as JSON text.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_expr",
+              "type": "STRING | JSON"
+            },
+            {
+              "name": "json_path",
+              "type": "STRING",
+              "doc": "a JSONPath such as '$.items[0]'",
+              "snippet": "'{$.field}'"
+            }
+          ],
+          "returns": "STRING | JSON"
+        }
+      ],
+      "example": {
+        "sql": "JSON_QUERY('{\"a\": {\"b\": 1}}', '$.a')",
+        "result": "'{\"b\":1}'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#json_query"
+    },
+    {
+      "name": "JSON_EXTRACT",
+      "doc": "Returns the JSON value at a JSON path. JSON_QUERY is its newer name.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_expr",
+              "type": "STRING | JSON"
+            },
+            {
+              "name": "json_path",
+              "type": "STRING",
+              "doc": "a JSONPath such as '$.items[0]'",
+              "snippet": "'{$.field}'"
+            }
+          ],
+          "returns": "STRING | JSON"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#json_extract"
+    },
+    {
+      "name": "JSON_EXTRACT_SCALAR",
+      "doc": "Returns the scalar value at a JSON path as a STRING. JSON_VALUE is its newer name.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_expr",
+              "type": "STRING | JSON"
+            },
+            {
+              "name": "json_path",
+              "type": "STRING",
+              "doc": "a JSONPath such as '$.user.name'. '$' when left out",
+              "optional": true,
+              "snippet": "'{$.field}'"
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#json_extract_scalar"
+    },
+    {
+      "name": "JSON_QUERY_ARRAY",
+      "doc": "Returns the JSON array at a JSON path as an ARRAY of its elements.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_expr",
+              "type": "STRING | JSON"
+            },
+            {
+              "name": "json_path",
+              "type": "STRING",
+              "doc": "a JSONPath such as '$.items'. '$' when left out",
+              "optional": true,
+              "snippet": "'{$.field}'"
+            }
+          ],
+          "returns": "ARRAY<STRING> | ARRAY<JSON>"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#json_query_array"
+    },
+    {
+      "name": "JSON_VALUE_ARRAY",
+      "doc": "Returns the JSON array of scalars at a JSON path as an ARRAY<STRING>.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_expr",
+              "type": "STRING | JSON"
+            },
+            {
+              "name": "json_path",
+              "type": "STRING",
+              "doc": "a JSONPath such as '$.tags'. '$' when left out",
+              "optional": true,
+              "snippet": "'{$.field}'"
+            }
+          ],
+          "returns": "ARRAY<STRING>"
+        }
+      ],
+      "example": {
+        "sql": "JSON_VALUE_ARRAY('{\"tags\": [\"a\", \"b\"]}', '$.tags')",
+        "result": "['a', 'b']"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#json_value_array"
+    },
+    {
+      "name": "PARSE_JSON",
+      "doc": "Reads a JSON string as a JSON value.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "json_string",
+              "type": "STRING"
+            }
+          ],
+          "returns": "JSON"
+        }
+      ],
+      "example": {
+        "sql": "PARSE_JSON('{\"a\": 1}')",
+        "result": "JSON '{\"a\":1}'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#parse_json"
+    },
+    {
+      "name": "TO_JSON_STRING",
+      "doc": "Returns any value as JSON text.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "ANY"
+            },
+            {
+              "name": "pretty_print",
+              "type": "BOOL",
+              "doc": "TRUE adds line breaks and indents. FALSE when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING"
+        }
+      ],
+      "example": {
+        "sql": "TO_JSON_STRING(STRUCT(1 AS id, 'Ada' AS name))",
+        "result": "'{\"id\":1,\"name\":\"Ada\"}'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/json_functions#to_json_string"
+    },
+    {
+      "name": "ARRAY_LENGTH",
+      "doc": "Returns the number of elements of an array, or NULL for a NULL array.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "array_expr",
+              "type": "ARRAY"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "ARRAY_LENGTH([1, 2, 3])",
+        "result": "3"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#array_length"
+    },
+    {
+      "name": "ARRAY_TO_STRING",
+      "doc": "Joins the elements of an array of strings with a delimiter.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "array_expr",
+              "type": "ARRAY<STRING> | ARRAY<BYTES>"
+            },
+            {
+              "name": "delimiter",
+              "type": "STRING | BYTES"
+            },
+            {
+              "name": "null_text",
+              "type": "STRING | BYTES",
+              "doc": "put in place of a NULL element. NULL elements are left out when left out",
+              "optional": true
+            }
+          ],
+          "returns": "STRING | BYTES"
+        }
+      ],
+      "example": {
+        "sql": "ARRAY_TO_STRING(['a', 'b', 'c'], '-')",
+        "result": "'a-b-c'"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#array_to_string"
+    },
+    {
+      "name": "ARRAY_CONCAT",
+      "doc": "Joins arrays of the same element type into one.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "array_expr",
+              "type": "ARRAY"
+            },
+            {
+              "name": "array_expr",
+              "type": "ARRAY",
+              "repeated": true
+            }
+          ],
+          "returns": "ARRAY"
+        }
+      ],
+      "example": {
+        "sql": "ARRAY_CONCAT([1, 2], [3])",
+        "result": "[1, 2, 3]"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#array_concat"
+    },
+    {
+      "name": "ARRAY_REVERSE",
+      "doc": "Returns the array with its elements in reverse order.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "array_expr",
+              "type": "ARRAY"
+            }
+          ],
+          "returns": "ARRAY"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#array_reverse"
+    },
+    {
+      "name": "GENERATE_ARRAY",
+      "doc": "Returns an array of numbers from `start` to `end`, both included, `step` apart.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "start",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "end",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "step",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64",
+              "doc": "1 when left out",
+              "optional": true
+            }
+          ],
+          "returns": "ARRAY"
+        }
+      ],
+      "example": {
+        "sql": "GENERATE_ARRAY(0, 10, 5)",
+        "result": "[0, 5, 10]"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_array"
+    },
+    {
+      "name": "SAFE_DIVIDE",
+      "doc": "Divides `X` by `Y`, like `X / Y`, but returns NULL instead of failing when `Y` is 0.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64",
+              "doc": "the dividend"
+            },
+            {
+              "name": "Y",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64",
+              "doc": "the divisor"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "SAFE_DIVIDE(10, 0)",
+        "result": "NULL"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#safe_divide"
+    },
+    {
+      "name": "ROUND",
+      "doc": "Rounds `X` to `N` decimal places; halfway cases round away from zero.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "N",
+              "type": "INT64",
+              "doc": "decimal places; negative rounds to tens, hundreds, ... 0 when left out",
+              "optional": true
+            },
+            {
+              "name": "rounding_mode",
+              "type": "STRING",
+              "doc": "for NUMERIC and BIGNUMERIC only",
+              "optional": true,
+              "values": [
+                "'ROUND_HALF_AWAY_FROM_ZERO'",
+                "'ROUND_HALF_EVEN'"
+              ]
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "ROUND(2.567, 2)",
+        "result": "2.57"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#round"
+    },
+    {
+      "name": "TRUNC",
+      "doc": "Drops the decimal places of `X` beyond `N`, rounding toward zero.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "N",
+              "type": "INT64",
+              "doc": "decimal places. 0 when left out",
+              "optional": true
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "TRUNC(-2.7)",
+        "result": "-2.0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#trunc"
+    },
+    {
+      "name": "ABS",
+      "doc": "Returns the absolute value of `X`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            }
+          ],
+          "returns": "same type as X"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#abs"
+    },
+    {
+      "name": "CEIL",
+      "doc": "Returns the smallest whole number not less than `X`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "CEIL(2.1)",
+        "result": "3.0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#ceil"
+    },
+    {
+      "name": "FLOOR",
+      "doc": "Returns the largest whole number not greater than `X`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "FLOOR(2.9)",
+        "result": "2.0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#floor"
+    },
+    {
+      "name": "MOD",
+      "doc": "Returns the remainder of `X` divided by `Y`, with the sign of `X`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC"
+            },
+            {
+              "name": "Y",
+              "type": "INT64 | NUMERIC | BIGNUMERIC"
+            }
+          ],
+          "returns": "INT64 | NUMERIC | BIGNUMERIC"
+        }
+      ],
+      "example": {
+        "sql": "MOD(7, 3)",
+        "result": "1"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#mod"
+    },
+    {
+      "name": "DIV",
+      "doc": "Divides `X` by `Y` and returns the whole part, rounding toward zero.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC"
+            },
+            {
+              "name": "Y",
+              "type": "INT64 | NUMERIC | BIGNUMERIC"
+            }
+          ],
+          "returns": "INT64 | NUMERIC | BIGNUMERIC"
+        }
+      ],
+      "example": {
+        "sql": "DIV(7, 2)",
+        "result": "3"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#div"
+    },
+    {
+      "name": "POW",
+      "doc": "Returns `X` raised to the power `Y`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "Y",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "POW(2, 10)",
+        "result": "1024.0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#pow"
+    },
+    {
+      "name": "SQRT",
+      "doc": "Returns the square root of `X`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#sqrt"
+    },
+    {
+      "name": "LOG",
+      "doc": "Returns the logarithm of `X` to base `Y`, or the natural logarithm with no `Y`.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64"
+            },
+            {
+              "name": "Y",
+              "type": "INT64 | NUMERIC | BIGNUMERIC | FLOAT64",
+              "doc": "the base; e when left out",
+              "optional": true
+            }
+          ],
+          "returns": "FLOAT64 (NUMERIC or BIGNUMERIC for those)"
+        }
+      ],
+      "example": {
+        "sql": "LOG(100, 10)",
+        "result": "2.0"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#log"
+    },
+    {
+      "name": "GREATEST",
+      "doc": "Returns the largest of the arguments; NULL if any of them is NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "any orderable type"
+            },
+            {
+              "name": "X",
+              "type": "any orderable type",
+              "repeated": true
+            }
+          ],
+          "returns": "the type of the arguments"
+        }
+      ],
+      "example": {
+        "sql": "GREATEST(3, 7, 5)",
+        "result": "7"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#greatest"
+    },
+    {
+      "name": "LEAST",
+      "doc": "Returns the smallest of the arguments; NULL if any of them is NULL.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "X",
+              "type": "any orderable type"
+            },
+            {
+              "name": "X",
+              "type": "any orderable type",
+              "repeated": true
+            }
+          ],
+          "returns": "the type of the arguments"
+        }
+      ],
+      "example": {
+        "sql": "LEAST(3, 7, 5)",
+        "result": "3"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#least"
+    },
+    {
+      "name": "RAND",
+      "doc": "Returns a random number from 0 (included) to 1 (not included).",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "FLOAT64"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/mathematical_functions#rand"
+    },
+    {
+      "name": "GENERATE_UUID",
+      "doc": "Returns a random UUID as a STRING of 36 characters.",
+      "signatures": [
+        {
+          "params": [],
+          "returns": "STRING"
+        }
+      ],
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/utility_functions#generate_uuid"
+    },
+    {
+      "name": "FARM_FINGERPRINT",
+      "doc": "Returns a stable INT64 hash of a value, the same on every run.",
+      "signatures": [
+        {
+          "params": [
+            {
+              "name": "value",
+              "type": "STRING | BYTES"
+            }
+          ],
+          "returns": "INT64"
+        }
+      ],
+      "example": {
+        "sql": "MOD(ABS(FARM_FINGERPRINT(user_id)), 10)",
+        "result": "a stable bucket from 0 to 9 for each user"
+      },
+      "url": "https://cloud.google.com/bigquery/docs/reference/standard-sql/hash_functions#farm_fingerprint"
+    }
+  ]
+}

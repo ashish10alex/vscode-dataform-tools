@@ -77,6 +77,10 @@
                 "path": "./snippets/bigquery.code-snippets.json"
             },
             {
+                "language": "sqlx",
+                "path": "./snippets/bigquery-functions.code-snippets.json"
+            },
+            {
                 "language": "javascript",
                 "path": "./snippets/dataform.code-snippets.json"
             }

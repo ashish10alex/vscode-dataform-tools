@@ -280,6 +280,34 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
         assert.deepStrictEqual(bare, ['order_id [stg_orders] (INT64 \u00B7 stg_orders (view))', 'status [stg_orders] (STRING \u00B7 stg_orders (view))']);
     });
 
+    test('a BigQuery function has its hover, signature help and completion, outside Jinja, until the setting turns them off', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        const [hover] = await hovers(document, 'sum(p.amount)', 1);
+        assert.ok(hover?.startsWith('```sql\nSUM(expression: '), hover);
+        const help = await vscode.commands.executeCommand<vscode.SignatureHelp>('vscode.executeSignatureHelpProvider', document.uri, document.positionAt(document.getText().indexOf('sum(p.amount)') + 'sum('.length), '(');
+        assert.ok(help?.signatures[0].label.startsWith('SUM(expression: '), JSON.stringify(help));
+        // What is offered at the end of `line`, written as the first line of the file, that is a function
+        const functions = async (line: string) => {
+            const edit = new vscode.WorkspaceEdit();
+            edit.insert(document.uri, new vscode.Position(0, 0), `${line}\n`);
+            await vscode.workspace.applyEdit(edit);
+            try {
+                const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, new vscode.Position(0, line.length));
+                return list.items.filter((item) => item.kind === vscode.CompletionItemKind.Function).map((item) => (typeof item.label === 'string' ? item.label : item.label.label));
+            } finally {
+                await vscode.commands.executeCommand('workbench.action.files.revert');
+            }
+        };
+        assert.ok((await functions('select date_tr')).includes('DATE_TRUNC'));
+        assert.deepStrictEqual(await functions('{{ date_tr'), []);
+        await settings().update('dbtEditorFeatures', 'off', vscode.ConfigurationTarget.Global);
+        try {
+            await until('the hover to go', () => hovers(document, 'sum(p.amount)', 1), (found) => found.length === 0);
+        } finally {
+            await settings().update('dbtEditorFeatures', 'auto', vscode.ConfigurationTarget.Global);
+        }
+    });
+
     test('the held schemas are dropped when the Project compiles again', async () => {
         assert.ok(api.heldTableCount(workspaceFolder!) > 0);
         const document = await show('models/marts/fct_orders.sql');

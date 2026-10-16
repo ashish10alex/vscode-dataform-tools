@@ -15,6 +15,7 @@ import { tableHoverText } from './tableHoverText';
 import { fileBackendHints, onDidChangeProjects, projects } from './index';
 import type { ProjectState } from './registry';
 import { extensionConfiguration } from './settings';
+import { registerBigQueryFunctionProviders } from '../bigquery/functionProviders';
 
 /*
  * The editor features of a dbt Project (Step 7 of the build plan). No language is claimed for `.sql`: each provider
@@ -258,6 +259,8 @@ function register() {
         registered.push(vscode.languages.registerHoverProvider(dbtSelector(project.root, 'sql'), new DbtHoverProvider()));
         // Asked for at a quote, which starts an argument, and at a dot, which follows an alias
         registered.push(vscode.languages.registerCompletionItemProvider(dbtSelector(project.root, 'sql'), new DbtCompletionProvider(), "'", '"', '.'));
+        // BigQuery functions: their hover and signature help, and the completions a .sqlx file has from snippet files
+        registered.push(...registerBigQueryFunctionProviders(dbtSelector(project.root, 'sql'), true));
     }
     // Said once for each state, not on every look
     if (says.join('\n') !== said) {
