@@ -4,7 +4,7 @@ import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
 import { BIGQUERY_FUNCTIONS, functionHoverMarkdown, functionNamed, generatedSnippetsText, signatureLabel, snippetBody, withoutTabStops } from '../../bigquery/functionCatalog';
-import { activeParameter, callAt, functionNameAt, insideJinja } from '../../bigquery/functionCall';
+import { activeParameter, callAt, functionNameAt, inSql, insideJinja } from '../../bigquery/functionCall';
 import { registerBigQueryFunctionProviders } from '../../bigquery/functionProviders';
 
 const snippets = path.resolve(__dirname, '..', '..', '..', '..', 'snippets');
@@ -137,6 +137,16 @@ suite('BigQuery functions: where the cursor is', () => {
         assert.strictEqual(insideJinja('select {{ ref('), true);
         assert.strictEqual(insideJinja("select {{ ref('a') }} where {% if "), true);
         assert.strictEqual(insideJinja("select {{ ref('a') }}, date_tr"), false);
+        // A delimiter in a closed Jinja comment opens nothing
+        assert.strictEqual(insideJinja('{# note: {{ example #}\nselect date_tr'), false);
+        assert.strictEqual(insideJinja('{# note #} {{ ref('), true);
+    });
+
+    test('in SQL, and not in a string, a comment or Jinja', () => {
+        assert.strictEqual(inSql('select '), true);
+        assert.strictEqual(inSql("select '"), false);
+        assert.strictEqual(inSql('select -- '), false);
+        assert.strictEqual(inSql('select {{ '), false);
     });
 });
 
@@ -163,6 +173,16 @@ suite('BigQuery functions: the editor', () => {
         assert.ok(catalogued.includes('SAFE_DIVIDE(X: INT64 | NUMERIC | BIGNUMERIC | FLOAT64, Y:'), catalogued);
         const [handWritten] = await text(28);
         assert.ok(handWritten.includes('ST_AREA(geography_expression') && !handWritten.includes('${'), handWritten);
+    });
+
+    test('no hover or signature help in a string, a comment or Jinja', async () => {
+        const document = await sql("SELECT 'SAFE_DIVIDE(a', -- SAFE_DIVIDE(a\n{{ concat(a, ");
+        const hover = (needle: string) => vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', document.uri, document.positionAt(document.getText().indexOf(needle) + 1));
+        assert.deepStrictEqual(await hover("SAFE_DIVIDE(a'"), []);
+        assert.deepStrictEqual(await hover('SAFE_DIVIDE(a\n'), []);
+        assert.deepStrictEqual(await hover('concat('), []);
+        const help = await vscode.commands.executeCommand<vscode.SignatureHelp | undefined>('vscode.executeSignatureHelpProvider', document.uri, document.positionAt(document.getText().length), ',');
+        assert.ok(!help || help.signatures.length === 0, JSON.stringify(help));
     });
 
     test('completions of functions, as snippets, but not in a string', async () => {

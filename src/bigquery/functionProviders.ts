@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import handWrittenFile from '../../snippets/bigquery.code-snippets.json';
 import { BIGQUERY_FUNCTIONS, BigQueryFunction, functionHoverMarkdown, functionNamed, paramText, signatureLabel, snippetBody, withoutTabStops } from './functionCatalog';
-import { activeParameter, callAt, functionNameAt, insideJinja, scan } from './functionCall';
+import { activeParameter, callAt, functionNameAt, inSql } from './functionCall';
 
 /*
  * The help the editor gives on a BigQuery function: the hover over its name, the signature help inside its
@@ -43,7 +43,7 @@ function handWrittenHover(snippet: HandWrittenSnippet): vscode.MarkdownString {
 export class BigQueryFunctionHoverProvider implements vscode.HoverProvider {
     provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.Hover | undefined {
         const at = functionNameAt(document.lineAt(position.line).text, position.character);
-        if (!at) {
+        if (!at || !inSql(document.getText(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(position.line, at.start))))) {
             return undefined;
         }
         const range = new vscode.Range(position.line, at.start, position.line, at.end);
@@ -58,7 +58,8 @@ export class BigQueryFunctionHoverProvider implements vscode.HoverProvider {
 
 export class BigQuerySignatureHelpProvider implements vscode.SignatureHelpProvider {
     provideSignatureHelp(document: vscode.TextDocument, position: vscode.Position, _token: vscode.CancellationToken, context: vscode.SignatureHelpContext): vscode.SignatureHelp | undefined {
-        const call = callAt(document.getText(new vscode.Range(new vscode.Position(0, 0), position)));
+        const before = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
+        const call = inSql(before) ? callAt(before) : undefined;
         const fn = call && functionNamed(call.name);
         if (!call || !fn) {
             return undefined;
@@ -109,7 +110,7 @@ let completionItems: vscode.CompletionItem[] | undefined;
 export class BigQueryFunctionCompletionProvider implements vscode.CompletionItemProvider {
     provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] | undefined {
         const before = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
-        if (!scan(before).inCode || insideJinja(before)) {
+        if (!inSql(before)) {
             return undefined;
         }
         completionItems ??= [

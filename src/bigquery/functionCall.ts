@@ -144,5 +144,12 @@ export function functionNameAt(line: string, character: number): { name: string;
 
 /** Whether the end of a dbt file's text is inside `{{ ... }}` or `{% ... %}`, where Jinja is written and not SQL */
 export function insideJinja(text: string): boolean {
-    return text.lastIndexOf('{{') > text.lastIndexOf('}}') || text.lastIndexOf('{%') > text.lastIndexOf('%}');
+    // A `{{` written in a Jinja comment opens nothing
+    const code = text.replace(/\{#[\s\S]*?#\}/g, '');
+    return code.lastIndexOf('{{') > code.lastIndexOf('}}') || code.lastIndexOf('{%') > code.lastIndexOf('%}');
+}
+
+/** Whether the end of the text is in SQL: not in a string, a comment or Jinja, where a function's help would mislead */
+export function inSql(text: string): boolean {
+    return scan(text).inCode && !insideJinja(text);
 }
