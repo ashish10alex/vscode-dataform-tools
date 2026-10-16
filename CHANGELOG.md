@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.8](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.7...v2.0.8) (2026-10-16)
+
+
+### Features
+
+* query a model's table in a scratch query from the palette, starting with a SELECT or its compiled SQL ([#540](https://github.com/ashish10alex/vscode-dataform-tools/issues/540)) ([a6cc5bd](https://github.com/ashish10alex/vscode-dataform-tools/commit/a6cc5bd743b0a63435a8c1fafbfdc274afbb58e6))
+
 ### [2.0.7](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.6...v2.0.7) (2026-10-15)
 
 
