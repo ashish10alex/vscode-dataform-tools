@@ -5,6 +5,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/app/components/site-header";
 import { SiteFooter } from "@/app/components/site-footer";
+import { HideOnEmbed } from "@/app/components/hide-on-embed";
 import { site } from "@/lib/site";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -43,9 +44,13 @@ export default function RootLayout({
       <body className={`${sans.variable} ${mono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <div className="flex min-h-screen flex-col">
-            <SiteHeader />
+            <HideOnEmbed>
+              <SiteHeader />
+            </HideOnEmbed>
             {children}
-            <SiteFooter />
+            <HideOnEmbed>
+              <SiteFooter />
+            </HideOnEmbed>
           </div>
         </ThemeProvider>
       </body>
