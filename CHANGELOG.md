@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.9...v2.0.10) (2026-10-20)
+
+
+### Features
+
+* add a command that opens an empty scratch query ([#544](https://github.com/ashish10alex/vscode-dataform-tools/issues/544)) ([5552ebc](https://github.com/ashish10alex/vscode-dataform-tools/commit/5552ebc281904fb5f29352c29c04ee31af53f08c))
+* allow embed for personal website ([7d05443](https://github.com/ashish10alex/vscode-dataform-tools/commit/7d054430ee8c71a83fbd498040caea70abbbe3be))
+* column and table completions: types, descriptions, STRUCT fields, and tables only after FROM ([#543](https://github.com/ashish10alex/vscode-dataform-tools/issues/543)) ([1db6aa9](https://github.com/ashish10alex/vscode-dataform-tools/commit/1db6aa94f82f88bae0bcc9a9d2df8b05ee566d22))
+* table and ref completions as you type digits, and BigQuery function completions in scratch queries ([#545](https://github.com/ashish10alex/vscode-dataform-tools/issues/545)) ([efd4872](https://github.com/ashish10alex/vscode-dataform-tools/commit/efd48728b831b2bc45f55b47b99897ee2bcaf931))
+
+
+### Bug Fixes
+
+* offer column names only in the SQL of a .sqlx file ([#542](https://github.com/ashish10alex/vscode-dataform-tools/issues/542)) ([62166c1](https://github.com/ashish10alex/vscode-dataform-tools/commit/62166c1d69ec6f71b0926a1375e47dba2cd30e4d))
+
 ### [2.0.9](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.8...v2.0.9) (2026-10-16)
 
 
