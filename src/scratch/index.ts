@@ -19,7 +19,8 @@ import { Action, CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable
 import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse, ColumnMetadata } from '../types';
 import { columnCompletionItem, tableCompletionItems } from '../columnCompletionItem';
-import { ColumnTable, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns, statementAt } from '../utils/columnPaths';
+import { registerBigQueryFunctionProviders } from '../bigquery/functionProviders';
+import { ColumnTable, columnsAfterDots, cteNames, DIGITS, dottedNameBefore, inFromList, isDigitTrigger, mergeColumns, statementAt } from '../utils/columnPaths';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
     columnNamesText, compiledQueryNote, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchHeaderText, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
@@ -443,7 +444,7 @@ function readColumns(document: vscode.TextDocument, again: boolean) {
 }
 
 class ScratchCompletionProvider implements vscode.CompletionItemProvider {
-    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | vscode.CompletionList> {
+    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, _token: vscode.CancellationToken, context: vscode.CompletionContext): Promise<vscode.CompletionItem[] | vscode.CompletionList | undefined> {
         const line = document.lineAt(position.line).text;
         const prefix = tableNamePrefix(line.slice(0, position.character));
         const start = position.translate(0, -prefix.text.length);
@@ -484,6 +485,11 @@ class ScratchCompletionProvider implements vscode.CompletionItemProvider {
                 });
             const range = new vscode.Range(start, closed ? position.translate(0, 1) : position);
             return tableCompletionItems([...ctes, ...tables], prefix.text.replace(/^`/, ''), range, prefix.text);
+        }
+
+        // A digit opens the list only where a table goes
+        if (isDigitTrigger(context)) {
+            return undefined;
         }
 
         // Elsewhere the columns of the tables the statement reads, each name once
@@ -624,8 +630,10 @@ export function initScratchQueries(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.newEmptyScratchQuery', newEmptyScratchQuery),
         vscode.commands.registerCommand('vscode-dataform-tools.copyTableColumns', copyTableColumns),
         vscode.commands.registerCommand('vscode-dataform-tools.queryTableInScratch', queryTableInScratch),
-        vscode.languages.registerCompletionItemProvider(SCRATCH_SELECTOR, new ScratchCompletionProvider(), '`', '.'),
+        vscode.languages.registerCompletionItemProvider(SCRATCH_SELECTOR, new ScratchCompletionProvider(), '`', '.', ...DIGITS),
         vscode.languages.registerHoverProvider(SCRATCH_SELECTOR, new ScratchHoverProvider()),
+        // BigQuery's functions: their completions, their hover and the signature help in their parentheses
+        ...registerBigQueryFunctionProviders(SCRATCH_SELECTOR, true),
         vscode.window.onDidChangeActiveTextEditor(onShown),
         vscode.workspace.onDidSaveTextDocument((document) => {
             if (isScratchDocument(document)) {

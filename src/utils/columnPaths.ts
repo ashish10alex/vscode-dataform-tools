@@ -118,6 +118,17 @@ export function blankSql(sql: string): string {
 }
 
 /** Whether a table name is what the SQL before it asks for: right after FROM or JOIN, or after a comma in a FROM list */
+/**
+ * The digits, as trigger characters of a completion provider. VS Code opens no list as you type a word that is a
+ * number, such as the `0400` of a table `0400_orders`, so a digit asks the provider, which offers the tables there only
+ */
+export const DIGITS = '0123456789'.split('');
+
+/** Whether a completion was asked for by typing a digit */
+export function isDigitTrigger(context: { triggerCharacter?: string }): boolean {
+    return !!context.triggerCharacter && DIGITS.includes(context.triggerCharacter);
+}
+
 export function inFromList(sqlBefore: string): boolean {
     const before = blankSql(sqlBefore);
     if (/\b(?:from|join)\s+$/i.test(before)) {
@@ -158,8 +169,8 @@ export function statementAt(sql: string, offset: number): [number, number] {
 
 /**
  * How `typed` matches `label`, any case, or undefined: rank 0 when it begins the label, 1 when it begins a part of
- * it after a `.`, `_` or `-`, 2 when each of its words begins a part, in order. So `030` and `0300_DPR` both find
- * `daily_production_report.0300_PRODUCTION_DATA_DPR`, as a prefix alone never would.
+ * it after a `.`, `_` or `-`, 2 when each of its words begins a part, in order. So `030` and `0300_DAILY` both find
+ * `sales_report.0300_ORDER_DATA_DAILY`, as a prefix alone never would.
  */
 export function partMatch(label: string, typed: string): { rank: number } | undefined {
     const text = label.toLowerCase();

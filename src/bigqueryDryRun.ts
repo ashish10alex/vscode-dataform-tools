@@ -7,7 +7,7 @@ import { perfCount } from './perf';
 import { extensionConfiguration } from './project/settings';
 
 export function getLineAndColumnNumberFromErrorMessage(errorMessage: string) {
-    //e.g. error 'Unrecognized name: SSY_LOC_ID; Did you mean ASSY_LOC_ID? at [65:7]'
+    //e.g. error 'Unrecognized name: CUSTOMR_ID; Did you mean CUSTOMER_ID? at [65:7]'
     let lineAndColumn = errorMessage.match(/\[(\d+):(\d+)\]/);
     if (lineAndColumn) {
         return {

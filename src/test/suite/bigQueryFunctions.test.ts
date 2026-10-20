@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
@@ -193,5 +194,31 @@ suite('BigQuery functions: the editor', () => {
         const inString = await sql("SELECT 'date_tr");
         const none = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', inString.uri, inString.positionAt(inString.getText().length));
         assert.ok(!none.items.some((each) => each.kind === vscode.CompletionItemKind.Function), 'expected no function in a string');
+    });
+});
+
+// A scratch query is BigQuery SQL too: the extension gives it the functions' completions and hover
+suite('BigQuery functions: a scratch query', () => {
+    let document: vscode.TextDocument;
+
+    suiteSetup(async () => {
+        await vscode.extensions.getExtension('ashishalex.dataform-lsp-vscode')?.activate();
+        const folder = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'scratch-')), '.vscode-dataform-tools', 'tmp');
+        fs.mkdirSync(folder, { recursive: true });
+        const file = path.join(folder, 'functions.sql');
+        fs.writeFileSync(file, 'SELECT SAFE_DIVIDE(a, b), date_tr');
+        document = await vscode.workspace.openTextDocument(file);
+    });
+
+    test('completes a function as a snippet', async () => {
+        const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, document.positionAt(document.getText().length));
+        const item = list.items.find((each) => (typeof each.label === 'string' ? each.label : each.label.label) === 'DATE_TRUNC');
+        assert.ok(item?.insertText instanceof vscode.SnippetString, 'expected DATE_TRUNC as a snippet');
+    });
+
+    test('the hover of a function', async () => {
+        const hovers = await vscode.commands.executeCommand<vscode.Hover[]>('vscode.executeHoverProvider', document.uri, document.positionAt(9));
+        const text = hovers.flatMap((hover) => hover.contents.map((content) => (typeof content === 'string' ? content : content.value))).join('\n');
+        assert.ok(text.includes('SAFE_DIVIDE(X:'), text);
     });
 });

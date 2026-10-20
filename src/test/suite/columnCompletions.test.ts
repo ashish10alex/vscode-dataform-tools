@@ -165,22 +165,22 @@ suite('columnPaths: where a table goes', () => {
     });
 
     test('a name matches by its start, by the start of a part, or by the starts of parts in order', () => {
-        const name = 'daily_production_report.0300_PRODUCTION_DATA_DPR';
-        assert.deepStrictEqual(partMatch(name, 'daily'), { rank: 0 });
+        const name = 'sales_report.0300_ORDER_DATA_DAILY';
+        assert.deepStrictEqual(partMatch(name, 'sales'), { rank: 0 });
         assert.deepStrictEqual(partMatch(name, '030'), { rank: 1 });
-        assert.deepStrictEqual(partMatch(name, 'production_d'), { rank: 1 });
-        assert.deepStrictEqual(partMatch(name, '0300_DPR'), { rank: 2 });
+        assert.deepStrictEqual(partMatch(name, 'order_d'), { rank: 1 });
+        assert.deepStrictEqual(partMatch(name, '0300_DAILY'), { rank: 2 });
         assert.deepStrictEqual(partMatch(name, ''), { rank: 0 });
         assert.strictEqual(partMatch(name, '300'), undefined);
-        assert.strictEqual(partMatch(name, 'DPR_0300'), undefined);
+        assert.strictEqual(partMatch(name, 'DAILY_0300'), undefined);
     });
 });
 
 suite('tableCompletionItems', () => {
     const tables: TableChoice[] = [
         { label: 'cte_orders', kind: 'cte', insertText: 'cte_orders' },
-        { label: 'allocation_build_plan.0300_ABS_HIST', alsoMatches: ['p.allocation_build_plan.0300_ABS_HIST'], kind: 'table', description: 'Number of times SRBD changes', insertText: '`p.allocation_build_plan.0300_ABS_HIST`' },
-        { label: 'daily_production_report.0300_PRODUCTION_DATA_DPR', kind: 'view', insertText: '`p.daily_production_report.0300_PRODUCTION_DATA_DPR`' },
+        { label: 'shop.0300_ORDER_HISTORY', alsoMatches: ['p.shop.0300_ORDER_HISTORY'], kind: 'table', description: 'Number of times an order changes', insertText: '`p.shop.0300_ORDER_HISTORY`' },
+        { label: 'sales_report.0300_ORDER_DATA_DAILY', kind: 'view', insertText: '`p.sales_report.0300_ORDER_DATA_DAILY`' },
     ];
     const range = new vscode.Range(0, 14, 0, 17);
 
@@ -188,13 +188,13 @@ suite('tableCompletionItems', () => {
         const list = tableCompletionItems(tables, '030', range, '030');
         assert.strictEqual(list.isIncomplete, true);
         assert.deepStrictEqual(list.items.map((item) => item.label), [
-            { label: 'allocation_build_plan.0300_ABS_HIST', detail: ' table' },
-            { label: 'daily_production_report.0300_PRODUCTION_DATA_DPR', detail: ' view' },
+            { label: 'shop.0300_ORDER_HISTORY', detail: ' table' },
+            { label: 'sales_report.0300_ORDER_DATA_DAILY', detail: ' view' },
         ]);
         assert.deepStrictEqual(list.items.map((item) => [item.filterText, item.sortText]), [['030', '00000'], ['030', '00001']]);
-        assert.strictEqual(list.items[0].documentation, 'Number of times SRBD changes');
+        assert.strictEqual(list.items[0].documentation, 'Number of times an order changes');
         assert.strictEqual(list.items[1].documentation, undefined);
-        assert.deepStrictEqual(tableCompletionItems(tables, 'p.alloc', range, '`p.alloc').items.map((item) => item.filterText), ['`p.alloc']);
+        assert.deepStrictEqual(tableCompletionItems(tables, 'p.sh', range, '`p.sh').items.map((item) => item.filterText), ['`p.sh']);
         assert.deepStrictEqual(tableCompletionItems(tables, '', range, '').items.length, 3);
     });
 });

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
 import { extensionConfiguration } from './project/settings';
 import { TableChoice, columnCompletionItem, tableCompletionItems } from './columnCompletionItem';
-import { ColumnTable, aliasAt, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns } from './utils/columnPaths';
+import { ColumnTable, aliasAt, columnsAfterDots, cteNames, DIGITS, dottedNameBefore, inFromList, isDigitTrigger, mergeColumns } from './utils/columnPaths';
 import { fileBackendHints, projects, ProjectState } from './project';
 import { CompiledGraph, isMadeUpTarget, kindHasTable } from './shared/compiledGraph';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
@@ -34,6 +34,13 @@ export function refChoices(graph: CompiledGraph | undefined, preference: unknown
     }));
 }
 
+/**
+ * What opens the list of refs: a `$`, and a digit typed after it. VS Code asks only the providers of a trigger
+ * character again, and filters the items of the others by the text typed, which a ref no longer matches after a
+ * digit, such as the `$0300` of `0300_orders`, so without the digits the list would close
+ */
+export const REF_TRIGGER_CHARACTERS = ['$', ...DIGITS];
+
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     /*
     you might need to set up the file association to use the auto-completion
@@ -59,7 +66,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
             return tables.length ? tableCompletionItems(tables, typed[1], new vscode.Range(dollar, position), typed[0]) : undefined;
         }
     },
-    '$' // trigger
+    ...REF_TRIGGER_CHARACTERS
 );
 
 export const dependenciesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
@@ -200,10 +207,14 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
             const ctes = cteNames(document.getText()).map((name) => ({ label: name, kind: 'cte', insertText: name }));
             return ctes.length ? tableCompletionItems(ctes, word, new vscode.Range(start, position), word) : undefined;
         }
+        // A digit opens the list only where a table goes
+        if (isDigitTrigger(context)) {
+            return undefined;
+        }
         return getSchemaCompletionItems();
       }
     },
-    '.'
+    '.', ...DIGITS
 );
 
 /** Whether the position is in the SQL of a .sqlx file: not in its config, js, pre_operations or post_operations block, nor in the JavaScript of a `${ ... }` */

@@ -59,36 +59,36 @@ suite('dbtRunJobs', () => {
         // As a build of two models, a test and a model that was skipped logged them
         const log = [
             '15:27:29.701807 [info ]: Started running (4 nodes)',
-            '15:27:29.701820 [info ]: Started running model allocation_build_plan.0100_ADM_PER_MONTH',
-            '15:27:29.701856 [info ]: Started running model allocation_build_plan.0101_ADM_PER_WEEK',
-            '15:28:36.386492 [debug]: Writing runtime sql for node "model.order_processing.0101_ADM_PER_WEEK"',
-            '15:28:39.745000 [info ]: Finished running [ 70.04s] model allocation_build_plan.0101_ADM_PER_WEEK [success]',
-            '15:28:39.745598 [info ]:  Succeeded model allocation_build_plan.0101_ADM_PER_WEEK (table) [1 of 4 in 1m10s]',
-            '15:28:41.500000 [info ]: Started running test dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF',
-            '15:28:42.863000 [info ]: Finished running [  1.41s] test dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF [error]',
-            '15:28:42.864843 [info ]:    Skipped model allocation_build_plan.0104_CALENDAR (table) [4 of 4]',
+            '15:27:29.701820 [info ]: Started running model shop_models.0100_ORDERS_PER_MONTH',
+            '15:27:29.701856 [info ]: Started running model shop_models.0101_ORDERS_PER_WEEK',
+            '15:28:36.386492 [debug]: Writing runtime sql for node "model.jaffle_shop.0101_ORDERS_PER_WEEK"',
+            '15:28:39.745000 [info ]: Finished running [ 70.04s] model shop_models.0101_ORDERS_PER_WEEK [success]',
+            '15:28:39.745598 [info ]:  Succeeded model shop_models.0101_ORDERS_PER_WEEK (table) [1 of 4 in 1m10s]',
+            '15:28:41.500000 [info ]: Started running test dbt_test__audit.ASSERT_ORDER_MONTH_UDF',
+            '15:28:42.863000 [info ]: Finished running [  1.41s] test dbt_test__audit.ASSERT_ORDER_MONTH_UDF [error]',
+            '15:28:42.864843 [info ]:    Skipped model shop_models.0104_CALENDAR (table) [4 of 4]',
             '15:28:42.900000 [info ]: Finished running [ 73.20s] (4 nodes, 1 skipped, 1 errors)',
         ].join('\r\n');
         assert.deepStrictEqual(nodeEvents(log), [
-            { relation: 'allocation_build_plan.0100_ADM_PER_MONTH', state: 'RUNNING' },
-            { relation: 'allocation_build_plan.0101_ADM_PER_WEEK', state: 'RUNNING' },
-            { relation: 'allocation_build_plan.0101_ADM_PER_WEEK', state: 'SUCCEEDED' },
-            { relation: 'dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF', state: 'RUNNING' },
-            { relation: 'dbt_test__audit.ASSERT_PRODUCTION_MONTH_UDF', state: 'FAILED' },
-            { relation: 'allocation_build_plan.0104_CALENDAR', state: 'SKIPPED' },
+            { relation: 'shop_models.0100_ORDERS_PER_MONTH', state: 'RUNNING' },
+            { relation: 'shop_models.0101_ORDERS_PER_WEEK', state: 'RUNNING' },
+            { relation: 'shop_models.0101_ORDERS_PER_WEEK', state: 'SUCCEEDED' },
+            { relation: 'dbt_test__audit.ASSERT_ORDER_MONTH_UDF', state: 'RUNNING' },
+            { relation: 'dbt_test__audit.ASSERT_ORDER_MONTH_UDF', state: 'FAILED' },
+            { relation: 'shop_models.0104_CALENDAR', state: 'SKIPPED' },
         ]);
     });
 
     test("dbt-core's log tells which nodes it began and finished, by their IDs", () => {
         const log = [
-            '\u001b[0m16:28:52.065643 [debug] [Thread-1 (]: Began running node model.order_processing.0100_ADM_PER_MONTH',
-            '\u001b[0m16:28:52.066070 [info ] [Thread-1 (]: 1 of 4 START sql table model allocation_build_plan.0100_ADM_PER_MONTH .......... [RUN]',
-            '\u001b[0m16:28:54.279373 [debug] [Thread-1 (]: Finished running node model.order_processing.0100_ADM_PER_MONTH',
+            '\u001b[0m16:28:52.065643 [debug] [Thread-1 (]: Began running node model.jaffle_shop.0100_ORDERS_PER_MONTH',
+            '\u001b[0m16:28:52.066070 [info ] [Thread-1 (]: 1 of 4 START sql table model shop_models.0100_ORDERS_PER_MONTH .......... [RUN]',
+            '\u001b[0m16:28:54.279373 [debug] [Thread-1 (]: Finished running node model.jaffle_shop.0100_ORDERS_PER_MONTH',
             '\u001b[0m16:28:54.943710 [info ] [MainThread]: Finished running 3 table models, 1 test in 0 hours 0 minutes and 7.23 seconds (7.23s).',
         ].join('\n');
         assert.deepStrictEqual(nodeEvents(log), [
-            { nodeId: 'model.order_processing.0100_ADM_PER_MONTH', state: 'RUNNING' },
-            { nodeId: 'model.order_processing.0100_ADM_PER_MONTH', state: 'ENDED' },
+            { nodeId: 'model.jaffle_shop.0100_ORDERS_PER_MONTH', state: 'RUNNING' },
+            { nodeId: 'model.jaffle_shop.0100_ORDERS_PER_MONTH', state: 'ENDED' },
         ]);
     });
 
