@@ -16,6 +16,8 @@ import { fileBackendHints, onDidChangeProjects, projects } from './index';
 import type { ProjectState } from './registry';
 import { extensionConfiguration } from './settings';
 import { registerBigQueryFunctionProviders } from '../bigquery/functionProviders';
+import { columnCompletionItem } from '../columnCompletionItem';
+import { ColumnTable, columnsAfterDots, dottedNameBefore } from '../utils/columnPaths';
 
 /*
  * The editor features of a dbt Project (Step 7 of the build plan). No language is claimed for `.sql`: each provider
@@ -211,23 +213,42 @@ class DbtCompletionProvider implements vscode.CompletionItemProvider {
             });
         }
         const column = dbt.editor.columnAt(at(dbt, document, position), true);
-        if (!column || column.tables.length === 0) {
+        if (!column) {
             return undefined;
         }
         const range = new vscode.Range(document.positionAt(column.start), position);
+        const dotted = dottedNameBefore(document.lineAt(position.line).text.slice(0, position.character));
+        if (dotted) {
+            const choices = columnsAfterDots(dotted.qualifiers, await this.columnTablesBefore(dbt, document.offsetAt(position) - column.word.length, dotted.qualifiers));
+            return choices?.map((choice) => columnCompletionItem(choice, range));
+        }
+        if (column.tables.length === 0) {
+            return undefined;
+        }
         const columns = await columnsOfTables(dbt.project.root, column.tables.map((id) => graph.actions[id]));
-        return columns.map((each) => {
-            // The table is said beside the name, so that one name in two tables is two entries that can be told apart
-            const item = new vscode.CompletionItem({ label: each.name, description: each.action.target.name }, vscode.CompletionItemKind.Field);
-            item.range = range;
-            item.detail = [each.type, `${each.action.target.name} (${each.action.kind})`].filter(Boolean).join(' \u00B7 ');
-            item.insertText = each.name;
-            item.filterText = each.name;
-            if (each.description) {
-                item.documentation = new vscode.MarkdownString(each.description);
-            }
-            return item;
-        });
+        return columns.map((each) => columnCompletionItem({ field: each.field, table: each.action.target.name }, range));
+    }
+
+    /**
+     * The tables whose columns can follow the dotted `qualifiers` that end at `offset`: every table the file reads,
+     * and the one the first qualifier names as an alias or by its own name, if any
+     */
+    private async columnTablesBefore(dbt: DbtDocument, offset: number, qualifiers: string[]): Promise<ColumnTable[]> {
+        const graph = dbt.project.dbtBackend?.lastResult?.graph;
+        const firstEnd = offset - qualifiers.join('.').length - 1 + qualifiers[0].length;
+        // Right after the first qualifier's dot, it is a qualifier the editor resolves; at its end, a column of any table
+        const named = dbt.editor.columnAt({ file: dbt.file, text: dbt.text, offset: firstEnd + 1 }, true)?.tables ?? [];
+        const all = dbt.editor.columnAt({ file: dbt.file, text: dbt.text, offset: firstEnd }, true)?.tables ?? [];
+        const ids = [...new Set([...named, ...all])];
+        if (!graph || ids.length === 0) {
+            return [];
+        }
+        const columns = await columnsOfTables(dbt.project.root, ids.map((id) => graph.actions[id]));
+        return ids.map((id) => ({
+            table: graph.actions[id].target.name,
+            names: named.includes(id) ? [qualifiers[0]] : [],
+            fields: columns.filter((each) => each.action.id === id).map((each) => each.field),
+        }));
     }
 }
 

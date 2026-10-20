@@ -41,7 +41,7 @@ A dash means not in a dbt project yet. Each name links to its description at [da
 | [Dependency graph](https://dataformtools.com/features#depgraph) | ✅ | ✅ | The whole project as a graph, centred on the file in the editor |
 | [Hover](https://dataformtools.com/features#hover) | ✅ | ✅ | A table's kind, location, description, partition, row count and columns; a column's type and description |
 | [Go to definition](https://dataformtools.com/features#definition) | ✅ | ✅ | From a `ref()` to its file. Dataform: also JavaScript variables and modules. dbt: also `source()` and macro calls |
-| [Completions](https://dataformtools.com/features#autocomplete) | ✅ | ✅ | Names inside `ref()` and `source()`, and the columns of the tables the file reads |
+| [Completions](https://dataformtools.com/features#autocomplete) | ✅ | ✅ | Names inside `ref()` and `source()`, the columns of the tables the file reads with their types, and the fields of a STRUCT column after a dot |
 | BigQuery function help | ✅ | ✅ | What a function takes, as you type its arguments: each one's type and allowed values, with a hover that has an example and the docs link |
 | [Column search](https://dataformtools.com/features#column_search) | ✅ | ✅ | Pick a column of a table by name, type or description |
 | [Defer to production](https://dataformtools.com/features#defer_to_prod) | ✅ | ✅ | Reads upstream tables that are not built in dev from production, like dbt's `--defer`. In a dbt project dbt does it, and `dbtProdTarget` names prod |

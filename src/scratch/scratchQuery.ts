@@ -1,5 +1,6 @@
 import type { BackendName } from '../project/detection';
 import type { JobPlace, JobSettings } from '../bigquery/jobPlace';
+import { aliasAt } from '../utils/columnPaths';
 
 /*
  * Scratch queries: `.sql` files of plain BigQuery SQL that a Project keeps in `.vscode-dataform-tools/tmp`, run as
@@ -141,6 +142,15 @@ export function tableNamesAt(sql: string): TableNameAt[] {
         add(match[1], match.index + match[0].length - match[1].length);
     }
     return found.sort((x, y) => x.start - y.start);
+}
+
+/** The aliases a query gives the tables it names: `FROM shop.orders o` and `JOIN \`p.shop.orders\` AS o` */
+export function tableAliasesIn(sql: string): { table: TableName, alias: string }[] {
+    const text = withoutCommentsAndStrings(sql);
+    return tableNamesAt(sql).flatMap(({ table, end }) => {
+        const alias = aliasAt(text.slice(end, end + 100));
+        return alias ? [{ table, alias }] : [];
+    });
 }
 
 /** The tables a query names, each once: see `tableNamesAt` */
