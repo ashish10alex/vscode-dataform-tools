@@ -142,6 +142,16 @@ suite('columnPaths: where a table goes', () => {
         assert.strictEqual(inFromList('SELECT -- from \n'), false);
     });
 
+    test('a comma in a sub-query, in parentheses or between CTEs is not in a FROM list', () => {
+        assert.strictEqual(inFromList('SELECT a, (SELECT max(b) FROM t) AS m, '), false);
+        assert.strictEqual(inFromList('SELECT * FROM a JOIN b USING (x, '), false);
+        assert.strictEqual(inFromList('SELECT * FROM a WHERE x IN (SELECT y FROM z) AND c IN (1, '), false);
+        assert.strictEqual(inFromList('WITH a AS (SELECT * FROM t), '), false);
+        assert.strictEqual(inFromList('SELECT * FROM (SELECT 1) s, '), true);
+        assert.strictEqual(inFromList('SELECT * FROM a AS x, '), true);
+        assert.strictEqual(inFromList('SELECT * FROM (SELECT * FROM a, '), true);
+    });
+
     test('the CTEs of the WITH clauses', () => {
         assert.deepStrictEqual(cteNames('WITH a AS (SELECT 1), `b c` AS (SELECT 2)\nSELECT * FROM a, (SELECT 3) AS d'), ['a', 'b c']);
         assert.deepStrictEqual(cteNames("SELECT 'with x as (' FROM t"), []);

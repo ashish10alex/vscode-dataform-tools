@@ -126,7 +126,14 @@ export function inFromList(sqlBefore: string): boolean {
     if (!/,\s*$/.test(before)) {
         return false;
     }
-    const keyword = [...before.matchAll(/\b(from|join|where|select|on|group\s+by|order\s+by|having|qualify|window|limit)\b/gi)].pop();
+    // The clause the comma is in: a closed `( ... )`, such as a sub-query, is not it, nor anything before an open one
+    let flat = before;
+    for (let last = ''; last !== flat;) {
+        last = flat;
+        flat = flat.replace(/\([^()]*\)/g, (group) => ' '.repeat(group.length));
+    }
+    const clause = flat.slice(flat.lastIndexOf('(') + 1);
+    const keyword = [...clause.matchAll(/\b(from|join|where|select|on|using|with|group\s+by|order\s+by|having|qualify|window|limit)\b/gi)].pop();
     return !!keyword && /^(from|join)$/i.test(keyword[1]);
 }
 
