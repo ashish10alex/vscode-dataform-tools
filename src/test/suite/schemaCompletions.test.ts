@@ -1,4 +1,7 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
 
@@ -107,5 +110,50 @@ suite('schema column completions', () => {
         const line = commented.lineAt(1).text;
         assert.ok(!(await offersColumn(1, line.length - 2, commented)), 'after the string, before the }');
         assert.ok(await offersColumn(1, line.length, commented), 'after the ${ }');
+    });
+});
+
+// VS Code opens no list as you type a word that is a number, such as the `0400` of a table `0400_orders`: a digit opens
+// the tables where a table goes, after FROM or JOIN, and no list elsewhere
+suite('a digit typed where a table goes', () => {
+    const sql = 'WITH step_1 AS (SELECT 1)\nSELECT 1 FROM 1 JOIN 1';
+
+    // The command also asks the providers a digit does not open, such as VS Code's words of the document, which have a
+    // plain label. The editor asks only those that a digit opens; ours label each table and column with its details
+    async function labelsOnDigit(uri: vscode.Uri, line: number, character: number): Promise<string[]> {
+        const list = await vscode.commands.executeCommand<vscode.CompletionList>(
+            'vscode.executeCompletionItemProvider', uri, new vscode.Position(line, character), '1');
+        return list.items.flatMap((item) => typeof item.label === 'string' ? [] : [item.label.label]);
+    }
+
+    suiteSetup(async () => {
+        await vscode.extensions.getExtension('ashishalex.dataform-lsp-vscode')?.activate();
+    });
+
+    test('in a .sqlx file: the CTEs after FROM and JOIN, nothing after SELECT', async () => {
+        const document = await vscode.workspace.openTextDocument({ language: 'sqlx', content: sql });
+        const saved = schemaAutoCompletions;
+        schemaAutoCompletions = [{ name: 'zz_digit_column', metadata: { type: 'STRING', description: '', fullTableId: 'p.d.orders' } }];
+        try {
+            // The column is there to offer, as Ctrl+Space after SELECT shows
+            const invoked = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, new vscode.Position(1, 8));
+            assert.ok(invoked.items.some((item) => typeof item.label !== 'string' && item.label.label === 'zz_digit_column'), 'Ctrl+Space after SELECT');
+            assert.deepStrictEqual(await labelsOnDigit(document.uri, 1, 8), [], 'a digit after SELECT');
+            assert.ok((await labelsOnDigit(document.uri, 1, 15)).includes('step_1'), 'after FROM');
+            assert.ok((await labelsOnDigit(document.uri, 1, 22)).includes('step_1'), 'after JOIN');
+        } finally {
+            schemaAutoCompletions = saved;
+        }
+    });
+
+    test('in a scratch query: the CTEs after FROM and JOIN, nothing after SELECT', async () => {
+        const folder = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'scratch-')), '.vscode-dataform-tools', 'tmp');
+        fs.mkdirSync(folder, { recursive: true });
+        const file = path.join(folder, 'digit.sql');
+        fs.writeFileSync(file, sql);
+        const document = await vscode.workspace.openTextDocument(file);
+        assert.deepStrictEqual(await labelsOnDigit(document.uri, 1, 8), [], 'after SELECT');
+        assert.ok((await labelsOnDigit(document.uri, 1, 15)).includes('step_1'), 'after FROM');
+        assert.ok((await labelsOnDigit(document.uri, 1, 22)).includes('step_1'), 'after JOIN');
     });
 });

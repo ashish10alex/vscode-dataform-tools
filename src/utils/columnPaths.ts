@@ -118,6 +118,17 @@ export function blankSql(sql: string): string {
 }
 
 /** Whether a table name is what the SQL before it asks for: right after FROM or JOIN, or after a comma in a FROM list */
+/**
+ * The digits, as trigger characters of a completion provider. VS Code opens no list as you type a word that is a
+ * number, such as the `0400` of a table `0400_orders`, so a digit asks the provider, which offers the tables there only
+ */
+export const DIGITS = '0123456789'.split('');
+
+/** Whether a completion was asked for by typing a digit */
+export function isDigitTrigger(context: { triggerCharacter?: string }): boolean {
+    return !!context.triggerCharacter && DIGITS.includes(context.triggerCharacter);
+}
+
 export function inFromList(sqlBefore: string): boolean {
     const before = blankSql(sqlBefore);
     if (/\b(?:from|join)\s+$/i.test(before)) {

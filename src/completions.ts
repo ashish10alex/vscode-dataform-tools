@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
 import { extensionConfiguration } from './project/settings';
 import { TableChoice, columnCompletionItem, tableCompletionItems } from './columnCompletionItem';
-import { ColumnTable, aliasAt, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns } from './utils/columnPaths';
+import { ColumnTable, aliasAt, columnsAfterDots, cteNames, DIGITS, dottedNameBefore, inFromList, isDigitTrigger, mergeColumns } from './utils/columnPaths';
 import { fileBackendHints, projects, ProjectState } from './project';
 import { CompiledGraph, isMadeUpTarget, kindHasTable } from './shared/compiledGraph';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
@@ -200,10 +200,14 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
             const ctes = cteNames(document.getText()).map((name) => ({ label: name, kind: 'cte', insertText: name }));
             return ctes.length ? tableCompletionItems(ctes, word, new vscode.Range(start, position), word) : undefined;
         }
+        // A digit opens the list only where a table goes
+        if (isDigitTrigger(context)) {
+            return undefined;
+        }
         return getSchemaCompletionItems();
       }
     },
-    '.'
+    '.', ...DIGITS
 );
 
 /** Whether the position is in the SQL of a .sqlx file: not in its config, js, pre_operations or post_operations block, nor in the JavaScript of a `${ ... }` */
