@@ -73,4 +73,39 @@ suite('schema column completions', () => {
         assert.ok(await offersColumn(3, 7, incremental), 'over two lines');
         assert.ok(!(await offersColumn(3, 20, incremental)), 'after the string, before the }');
     });
+
+    test('right after FROM or JOIN no column is offered, but the CTEs are', async () => {
+        const query = await vscode.workspace.openTextDocument({ language: 'sqlx', content: 'WITH recent AS (SELECT 1)\nSELECT  FROM rec' });
+        assert.ok(await offersColumn(1, 7, query), 'in the SELECT');
+        assert.ok(!(await offersColumn(1, 16, query)), 'after FROM');
+        const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', query.uri, new vscode.Position(1, 16));
+        assert.ok(list.items.some((item) => typeof item.label !== 'string' && item.label.label === 'recent' && item.label.detail === ' cte'), 'the CTE');
+    });
+
+    test('a column of several tables is offered once, with its first description and each table in its details', async () => {
+        const saved = schemaAutoCompletions;
+        schemaAutoCompletions = [
+            { name: column, metadata: { type: 'STRING', description: '', fullTableId: 'p.d.orders' } },
+            { name: column.toUpperCase(), metadata: { type: 'STRING', description: 'The key', fullTableId: 'p.d.items' } },
+        ];
+        try {
+            const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, new vscode.Position(12, 2));
+            const found = list.items.filter((item) => typeof item.label !== 'string' && item.label.label.toLowerCase() === column);
+            assert.strictEqual(found.length, 1);
+            assert.deepStrictEqual(found[0].label, { label: column, detail: ' STRING', description: 'The key' });
+            assert.strictEqual(found[0].documentation, 'The key\n\norders: no description\nitems');
+        } finally {
+            schemaAutoCompletions = saved;
+        }
+    });
+
+    test('a SQL comment in the SQL string of a ${ } ends with the string', async () => {
+        const commented = await vscode.workspace.openTextDocument({
+            language: 'sqlx',
+            content: 'SELECT * FROM ${ref("orders")}\n${when(incremental(), `AND ts > 0 -- new rows only`)} ',
+        });
+        const line = commented.lineAt(1).text;
+        assert.ok(!(await offersColumn(1, line.length - 2, commented)), 'after the string, before the }');
+        assert.ok(await offersColumn(1, line.length, commented), 'after the ${ }');
+    });
 });

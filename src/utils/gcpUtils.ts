@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { loadProjectsClient } from '../lazySdk';
 import { checkAuthentication, findJobProject, getBigQueryClient } from '../bigqueryClient';
-import { DataformCompiledJson, SchemaMetadata } from '../types';
+import { ColumnMetadata, DataformCompiledJson, SchemaMetadata } from '../types';
 import { createSelector } from './vscodeUi';
 import { gcloudComputeRegions } from '../constants';
 import { perfCount } from '../perf';
@@ -106,14 +106,14 @@ export async function getTableSchema(projectId: string, datasetId: string, table
         const dataset = bigquery.dataset(datasetId, { projectId: projectId });
         perfCount('bq.tableGet');
         const [table] = await dataset.table(tableId).get();
-        return table.metadata.schema.fields.map((field: { name: string, type: string, description: string }) => {
+        return table.metadata.schema.fields.map((field: ColumnMetadata) => {
             return {
                 name: field.name,
                 metadata: {
                     fullTableId: `${projectId}.${datasetId}.${tableId}`,
                     type: `${field.type}`,
-                    description: `${field?.description || ""}`
-
+                    description: `${field?.description || ""}`,
+                    field,
                 }
             };
         });

@@ -416,6 +416,8 @@ export type Metadata = {
     type: string,
     description: string,
     fullTableId: string,
+    /** The column as BigQuery gave it, with its mode and its fields when it is a STRUCT */
+    field?: ColumnMetadata,
 };
 
 export type SchemaMetadata = {

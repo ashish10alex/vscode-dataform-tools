@@ -1,10 +1,40 @@
 import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
 import { extensionConfiguration } from './project/settings';
+import { TableChoice, columnCompletionItem, tableCompletionItems } from './columnCompletionItem';
+import { ColumnTable, aliasAt, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns } from './utils/columnPaths';
+import { fileBackendHints, projects, ProjectState } from './project';
+import { CompiledGraph, isMadeUpTarget, kindHasTable } from './shared/compiledGraph';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
+/** The ref() of a target as the `sourceAutoCompletionPreference` setting writes it. A name two actions have needs its dataset */
+export function refText(target: { schema: string, name: string }, preference: unknown, nameIsShared: boolean): string {
+    if (preference === "${ref('dataset_name', 'table_name')}" || (preference !== "${ref({schema:'dataset_name', name:'table_name'})}" && nameIsShared)) {
+        return `\${ref("${target.schema}", "${target.name}")}`;
+    }
+    if (preference === "${ref({schema:'dataset_name', name:'table_name'})}") {
+        return `\${ref({schema: "${target.schema}", name: "${target.name}"})}`;
+    }
+    return `\${ref("${target.name}")}`;
+}
+
+/** The tables a .sqlx file can ref, as the list after a `$` offers them: no assertions, as nothing reads from one */
+export function refChoices(graph: CompiledGraph | undefined, preference: unknown): TableChoice[] {
+    const actions = Object.values(graph?.actions ?? {})
+        .filter((action) => kindHasTable(action.kind) && action.kind !== 'assertion' && !isMadeUpTarget(action.target))
+        .sort((a, b) => a.target.name.localeCompare(b.target.name) || a.target.schema.localeCompare(b.target.schema));
+    const count = new Map<string, number>();
+    actions.forEach((action) => count.set(action.target.name, (count.get(action.target.name) ?? 0) + 1));
+    return actions.map((action) => ({
+        label: `${action.target.schema}.${action.target.name}`,
+        alsoMatches: [action.target.name],
+        kind: action.kind,
+        description: action.description,
+        insertText: refText(action.target, preference, (count.get(action.target.name) ?? 0) > 1),
+    }));
+}
+
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
-    // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
     /*
     you might need to set up the file association to use the auto-completion
     sql should be added as a file association for sqlx
@@ -13,43 +43,20 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
     { language: 'sqlx', scheme: 'file' },
     {
         provideCompletionItems(document, position) {
-
-            const linePrefix = document.lineAt(position).text.substring(0, position.character);
-            if (!linePrefix.endsWith('$')) {
+            // A `$` and what is typed after it, in the SQL: not a `${` already written
+            const line = document.lineAt(position).text;
+            const typed = /\$(\w*)$/.exec(line.substring(0, position.character));
+            if (!typed || line[position.character] === '{') {
                 return undefined;
             }
-            let sourceCompletionItem = (text: any) => {
-                let item = new vscode.CompletionItem(text, vscode.CompletionItemKind.Field);
-                item.range = new vscode.Range(position, position);
-                return item;
-            };
-            if (declarationsAndTargets.length === 0) {
+            const dollar = position.translate(0, -typed[0].length);
+            if (!isInSqlBody(document, dollar)) {
                 return undefined;
             }
-            let sourceAutoCompletionPreference = extensionConfiguration().get('sourceAutoCompletionPreference');
-
-            let sourceCompletionItems: vscode.CompletionItem[] = [];
-
-            if (sourceAutoCompletionPreference === "${ref('table_name')}"){
-                declarationsAndTargets.forEach((source: string) => {
-                    source = `{ref("${source}")}`;
-                    sourceCompletionItems.push(sourceCompletionItem(source));
-                });
-            } else if (sourceAutoCompletionPreference === "${ref('dataset_name', 'table_name')}") {
-                declarationsAndTargets.forEach((source: string) => {
-                    let [database, table] = source.split('.');
-                    source = `{ref("${database}", "${table}")}`;
-                    sourceCompletionItems.push(sourceCompletionItem(source));
-                });
-            }
-            else {
-                declarationsAndTargets.forEach((source: string) => {
-                    let [database, table] = source.split('.');
-                    source = `{ref({schema: "${database}", name: "${table}"})}`;
-                    sourceCompletionItems.push(sourceCompletionItem(source));
-                });
-            }
-            return sourceCompletionItems;
+            const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+            const graph = found.kind === 'project' ? (found.project as ProjectState).dataformBackend?.graph : undefined;
+            const tables = refChoices(graph, extensionConfiguration().get('sourceAutoCompletionPreference'));
+            return tables.length ? tableCompletionItems(tables, typed[1], new vscode.Range(dollar, position), typed[0]) : undefined;
         }
     },
     '$' // trigger
@@ -114,6 +121,41 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
 );
 
 
+/** The tables the current file's dependencies build, with their columns and the names the file qualifies them with */
+function sqlxColumnTables(text: string): ColumnTable[] {
+    const tables = new Map<string, ColumnTable>();
+    for (const column of schemaAutoCompletions) {
+        const id = column.metadata.fullTableId;
+        let table = tables.get(id);
+        if (!table) {
+            const name = id.split('.').pop() ?? id;
+            table = { table: name, names: [name], fields: [] };
+            tables.set(id, table);
+        }
+        table.fields.push(column.metadata.field ?? { name: column.name, type: column.metadata.type, description: column.metadata.description });
+    }
+    for (const { name, alias } of refAliasesIn(text)) {
+        const wanted = name.toLowerCase();
+        [...tables.values()].find((table) => table.table.toLowerCase() === wanted)?.names.push(alias);
+    }
+    return [...tables.values()];
+}
+
+/** The aliases a .sqlx file gives the tables it refs: `${ref("orders")} o`, `${ref("shop", "orders")} AS o` */
+export function refAliasesIn(text: string): { name: string, alias: string }[] {
+    const found: { name: string, alias: string }[] = [];
+    for (const match of text.matchAll(/\$\{\s*ref\s*\(([^)]*)\)\s*\}/g)) {
+        const args = match[1];
+        const name = /name\s*:\s*["'`]([^"'`]+)/.exec(args)?.[1] ?? [...args.matchAll(/["'`]([^"'`]+)["'`]/g)].pop()?.[1];
+        const end = match.index + match[0].length;
+        const alias = aliasAt(text.slice(end, end + 100));
+        if (name && alias) {
+            found.push({ name, alias });
+        }
+    }
+    return found;
+}
+
 // Rebuilt only when the schemas change (a save or editor switch), not on every keystroke that asks for completions
 let schemaCompletionSource: SchemaMetadata[] | undefined;
 let schemaCompletionItems: vscode.CompletionItem[] = [];
@@ -121,17 +163,8 @@ let schemaCompletionItems: vscode.CompletionItem[] = [];
 function getSchemaCompletionItems(): vscode.CompletionItem[] {
     if (schemaCompletionSource !== schemaAutoCompletions) {
         schemaCompletionSource = schemaAutoCompletions;
-        schemaCompletionItems = schemaAutoCompletions.map((item: SchemaMetadata) => {
-            const completionItem = new vscode.CompletionItem(`${item.name}`);
-            completionItem.kind = vscode.CompletionItemKind.Variable;
-            completionItem.detail = `${item.metadata.fullTableId}`;
-            completionItem.sortText = '0'; // put it ahead of other completion objects
-            const markdownString = new vscode.MarkdownString(`[ ${item.metadata.type} ] \n\n ${item.metadata.description}`);
-            markdownString.isTrusted = true;
-            markdownString.supportHtml = true;
-            completionItem.documentation = markdownString;
-            return completionItem;
-        });
+        const choices = sqlxColumnTables('').flatMap((table) => table.fields.map((field) => ({ field, table: table.table })));
+        schemaCompletionItems = mergeColumns(choices).map((column) => columnCompletionItem(column));
     }
     return schemaCompletionItems;
 }
@@ -140,13 +173,37 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
     // Column names of the current file's dependencies only make sense in .sqlx files
     { language: 'sqlx' },
     {
-      provideCompletionItems(document, position) {
+      provideCompletionItems(document, position, _token, context) {
         if (!isInSqlBody(document, position)) {
             return undefined;
         }
+        // After a dot: the columns of the table an alias names, or the fields of a STRUCT column
+        const dotted = dottedNameBefore(document.lineAt(position).text.slice(0, position.character));
+        if (dotted) {
+            const choices = columnsAfterDots(dotted.qualifiers, sqlxColumnTables(document.getText()));
+            if (choices) {
+                const range = new vscode.Range(position.translate(0, -dotted.word.length), position);
+                return mergeColumns(choices).map((column) => columnCompletionItem(column, range));
+            }
+            // A dot that leads to no column opens no list
+            if (context.triggerKind === vscode.CompletionTriggerKind.TriggerCharacter) {
+                return undefined;
+            }
+        }
+        // Right after FROM or JOIN a table goes, not a column: the query's CTEs, beside the `$` list of refs
+        const word = /\w*$/.exec(document.lineAt(position).text.slice(0, position.character))?.[0] ?? '';
+        const start = position.translate(0, -word.length);
+        if (start.character > 0 && document.lineAt(position).text[start.character - 1] === '$') {
+            return undefined;
+        }
+        if (inFromList(document.getText(new vscode.Range(new vscode.Position(0, 0), start)))) {
+            const ctes = cteNames(document.getText()).map((name) => ({ label: name, kind: 'cte', insertText: name }));
+            return ctes.length ? tableCompletionItems(ctes, word, new vscode.Range(start, position), word) : undefined;
+        }
         return getSchemaCompletionItems();
       }
-    }
+    },
+    '.'
 );
 
 /** Whether the position is in the SQL of a .sqlx file: not in its config, js, pre_operations or post_operations block, nor in the JavaScript of a `${ ... }` */
@@ -187,9 +244,11 @@ function endsInTemplateCode(sql: string): boolean {
             } else if (template && ch === '`') {
                 template.inString = false;
             } else if (ch === '-' && sql[i + 1] === '-') {
-                // A SQL comment
-                const end = sql.indexOf('\n', i);
-                i = end === -1 ? sql.length : end;
+                // A SQL comment, which in the backtick string of a `${ ... }` also ends where the string does
+                const lineEnd = sql.indexOf('\n', i);
+                const stringEnd = template ? sql.indexOf('`', i) : -1;
+                const end = [lineEnd, stringEnd].filter((at) => at !== -1).sort((a, b) => a - b)[0];
+                i = end === undefined ? sql.length : end - 1;
             }
         } else if (ch === '`') {
             template.inString = true;

@@ -17,12 +17,14 @@ import { fetchTableMetadata, tableHoverMarkdown } from '../hoverProvider';
 import { formatTimestamp } from '../utils';
 import { Action, CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable, previewSection, slashPath, targetId } from '../shared/compiledGraph';
 import { formatBytes } from '../shared/panelBigQueryView';
-import type { BigQueryDryRunResponse } from '../types';
+import type { BigQueryDryRunResponse, ColumnMetadata } from '../types';
+import { columnCompletionItem, tableCompletionItems } from '../columnCompletionItem';
+import { ColumnTable, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns, statementAt } from '../utils/columnPaths';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
     columnNamesText, compiledQueryNote, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchHeaderText, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
     tableQueryText,
-    tableNamesAt, tableNamesIn,
+    tableAliasesIn, tableNamesAt, tableNamesIn,
     type TableName,
 } from './scratchQuery';
 
@@ -385,9 +387,8 @@ async function dryRunScratch(document: vscode.TextDocument) {
 // ---- Completion: the Project's tables, and the columns of the tables the query names
 
 interface Column {
-    name: string;
-    type: string;
-    description?: string;
+    /** As BigQuery gave it, with its mode and its fields when it is a STRUCT */
+    field: ColumnMetadata;
     table: TableName;
 }
 
@@ -402,12 +403,7 @@ async function fetchColumns(table: TableName, place: JobPlace): Promise<Column[]
         }
         const dataset = table.projectId ? client.dataset(table.datasetId, { projectId: table.projectId }) : client.dataset(table.datasetId);
         const [metadata] = await dataset.table(table.tableId).getMetadata();
-        return (metadata?.schema?.fields ?? []).map((field: { name: string, type?: string, mode?: string, description?: string }) => ({
-            name: field.name,
-            type: field.mode === 'REPEATED' ? `ARRAY<${field.type}>` : field.type ?? '',
-            description: field.description || undefined,
-            table,
-        }));
+        return (metadata?.schema?.fields ?? []).map((field: ColumnMetadata) => ({ field, table }));
     } catch (error: any) {
         // A CTE or an alias with a dot, a table that is not there, or one that cannot be read: it has no columns to offer
         logger.debug(`Scratch query: no columns for ${tableNameText(table)}: ${error?.message ?? error}`);
@@ -433,54 +429,82 @@ function readColumns(document: vscode.TextDocument, again: boolean) {
 }
 
 class ScratchCompletionProvider implements vscode.CompletionItemProvider {
-    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[]> {
+    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | vscode.CompletionList> {
         const line = document.lineAt(position.line).text;
         const prefix = tableNamePrefix(line.slice(0, position.character));
         const start = position.translate(0, -prefix.text.length);
-        const items: vscode.CompletionItem[] = [];
-
-        // A closing backtick the editor wrote after the cursor is replaced with the name, which has its own
-        const closed = prefix.text.startsWith('`') && line[position.character] === '`';
-        const tableRange = new vscode.Range(start, closed ? position.translate(0, 1) : position);
         const graph = graphOf(projectOf(document.uri.fsPath));
-        for (const action of Object.values(graph?.actions ?? {})) {
-            if (!kindHasTable(action.kind) || !action.target.database) {
-                continue;
+        const offset = document.offsetAt(position);
+
+        // After a dot: the columns of the table an alias names, or the fields of a STRUCT column. A dataset or a
+        // project of a table name is not one of them
+        const dotted = prefix.text.startsWith('`') ? undefined : dottedNameBefore(line.slice(0, position.character));
+        if (dotted) {
+            const tables = await columnTables(document, offset);
+            const first = dotted.qualifiers[0].toLowerCase();
+            const namesTable = tables.some((table) => table.names.some((name) => name.toLowerCase() === first));
+            if (namesTable || !namesDatasetOrProject(first, document.getText(), graph)) {
+                const choices = columnsAfterDots(dotted.qualifiers, tables);
+                if (choices) {
+                    const range = new vscode.Range(position.translate(0, -dotted.word.length), position);
+                    return mergeColumns(choices).map((column) => columnCompletionItem(column, range));
+                }
             }
-            const name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
-            const item = new vscode.CompletionItem({ label: action.target.name, description: `${action.target.database}.${action.target.schema}` }, vscode.CompletionItemKind.Struct);
-            item.insertText = `\`${name}\``;
-            item.filterText = prefix.text.startsWith('`') ? `\`${name}` : name;
-            item.range = tableRange;
-            item.detail = `${name} (${action.kind})`;
-            item.sortText = `1${action.target.name}`;
-            if (action.description) {
-                item.documentation = new vscode.MarkdownString(action.description);
-            }
-            items.push(item);
-        }
-        if (prefix.inTableName) {
-            return items;
         }
 
-        // The columns of the tables named so far. Those of a table named just now are asked for, and offered the next time
-        const read = readColumns(document, false);
-        const settled = await Promise.all([...read.values()].map((columns) => Promise.race([columns, new Promise<undefined>((resolve) => setTimeout(resolve, 150))])));
-        for (const column of settled.flatMap((columns) => columns ?? [])) {
-            // The table is said beside the name, so that one name in two tables is two entries that can be told apart
-            const item = new vscode.CompletionItem({ label: column.name, description: column.table.tableId }, vscode.CompletionItemKind.Field);
-            item.range = new vscode.Range(start, position);
-            item.detail = [column.type, tableNameText(column.table)].filter(Boolean).join(' · ');
-            item.insertText = column.name;
-            item.filterText = column.name;
-            item.sortText = `0${column.name}`;
-            if (column.description) {
-                item.documentation = new vscode.MarkdownString(column.description);
-            }
-            items.push(item);
+        // A table after FROM or JOIN, in backticks, or with a dot: the statement's CTEs, then the Project's tables
+        const sql = document.getText();
+        if (prefix.inTableName || inFromList(sql.slice(0, document.offsetAt(start)))) {
+            // A closing backtick the editor wrote after the cursor is replaced with the name, which has its own
+            const ticked = prefix.text.startsWith('`');
+            const closed = ticked && line[position.character] === '`';
+            const [from, to] = statementAt(sql, offset);
+            const ctes = cteNames(sql.slice(from, to)).map((name) => ({ label: name, kind: 'cte', insertText: ticked ? `\`${name}\`` : name }));
+            const tables = Object.values(graph?.actions ?? {})
+                // Nothing reads from an assertion
+                .filter((action) => kindHasTable(action.kind) && action.kind !== 'assertion' && action.target.database)
+                .sort((a, b) => a.target.name.localeCompare(b.target.name) || a.target.schema.localeCompare(b.target.schema))
+                .map((action) => {
+                    const name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+                    return { label: `${action.target.schema}.${action.target.name}`, alsoMatches: [name], kind: action.kind, description: action.description, insertText: `\`${name}\`` };
+                });
+            const range = new vscode.Range(start, closed ? position.translate(0, 1) : position);
+            return tableCompletionItems([...ctes, ...tables], prefix.text.replace(/^`/, ''), range, prefix.text);
         }
-        return items;
+
+        // Elsewhere the columns of the tables the statement reads, each name once
+        const range = new vscode.Range(start, position);
+        const choices = (await columnTables(document, offset)).flatMap((table) => table.fields.map((field) => ({ field, table: table.table })));
+        return mergeColumns(choices).map((column) => columnCompletionItem(column, range));
     }
+}
+
+/**
+ * The columns of the tables the statement at `offset` names so far, with the names it qualifies each with. Those of
+ * a table named just now are asked for, and offered the next time
+ */
+async function columnTables(document: vscode.TextDocument, offset: number): Promise<ColumnTable[]> {
+    const sql = document.getText();
+    const [from, to] = statementAt(sql, offset);
+    const named = new Set(tableNamesAt(sql).filter((each) => each.start >= from && each.start < to).map((each) => tableNameText(each.table).toLowerCase()));
+    const read = [...readColumns(document, false)].filter(([name]) => named.has(name)).map(([, columns]) => columns);
+    const settled = await Promise.all(read.map((columns) => Promise.race([columns, new Promise<undefined>((resolve) => setTimeout(resolve, 150))])));
+    const aliases = tableAliasesIn(sql.slice(from, to));
+    return settled.flatMap((columns) => {
+        const table = columns?.[0]?.table;
+        if (!table) {
+            return [];
+        }
+        const text = tableNameText(table).toLowerCase();
+        const names = [table.tableId, ...aliases.filter((each) => tableNameText(each.table).toLowerCase() === text).map((each) => each.alias)];
+        return [{ table: table.tableId, names, fields: columns.map((column) => column.field) }];
+    });
+}
+
+/** Whether `name` is a dataset or a project that a table of the query or of the Project is in */
+function namesDatasetOrProject(name: string, sql: string, graph: ReturnType<typeof graphOf>): boolean {
+    const named = tableNamesIn(sql).some((table) => [table.datasetId, table.projectId].some((part) => part?.toLowerCase() === name));
+    return named || Object.values(graph?.actions ?? {}).some((action) => [action.target.schema, action.target.database].some((part) => part?.toLowerCase() === name));
 }
 
 // ---- Hover of a table name, and copying a table's column names

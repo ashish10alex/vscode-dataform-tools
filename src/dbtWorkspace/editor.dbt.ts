@@ -91,7 +91,8 @@ suite('the editor features of a dbt Project', function () {
 
     /**
      * What is offered at the `|` of `line`, written as the first line of the file, by this extension's provider alone:
-     * its entries have a range, which the editor's own word suggestions do not. Each as "label [beside it] (detail)".
+     * its entries have a range, which the editor's own word suggestions do not. Each as "label (detail)", a column or
+     * a table as "name TYPE [beside it]" and what its details say after a colon.
      */
     async function completions(document: vscode.TextDocument, line: string): Promise<string[]> {
         const edit = new vscode.WorkspaceEdit();
@@ -100,8 +101,10 @@ suite('the editor features of a dbt Project', function () {
         try {
             const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, new vscode.Position(0, line.indexOf('|')));
             return list.items
-                .filter((item) => item.kind === vscode.CompletionItemKind.Reference || item.kind === vscode.CompletionItemKind.Field)
-                .map((item) => (typeof item.label === 'string' ? `${item.label} (${item.detail})` : `${item.label.label} [${item.label.description}] (${item.detail})`));
+                .filter((item) => [vscode.CompletionItemKind.Reference, vscode.CompletionItemKind.Field, vscode.CompletionItemKind.Struct].includes(item.kind!))
+                .map((item) => (typeof item.label === 'string'
+                    ? `${item.label} (${item.detail})`
+                    : `${item.label.label}${item.label.detail ?? ''}${item.label.description ? ` [${item.label.description}]` : ''}${item.documentation ? `: ${item.documentation}` : ''}`));
         } finally {
             await vscode.commands.executeCommand('workbench.action.files.revert');
         }
@@ -132,7 +135,9 @@ suite('the editor features of a dbt Project', function () {
             asked.push(action.target.name);
             return action.target.name === 'stg_payments'
                 ? { state: 'missing' }
-                : { state: 'found', rows: 42, fields: [{ name: 'order_id', type: 'INT64' }, { name: 'status', type: 'STRING', description: 'From BigQuery' }] };
+                : { state: 'found', rows: 42, fields: [{ name: 'order_id', type: 'INT64' }, { name: 'status', type: 'STRING', description: 'From BigQuery' },
+                    { name: 'shipping', type: 'RECORD', fields: [{ name: 'city', type: 'STRING', description: 'Where it goes' }, { name: 'geo', type: 'RECORD', fields: [{ name: 'lat', type: 'FLOAT64' }] }] },
+                    { name: 'items', type: 'RECORD', mode: 'REPEATED', fields: [{ name: 'sku', type: 'STRING' }] }] };
         });
         dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dbt-editor-')));
         standIn = path.join(dir, 'dbt');
@@ -271,13 +276,37 @@ console.log(JSON.stringify({ info: { level: 'info', name: 'CommandCompleted', ms
 
     test('after an alias and a dot the columns of its table are offered, and elsewhere those of every table the file reads', async () => {
         const document = await show('models/marts/fct_orders.sql');
-        assert.deepStrictEqual(await completions(document, 'select o.| from x'), ['order_id [stg_orders] (INT64 \u00B7 stg_orders (view))', 'status [stg_orders] (STRING \u00B7 stg_orders (view))']);
+        // By name: each column sorts ahead of the editor's own word suggestions
+        const status = 'Where the order is: `placed`, `shipped`, `completed` or `returned`.';
+        const columns = [
+            'items ARRAY<STRUCT<sku STRING>>: ARRAY<STRUCT<sku STRING>>\n\nstg_orders',
+            'order_id INT64: stg_orders',
+            'shipping STRUCT<city STRING, geo STRUCT<lat FLOAT64>>: STRUCT<city STRING, geo STRUCT<lat FLOAT64>>\n\nstg_orders',
+            `status STRING [${status}]: ${status}\n\nstg_orders`,
+        ];
+        assert.deepStrictEqual(await completions(document, 'select o.| from x'), columns);
         // stg_payments is not built: what its YAML documents, which is nothing
         assert.deepStrictEqual(await completions(document, 'select p.| from x'), []);
         // A name that is no alias of the file, such as a CTE's
         assert.deepStrictEqual(await completions(document, 'select cte.| from x'), []);
         const bare = await completions(document, 'select sta| from x');
-        assert.deepStrictEqual(bare, ['order_id [stg_orders] (INT64 \u00B7 stg_orders (view))', 'status [stg_orders] (STRING \u00B7 stg_orders (view))']);
+        assert.deepStrictEqual(bare, columns);
+    });
+
+    test('after a STRUCT column and a dot its fields are offered, at every depth, and none of an ARRAY of STRUCTs', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        const fields = ['city STRING [Where it goes]: Where it goes\n\nstg_orders', 'geo STRUCT<lat FLOAT64>: STRUCT<lat FLOAT64>\n\nstg_orders'];
+        assert.deepStrictEqual(await completions(document, 'select o.shipping.| from x'), fields);
+        assert.deepStrictEqual(await completions(document, 'select shipping.ci| from x'), fields);
+        assert.deepStrictEqual(await completions(document, 'select o.SHIPPING.geo.| from x'), ['lat FLOAT64: stg_orders']);
+        assert.deepStrictEqual(await completions(document, 'select o.items.| from x'), []);
+        assert.deepStrictEqual(await completions(document, 'select o.status.| from x'), []);
+    });
+
+    test('right after FROM or JOIN no column is offered, but the CTEs are', async () => {
+        const document = await show('models/marts/fct_orders.sql');
+        assert.deepStrictEqual(await completions(document, 'select * from ord|'), []);
+        assert.deepStrictEqual(await completions(document, 'with recent as (select 1) select * from x join rec|'), ['recent cte']);
     });
 
     test('a BigQuery function has its hover, signature help and completion, outside Jinja, until the setting turns them off', async () => {

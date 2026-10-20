@@ -1,4 +1,5 @@
 import type { Action } from '../shared/compiledGraph';
+import type { ColumnMetadata } from '../types';
 import type { HeldTable } from './heldTable';
 import { describedFields, plain } from './tableHoverText';
 
@@ -14,6 +15,8 @@ export interface TableColumn {
     /** Empty when only the Project's YAML knows the column */
     type: string;
     description: string;
+    /** As BigQuery gave it, with the YAML's descriptions: its mode, and its fields when it is a STRUCT */
+    field: ColumnMetadata;
 }
 
 /** The top-level columns of an Action's table, with the YAML's descriptions */
@@ -23,6 +26,7 @@ export function columnsOf(action: Action, table: HeldTable | undefined): TableCo
         name: field.name,
         type: field.mode && field.mode !== 'NULLABLE' ? `${field.type} ${field.mode}`.trim() : field.type,
         description: (field.description ?? '').trim(),
+        field,
     }));
 }
 
