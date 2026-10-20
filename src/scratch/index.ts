@@ -107,12 +107,18 @@ async function openNewScratchQuery(root: string, body = '', note?: string, viewC
     editor.selection = new vscode.Selection(start, start);
 }
 
-async function newScratchQuery() {
+/** The Project a new scratch query goes to, else a warning when this window has none. See `projectForNew` */
+async function projectForNewOrWarn(): Promise<ProjectState | undefined> {
     const project = await projectForNew();
+    if (!project && projects.projects.length === 0) {
+        vscode.window.showWarningMessage('A scratch query is kept in a Dataform or dbt project, and this window has none.');
+    }
+    return project;
+}
+
+async function newScratchQuery() {
+    const project = await projectForNewOrWarn();
     if (!project) {
-        if (projects.projects.length === 0) {
-            vscode.window.showWarningMessage('A scratch query is kept in a Dataform or dbt project, and this window has none.');
-        }
         return;
     }
     // From a file that builds a table, the query can start from it
@@ -125,6 +131,14 @@ async function newScratchQuery() {
         return;
     }
     await openNewScratchQuery(project.root);
+}
+
+/** Makes a scratch query with only its header, also from a file that builds a table */
+async function newEmptyScratchQuery() {
+    const project = await projectForNewOrWarn();
+    if (project) {
+        await openNewScratchQuery(project.root);
+    }
 }
 
 /** The file in the editor and the actions it builds a table with, from its Project's last compile */
@@ -583,6 +597,7 @@ export function initScratchQueries(context: vscode.ExtensionContext) {
         statusBarItem,
         diagnostics,
         vscode.commands.registerCommand('vscode-dataform-tools.newScratchQuery', newScratchQuery),
+        vscode.commands.registerCommand('vscode-dataform-tools.newEmptyScratchQuery', newEmptyScratchQuery),
         vscode.commands.registerCommand('vscode-dataform-tools.copyTableColumns', copyTableColumns),
         vscode.commands.registerCommand('vscode-dataform-tools.queryTableInScratch', queryTableInScratch),
         vscode.languages.registerCompletionItemProvider(SCRATCH_SELECTOR, new ScratchCompletionProvider(), '`', '.'),

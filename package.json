@@ -98,6 +98,11 @@
                 "title": "New scratch query"
             },
             {
+                "command": "vscode-dataform-tools.newEmptyScratchQuery",
+                "category": "Dataform/dbt",
+                "title": "New empty scratch query"
+            },
+            {
                 "command": "vscode-dataform-tools.copyTableColumns",
                 "category": "Dataform/dbt",
                 "title": "Copy column names of a table"
