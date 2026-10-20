@@ -34,6 +34,13 @@ export function refChoices(graph: CompiledGraph | undefined, preference: unknown
     }));
 }
 
+/**
+ * What opens the list of refs: a `$`, and a digit typed after it. VS Code asks only the providers of a trigger
+ * character again, and filters the items of the others by the text typed, which a ref no longer matches after a
+ * digit, such as the `$0300` of `0300_orders`, so without the digits the list would close
+ */
+export const REF_TRIGGER_CHARACTERS = ['$', ...DIGITS];
+
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     /*
     you might need to set up the file association to use the auto-completion
@@ -59,7 +66,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
             return tables.length ? tableCompletionItems(tables, typed[1], new vscode.Range(dollar, position), typed[0]) : undefined;
         }
     },
-    '$' // trigger
+    ...REF_TRIGGER_CHARACTERS
 );
 
 export const dependenciesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
