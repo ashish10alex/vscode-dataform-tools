@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
 import { extensionConfiguration } from './project/settings';
+import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
 
 export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
     // NOTE: Could this be made more reusable, i.e. a function that takes in the trigger and the language
@@ -139,8 +140,69 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
     // Column names of the current file's dependencies only make sense in .sqlx files
     { language: 'sqlx' },
     {
-      provideCompletionItems() {
+      provideCompletionItems(document, position) {
+        if (!isInSqlBody(document, position)) {
+            return undefined;
+        }
         return getSchemaCompletionItems();
       }
     }
 );
+
+/** Whether the position is in the SQL of a .sqlx file: not in its config, js, pre_operations or post_operations block, nor in the JavaScript of a `${ ... }` */
+function isInSqlBody(document: vscode.TextDocument, position: vscode.Position): boolean {
+    const blocks = getMetadataForSqlxFileBlocks(document);
+    const blockRanges = [blocks.configBlock, blocks.jsBlock, ...blocks.preOpsBlock.preOpsList, ...blocks.postOpsBlock.postOpsList]
+        .filter(block => block.exists);
+    // The block lines are 1-based
+    const inBlock = (line: number) => blockRanges.some(block => line + 1 >= block.startLine && line + 1 <= block.endLine);
+    if (inBlock(position.line)) {
+        return false;
+    }
+    // A `${ ... }` can span lines, such as a `${when(incremental(), ...)}` around a WHERE clause, so read the SQL from the top
+    let sql = '';
+    for (let line = 0; line < position.line; line++) {
+        if (!inBlock(line)) {
+            sql += document.lineAt(line).text + '\n';
+        }
+    }
+    sql += document.lineAt(position).text.substring(0, position.character);
+    return !endsInTemplateCode(sql);
+}
+
+/**
+ * Whether the end of the SQL is in the JavaScript of a `${ ... }`, e.g. `FROM ${ref("`.
+ * The SQL of a backtick string in one, such as the WHERE clause in `${when(incremental(), ...)}`, is not.
+ */
+function endsInTemplateCode(sql: string): boolean {
+    // Each open `${`: its depth of `{` and whether a backtick string in it is open
+    const templates: { depth: number, inString: boolean }[] = [];
+    for (let i = 0; i < sql.length; i++) {
+        const template = templates[templates.length - 1];
+        const ch = sql[i];
+        if (!template || template.inString) {
+            if (ch === '$' && sql[i + 1] === '{') {
+                templates.push({ depth: 0, inString: false });
+                i++;
+            } else if (template && ch === '`') {
+                template.inString = false;
+            } else if (ch === '-' && sql[i + 1] === '-') {
+                // A SQL comment
+                const end = sql.indexOf('\n', i);
+                i = end === -1 ? sql.length : end;
+            }
+        } else if (ch === '`') {
+            template.inString = true;
+        } else if (ch === '{') {
+            template.depth++;
+        } else if (ch === '}') {
+            if (template.depth === 0) {
+                templates.pop();
+            } else {
+                template.depth--;
+            }
+        }
+    }
+    const template = templates[templates.length - 1];
+    return template !== undefined && !template.inString;
+}
