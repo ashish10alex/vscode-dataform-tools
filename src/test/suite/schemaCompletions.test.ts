@@ -118,12 +118,13 @@ suite('schema column completions', () => {
 suite('a digit typed where a table goes', () => {
     const sql = 'WITH step_1 AS (SELECT 1)\nSELECT 1 FROM 1 JOIN 1';
 
-    // The command also asks the providers a digit does not open, such as VS Code's words of the document, which have a
-    // plain label. The editor asks only those that a digit opens; ours label each table and column with its details
+    // The command also asks the providers a digit does not open: VS Code's words of the document, which have a plain
+    // label, and BigQuery's functions. The editor asks only those that a digit opens; ours label each table and column
+    // with its details
     async function labelsOnDigit(uri: vscode.Uri, line: number, character: number): Promise<string[]> {
         const list = await vscode.commands.executeCommand<vscode.CompletionList>(
             'vscode.executeCompletionItemProvider', uri, new vscode.Position(line, character), '1');
-        return list.items.flatMap((item) => typeof item.label === 'string' ? [] : [item.label.label]);
+        return list.items.flatMap((item) => typeof item.label === 'string' || item.kind === vscode.CompletionItemKind.Function ? [] : [item.label.label]);
     }
 
     suiteSetup(async () => {

@@ -19,6 +19,7 @@ import { Action, CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable
 import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse, ColumnMetadata } from '../types';
 import { columnCompletionItem, tableCompletionItems } from '../columnCompletionItem';
+import { registerBigQueryFunctionProviders } from '../bigquery/functionProviders';
 import { ColumnTable, columnsAfterDots, cteNames, DIGITS, dottedNameBefore, inFromList, isDigitTrigger, mergeColumns, statementAt } from '../utils/columnPaths';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
@@ -631,6 +632,8 @@ export function initScratchQueries(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('vscode-dataform-tools.queryTableInScratch', queryTableInScratch),
         vscode.languages.registerCompletionItemProvider(SCRATCH_SELECTOR, new ScratchCompletionProvider(), '`', '.', ...DIGITS),
         vscode.languages.registerHoverProvider(SCRATCH_SELECTOR, new ScratchHoverProvider()),
+        // BigQuery's functions: their completions, their hover and the signature help in their parentheses
+        ...registerBigQueryFunctionProviders(SCRATCH_SELECTOR, true),
         vscode.window.onDidChangeActiveTextEditor(onShown),
         vscode.workspace.onDidSaveTextDocument((document) => {
             if (isScratchDocument(document)) {
