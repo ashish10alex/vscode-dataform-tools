@@ -131,7 +131,7 @@ suite('parseCompilationStack', () => {
 
     test('parses a realistic Dataform CLI syntax error stack', () => {
         const stack = [
-            '/private/var/folders/vz/mwhrymmx5xs3j45cv039kv_w0000gn/T/tmp-29844-4Ko8AnBvCw1h/definitions/test-dir/intermediate/0400_WIP_HISTORY.sqlx:10',
+            '/private/var/folders/vz/mwhrymmx5xs3j45cv039kv_w0000gn/T/tmp-29844-4Ko8AnBvCw1h/definitions/test-dir/intermediate/0400_ORDER_HISTORY.sqlx:10',
             '  dependencies: ["0100_MODEL_NAME],',
             '                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^',
             '',

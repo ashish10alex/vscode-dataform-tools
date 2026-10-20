@@ -169,8 +169,8 @@ export function statementAt(sql: string, offset: number): [number, number] {
 
 /**
  * How `typed` matches `label`, any case, or undefined: rank 0 when it begins the label, 1 when it begins a part of
- * it after a `.`, `_` or `-`, 2 when each of its words begins a part, in order. So `030` and `0300_DPR` both find
- * `daily_production_report.0300_PRODUCTION_DATA_DPR`, as a prefix alone never would.
+ * it after a `.`, `_` or `-`, 2 when each of its words begins a part, in order. So `030` and `0300_DAILY` both find
+ * `sales_report.0300_ORDER_DATA_DAILY`, as a prefix alone never would.
  */
 export function partMatch(label: string, typed: string): { rank: number } | undefined {
     const text = label.toLowerCase();

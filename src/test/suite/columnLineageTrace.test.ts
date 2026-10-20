@@ -310,7 +310,7 @@ suite('Column lineage from Data Lineage API links', () => {
         const emptyTemp = 'p.daily.df_5c096741839c6473eb_table_empty';
         assert.ok(isTempTable(scriptTemp));
         assert.ok(isTempTable(emptyTemp));
-        assert.ok(!isTempTable('p.daily.0100_DPR_ACTUALS'));
+        assert.ok(!isTempTable('p.daily.0100_SALES_ACTUALS'));
         assert.ok(!isTempTable('p.daily.df_metrics'), 'a table only starting with df_ is kept');
 
         assert.deepStrictEqual(columnLinksFromApi([
