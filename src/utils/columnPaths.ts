@@ -86,3 +86,95 @@ export function columnsAfterDots(qualifiers: string[], tables: ColumnTable[]): C
     const choices = from.flatMap((each) => (structFields(each.fields, path) ?? []).map((field) => ({ field, table: each.table })));
     return choices.length > 0 ? choices : undefined;
 }
+
+/** A column name offered once, with each table that has it: the first one's casing is shown */
+export interface MergedColumn {
+    name: string;
+    choices: ColumnChoice[];
+}
+
+/** The choices with one entry for each column name, whatever its case, in the order they first come */
+export function mergeColumns(choices: ColumnChoice[]): MergedColumn[] {
+    const merged = new Map<string, MergedColumn>();
+    for (const choice of choices) {
+        const key = choice.field.name.toLowerCase();
+        const column = merged.get(key);
+        if (column) {
+            column.choices.push(choice);
+        } else {
+            merged.set(key, { name: choice.field.name, choices: [choice] });
+        }
+    }
+    return [...merged.values()];
+}
+
+/**
+ * The SQL with its comments and string literals as spaces of the same length, so that offsets stay the same and a
+ * keyword in a string is no keyword. Names in backticks stay.
+ */
+export function blankSql(sql: string): string {
+    return sql.replace(/--[^\n]*|#[^\n]*|\/\*[\s\S]*?(?:\*\/|$)|`[^`\n]*`?|'(?:[^'\\\n]|\\.)*'?|"(?:[^"\\\n]|\\.)*"?/g,
+        (match) => (match.startsWith('`') ? match : match.replace(/[^\n]/g, ' ')));
+}
+
+/** Whether a table name is what the SQL before it asks for: right after FROM or JOIN, or after a comma in a FROM list */
+export function inFromList(sqlBefore: string): boolean {
+    const before = blankSql(sqlBefore);
+    if (/\b(?:from|join)\s+$/i.test(before)) {
+        return true;
+    }
+    if (!/,\s*$/.test(before)) {
+        return false;
+    }
+    const keyword = [...before.matchAll(/\b(from|join|where|select|on|group\s+by|order\s+by|having|qualify|window|limit)\b/gi)].pop();
+    return !!keyword && /^(from|join)$/i.test(keyword[1]);
+}
+
+/** The names the WITH clauses of the SQL give their CTEs, each once */
+export function cteNames(sql: string): string[] {
+    const names: string[] = [];
+    for (const match of blankSql(sql).matchAll(/(?:\bwith(?:\s+recursive)?|,)\s*(`[^`\n]+`|[A-Za-z_]\w*)\s+as\s*\(/gi)) {
+        const name = match[1].replace(/`/g, '');
+        if (!names.includes(name)) {
+            names.push(name);
+        }
+    }
+    return names;
+}
+
+/** Where the statement at `offset` begins and ends: the text between the semicolons around it */
+export function statementAt(sql: string, offset: number): [number, number] {
+    const text = blankSql(sql);
+    const end = text.indexOf(';', offset);
+    return [text.lastIndexOf(';', offset - 1) + 1, end === -1 ? sql.length : end];
+}
+
+/**
+ * How `typed` matches `label`, any case, or undefined: rank 0 when it begins the label, 1 when it begins a part of
+ * it after a `.`, `_` or `-`, 2 when each of its words begins a part, in order. So `030` and `0300_DPR` both find
+ * `daily_production_report.0300_PRODUCTION_DATA_DPR`, as a prefix alone never would.
+ */
+export function partMatch(label: string, typed: string): { rank: number } | undefined {
+    const text = label.toLowerCase();
+    const wanted = typed.toLowerCase();
+    const starts = [0, ...[...text.matchAll(/[._-]+/g)].map((match) => match.index + match[0].length)];
+    const at = starts.find((start) => text.startsWith(wanted, start));
+    if (at !== undefined) {
+        return { rank: at > 0 ? 1 : 0 };
+    }
+    const words = wanted.split(/[._-]+/).filter(Boolean);
+    if (words.length < 2) {
+        return undefined;
+    }
+    let next = 0;
+    for (const word of words) {
+        while (next < starts.length && !text.startsWith(word, starts[next])) {
+            next++;
+        }
+        if (next === starts.length) {
+            return undefined;
+        }
+        next++;
+    }
+    return { rank: 2 };
+}

@@ -2,9 +2,10 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { suite, test } from 'mocha';
 import type { ColumnMetadata } from '../../types';
-import { ColumnTable, aliasAt, columnsAfterDots, dottedNameBefore, sqlType, structFields } from '../../utils/columnPaths';
-import { columnCompletionItem } from '../../columnCompletionItem';
-import { refAliasesIn } from '../../completions';
+import { ColumnTable, aliasAt, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns, partMatch, sqlType, statementAt, structFields } from '../../utils/columnPaths';
+import { TableChoice, columnCompletionItem, tableCompletionItems } from '../../columnCompletionItem';
+import type { CompiledGraph } from '../../shared/compiledGraph';
+import { refAliasesIn, refChoices, refText } from '../../completions';
 import { tableAliasesIn, tableNameText } from '../../scratch/scratchQuery';
 
 const SHIPPING: ColumnMetadata = {
@@ -84,23 +85,132 @@ suite('columnPaths.columnsAfterDots', () => {
     });
 });
 
+suite('columnPaths.mergeColumns', () => {
+    test('one entry for each name, whatever its case, with every table that has it, in the order they come', () => {
+        const merged = mergeColumns([
+            { field: { name: 'ORDER_NUMBER', type: 'INTEGER' }, table: 'a' },
+            { field: { name: 'status', type: 'STRING' }, table: 'a' },
+            { field: { name: 'order_number', type: 'INTEGER' }, table: 'b' },
+        ]);
+        assert.deepStrictEqual(merged.map((column) => `${column.name} ${column.choices.map((choice) => choice.table).join(',')}`), ['ORDER_NUMBER a,b', 'status a']);
+    });
+});
+
 suite('columnCompletionItem', () => {
     const label = (item: vscode.CompletionItem) => item.label as vscode.CompletionItemLabel;
+    const column = (...choices: { name?: string, type: string, mode?: string, description?: string, fields?: ColumnMetadata[], table: string }[]) =>
+        mergeColumns(choices.map(({ table, name, ...field }) => ({ field: { name: name ?? 'ORDER_NUMBER', ...field }, table })))[0];
 
-    test('the name with its type right after it, its table to the right, and the description as it is written', () => {
-        const item = columnCompletionItem({ field: { name: 'ABS_IND', type: 'STRING', description: ' Accepted by Sales Indicator i.e. Y, N, *NULL* ' }, table: 'orders' });
-        assert.deepStrictEqual(label(item), { label: 'ABS_IND', detail: ' STRING', description: 'orders' });
+    test('the name with its type right after it, and the description to the right on one line', () => {
+        const item = columnCompletionItem(column({ name: 'ABS_IND', type: 'STRING', description: ' Accepted by Sales\nIndicator i.e. Y, N, *NULL* ', table: 'orders' }));
+        assert.deepStrictEqual(label(item), { label: 'ABS_IND', detail: ' STRING', description: 'Accepted by Sales Indicator i.e. Y, N, *NULL*' });
         assert.strictEqual(item.kind, vscode.CompletionItemKind.Field);
         assert.strictEqual(item.insertText, 'ABS_IND');
         assert.strictEqual(item.detail, undefined);
-        assert.strictEqual(item.documentation, 'Accepted by Sales Indicator i.e. Y, N, *NULL*');
+        assert.strictEqual(item.documentation, 'Accepted by Sales\nIndicator i.e. Y, N, *NULL*\n\norders');
     });
 
-    test('no details without a description, and a STRUCT says its full type above it', () => {
-        assert.strictEqual(columnCompletionItem({ field: { name: 'a', type: 'STRING' }, table: 't' }).documentation, undefined);
-        assert.strictEqual(columnCompletionItem({ field: SHIPPING, table: 't' }).documentation, 'STRUCT<city STRING, geo STRUCT<lat FLOAT64>>\n\nWhere it goes');
-        assert.strictEqual(columnCompletionItem({ field: ITEMS, table: 't' }).documentation, 'ARRAY<STRUCT<sku STRING>>');
-        assert.strictEqual(label(columnCompletionItem({ field: { name: 'a', type: '' }, table: 't' })).detail, undefined);
+    test('a name in several tables: once, the first description, and the details say each table', () => {
+        const item = columnCompletionItem(column(
+            { type: 'INTEGER', table: 'flat' },
+            { type: 'INTEGER', description: 'Unique order id', table: 'extract' },
+            { type: 'INTEGER', description: 'Unique order id', table: 'view' },
+            { type: 'STRING', description: 'Order number', table: 'status' },
+        ));
+        assert.deepStrictEqual(label(item), { label: 'ORDER_NUMBER', detail: ' INTEGER | STRING', description: 'Unique order id' });
+        assert.strictEqual(item.documentation, 'Unique order id\n\nflat: no description\nextract, view\nstatus: Order number');
+    });
+
+    test('without descriptions the details say the tables, and a STRUCT its full type above', () => {
+        assert.strictEqual(columnCompletionItem(column({ type: 'INTEGER', table: 'a' }, { type: 'INTEGER', table: 'b' })).documentation, 'a, b');
+        assert.strictEqual(label(columnCompletionItem(column({ type: 'INTEGER', table: 'a' }))).description, undefined);
+        assert.strictEqual(columnCompletionItem(column({ ...SHIPPING, table: 't' })).documentation, 'STRUCT<city STRING, geo STRUCT<lat FLOAT64>>\n\nWhere it goes\n\nt');
+        assert.strictEqual(columnCompletionItem(column({ ...ITEMS, table: 't' })).documentation, 'ARRAY<STRUCT<sku STRING>>\n\nt');
+        assert.strictEqual(label(columnCompletionItem(column({ type: '', table: 't' }))).detail, undefined);
+    });
+});
+
+suite('columnPaths: where a table goes', () => {
+    test('right after FROM or JOIN, or after a comma in a FROM list', () => {
+        assert.strictEqual(inFromList('SELECT * FROM '), true);
+        assert.strictEqual(inFromList('select *\nfrom a\nLEFT JOIN\n  '), true);
+        assert.strictEqual(inFromList('SELECT * FROM a, '), true);
+        assert.strictEqual(inFromList('SELECT a, '), false);
+        assert.strictEqual(inFromList('SELECT * FROM a WHERE x IN (1, '), false);
+        assert.strictEqual(inFromList('SELECT * FROM a WHERE '), false);
+        assert.strictEqual(inFromList("SELECT 'from ' "), false);
+        assert.strictEqual(inFromList('SELECT -- from \n'), false);
+    });
+
+    test('the CTEs of the WITH clauses', () => {
+        assert.deepStrictEqual(cteNames('WITH a AS (SELECT 1), `b c` AS (SELECT 2)\nSELECT * FROM a, (SELECT 3) AS d'), ['a', 'b c']);
+        assert.deepStrictEqual(cteNames("SELECT 'with x as (' FROM t"), []);
+    });
+
+    test('the statement at an offset is between the semicolons around it', () => {
+        const sql = "SELECT 1;\nSELECT ';' FROM a;\nSELECT 2";
+        assert.deepStrictEqual(statementAt(sql, 3), [0, 8]);
+        assert.deepStrictEqual(statementAt(sql, 14), [9, 27]);
+        assert.deepStrictEqual(statementAt(sql, sql.length), [28, sql.length]);
+    });
+
+    test('a name matches by its start, by the start of a part, or by the starts of parts in order', () => {
+        const name = 'daily_production_report.0300_PRODUCTION_DATA_DPR';
+        assert.deepStrictEqual(partMatch(name, 'daily'), { rank: 0 });
+        assert.deepStrictEqual(partMatch(name, '030'), { rank: 1 });
+        assert.deepStrictEqual(partMatch(name, 'production_d'), { rank: 1 });
+        assert.deepStrictEqual(partMatch(name, '0300_DPR'), { rank: 2 });
+        assert.deepStrictEqual(partMatch(name, ''), { rank: 0 });
+        assert.strictEqual(partMatch(name, '300'), undefined);
+        assert.strictEqual(partMatch(name, 'DPR_0300'), undefined);
+    });
+});
+
+suite('tableCompletionItems', () => {
+    const tables: TableChoice[] = [
+        { label: 'cte_orders', kind: 'cte', insertText: 'cte_orders' },
+        { label: 'allocation_build_plan.0300_ABS_HIST', alsoMatches: ['p.allocation_build_plan.0300_ABS_HIST'], kind: 'table', description: 'Number of times SRBD changes', insertText: '`p.allocation_build_plan.0300_ABS_HIST`' },
+        { label: 'daily_production_report.0300_PRODUCTION_DATA_DPR', kind: 'view', insertText: '`p.daily_production_report.0300_PRODUCTION_DATA_DPR`' },
+    ];
+    const range = new vscode.Range(0, 14, 0, 17);
+
+    test('those that match by any part, best first, each with the typed text as its own and its kind after it', () => {
+        const list = tableCompletionItems(tables, '030', range, '030');
+        assert.strictEqual(list.isIncomplete, true);
+        assert.deepStrictEqual(list.items.map((item) => item.label), [
+            { label: 'allocation_build_plan.0300_ABS_HIST', detail: ' table' },
+            { label: 'daily_production_report.0300_PRODUCTION_DATA_DPR', detail: ' view' },
+        ]);
+        assert.deepStrictEqual(list.items.map((item) => [item.filterText, item.sortText]), [['030', '00000'], ['030', '00001']]);
+        assert.strictEqual(list.items[0].documentation, 'Number of times SRBD changes');
+        assert.strictEqual(list.items[1].documentation, undefined);
+        assert.deepStrictEqual(tableCompletionItems(tables, 'p.alloc', range, '`p.alloc').items.map((item) => item.filterText), ['`p.alloc']);
+        assert.deepStrictEqual(tableCompletionItems(tables, '', range, '').items.length, 3);
+    });
+});
+
+suite('the refs after a $ in a .sqlx file', () => {
+    const action = (schema: string, name: string, kind: string, description?: string) =>
+        ({ id: `p.${schema}.${name}`, target: { database: 'p', schema, name }, kind, description });
+    const graph = { actions: Object.fromEntries([
+        action('shop', 'orders', 'table', 'Every order'), action('raw', 'orders', 'declaration'), action('shop', 'items', 'view'),
+        action('shop_assertions', 'orders_unique', 'assertion'), action('shop', 'cleanup', 'operation'),
+    ].map((each) => [each.id, each])) } as unknown as CompiledGraph;
+
+    test('the tables, by name, and no assertion', () => {
+        const choices = refChoices(graph, "${ref('table_name')}");
+        assert.deepStrictEqual(choices.map((choice) => `${choice.label} ${choice.kind} ${choice.insertText}`), [
+            'shop.items view ${ref("items")}',
+            'raw.orders declaration ${ref("raw", "orders")}',
+            'shop.orders table ${ref("shop", "orders")}',
+        ]);
+        assert.strictEqual(choices[2].description, 'Every order');
+    });
+
+    test('written as the setting says', () => {
+        assert.strictEqual(refText({ schema: 'shop', name: 'items' }, "${ref('dataset_name', 'table_name')}", false), '${ref("shop", "items")}');
+        assert.strictEqual(refText({ schema: 'shop', name: 'items' }, "${ref({schema:'dataset_name', name:'table_name'})}", true), '${ref({schema: "shop", name: "items"})}');
+        assert.strictEqual(refText({ schema: 'shop', name: 'items' }, undefined, false), '${ref("items")}');
     });
 });
 

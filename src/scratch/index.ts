@@ -18,8 +18,8 @@ import { formatTimestamp } from '../utils';
 import { Action, CompiledGraph, Target, actionsInFile, buildsTable, kindHasTable, previewSection, slashPath, targetId } from '../shared/compiledGraph';
 import { formatBytes } from '../shared/panelBigQueryView';
 import type { BigQueryDryRunResponse, ColumnMetadata } from '../types';
-import { columnCompletionItem } from '../columnCompletionItem';
-import { ColumnTable, columnsAfterDots, dottedNameBefore } from '../utils/columnPaths';
+import { columnCompletionItem, tableCompletionItems } from '../columnCompletionItem';
+import { ColumnTable, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns, statementAt } from '../utils/columnPaths';
 import type { CustomViewProvider } from '../views/register-query-results-panel';
 import {
     columnNamesText, compiledQueryNote, hasStatement, isScratchPath, runConfirmation, scanLevel, scratchFileName, scratchHeaderText, scratchJobPlace, SCRATCH_FOLDER, tableNameText, tableNamePrefix,
@@ -429,68 +429,67 @@ function readColumns(document: vscode.TextDocument, again: boolean) {
 }
 
 class ScratchCompletionProvider implements vscode.CompletionItemProvider {
-    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[]> {
+    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | vscode.CompletionList> {
         const line = document.lineAt(position.line).text;
         const prefix = tableNamePrefix(line.slice(0, position.character));
         const start = position.translate(0, -prefix.text.length);
-        const items: vscode.CompletionItem[] = [];
         const graph = graphOf(projectOf(document.uri.fsPath));
+        const offset = document.offsetAt(position);
 
         // After a dot: the columns of the table an alias names, or the fields of a STRUCT column. A dataset or a
         // project of a table name is not one of them
         const dotted = prefix.text.startsWith('`') ? undefined : dottedNameBefore(line.slice(0, position.character));
         if (dotted) {
-            const tables = await columnTables(document);
+            const tables = await columnTables(document, offset);
             const first = dotted.qualifiers[0].toLowerCase();
             const namesTable = tables.some((table) => table.names.some((name) => name.toLowerCase() === first));
             if (namesTable || !namesDatasetOrProject(first, document.getText(), graph)) {
                 const choices = columnsAfterDots(dotted.qualifiers, tables);
                 if (choices) {
                     const range = new vscode.Range(position.translate(0, -dotted.word.length), position);
-                    return choices.map((choice) => columnCompletionItem(choice, range));
+                    return mergeColumns(choices).map((column) => columnCompletionItem(column, range));
                 }
             }
         }
 
-        // A closing backtick the editor wrote after the cursor is replaced with the name, which has its own
-        const closed = prefix.text.startsWith('`') && line[position.character] === '`';
-        const tableRange = new vscode.Range(start, closed ? position.translate(0, 1) : position);
-        for (const action of Object.values(graph?.actions ?? {})) {
-            if (!kindHasTable(action.kind) || !action.target.database) {
-                continue;
-            }
-            const name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
-            const item = new vscode.CompletionItem({ label: action.target.name, description: `${action.target.database}.${action.target.schema}` }, vscode.CompletionItemKind.Struct);
-            item.insertText = `\`${name}\``;
-            item.filterText = prefix.text.startsWith('`') ? `\`${name}` : name;
-            item.range = tableRange;
-            item.detail = `${name} (${action.kind})`;
-            item.sortText = `1${action.target.name}`;
-            if (action.description) {
-                item.documentation = new vscode.MarkdownString(action.description);
-            }
-            items.push(item);
-        }
-        if (prefix.inTableName) {
-            return items;
+        // A table after FROM or JOIN, in backticks, or with a dot: the statement's CTEs, then the Project's tables
+        const sql = document.getText();
+        if (prefix.inTableName || inFromList(sql.slice(0, document.offsetAt(start)))) {
+            // A closing backtick the editor wrote after the cursor is replaced with the name, which has its own
+            const ticked = prefix.text.startsWith('`');
+            const closed = ticked && line[position.character] === '`';
+            const [from, to] = statementAt(sql, offset);
+            const ctes = cteNames(sql.slice(from, to)).map((name) => ({ label: name, kind: 'cte', insertText: ticked ? `\`${name}\`` : name }));
+            const tables = Object.values(graph?.actions ?? {})
+                // Nothing reads from an assertion
+                .filter((action) => kindHasTable(action.kind) && action.kind !== 'assertion' && action.target.database)
+                .sort((a, b) => a.target.name.localeCompare(b.target.name) || a.target.schema.localeCompare(b.target.schema))
+                .map((action) => {
+                    const name = `${action.target.database}.${action.target.schema}.${action.target.name}`;
+                    return { label: `${action.target.schema}.${action.target.name}`, alsoMatches: [name], kind: action.kind, description: action.description, insertText: `\`${name}\`` };
+                });
+            const range = new vscode.Range(start, closed ? position.translate(0, 1) : position);
+            return tableCompletionItems([...ctes, ...tables], prefix.text.replace(/^`/, ''), range, prefix.text);
         }
 
+        // Elsewhere the columns of the tables the statement reads, each name once
         const range = new vscode.Range(start, position);
-        for (const table of await columnTables(document)) {
-            items.push(...table.fields.map((field) => columnCompletionItem({ field, table: table.table }, range)));
-        }
-        return items;
+        const choices = (await columnTables(document, offset)).flatMap((table) => table.fields.map((field) => ({ field, table: table.table })));
+        return mergeColumns(choices).map((column) => columnCompletionItem(column, range));
     }
 }
 
 /**
- * The columns of the tables the scratch query names so far, with the names it qualifies each with. Those of a table
- * named just now are asked for, and offered the next time
+ * The columns of the tables the statement at `offset` names so far, with the names it qualifies each with. Those of
+ * a table named just now are asked for, and offered the next time
  */
-async function columnTables(document: vscode.TextDocument): Promise<ColumnTable[]> {
-    const read = readColumns(document, false);
-    const settled = await Promise.all([...read.values()].map((columns) => Promise.race([columns, new Promise<undefined>((resolve) => setTimeout(resolve, 150))])));
-    const aliases = tableAliasesIn(document.getText());
+async function columnTables(document: vscode.TextDocument, offset: number): Promise<ColumnTable[]> {
+    const sql = document.getText();
+    const [from, to] = statementAt(sql, offset);
+    const named = new Set(tableNamesAt(sql).filter((each) => each.start >= from && each.start < to).map((each) => tableNameText(each.table).toLowerCase()));
+    const read = [...readColumns(document, false)].filter(([name]) => named.has(name)).map(([, columns]) => columns);
+    const settled = await Promise.all(read.map((columns) => Promise.race([columns, new Promise<undefined>((resolve) => setTimeout(resolve, 150))])));
+    const aliases = tableAliasesIn(sql.slice(from, to));
     return settled.flatMap((columns) => {
         const table = columns?.[0]?.table;
         if (!table) {

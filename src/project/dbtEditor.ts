@@ -16,8 +16,8 @@ import { fileBackendHints, onDidChangeProjects, projects } from './index';
 import type { ProjectState } from './registry';
 import { extensionConfiguration } from './settings';
 import { registerBigQueryFunctionProviders } from '../bigquery/functionProviders';
-import { columnCompletionItem } from '../columnCompletionItem';
-import { ColumnTable, columnsAfterDots, dottedNameBefore } from '../utils/columnPaths';
+import { columnCompletionItem, tableCompletionItems } from '../columnCompletionItem';
+import { ColumnTable, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns } from '../utils/columnPaths';
 
 /*
  * The editor features of a dbt Project (Step 7 of the build plan). No language is claimed for `.sql`: each provider
@@ -192,7 +192,7 @@ export function dbtColumnSource(document: vscode.TextDocument, position: vscode.
  * reads, each with its table.
  */
 class DbtCompletionProvider implements vscode.CompletionItemProvider {
-    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | undefined> {
+    async provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.CompletionItem[] | vscode.CompletionList | undefined> {
         const dbt = dbtDocument(document);
         const graph = dbt?.project.dbtBackend?.lastResult?.graph;
         if (!dbt || !graph) {
@@ -220,13 +220,18 @@ class DbtCompletionProvider implements vscode.CompletionItemProvider {
         const dotted = dottedNameBefore(document.lineAt(position.line).text.slice(0, position.character));
         if (dotted) {
             const choices = columnsAfterDots(dotted.qualifiers, await this.columnTablesBefore(dbt, document.offsetAt(position) - column.word.length, dotted.qualifiers));
-            return choices?.map((choice) => columnCompletionItem(choice, range));
+            return choices && mergeColumns(choices).map((each) => columnCompletionItem(each, range));
+        }
+        // Right after FROM or JOIN a table goes, not a column: the query's CTEs, beside what ref() and source() take
+        if (inFromList(dbt.text.slice(0, column.start))) {
+            const ctes = cteNames(dbt.text).map((name) => ({ label: name, kind: 'cte', insertText: name }));
+            return ctes.length ? tableCompletionItems(ctes, column.word, range, column.word) : undefined;
         }
         if (column.tables.length === 0) {
             return undefined;
         }
         const columns = await columnsOfTables(dbt.project.root, column.tables.map((id) => graph.actions[id]));
-        return columns.map((each) => columnCompletionItem({ field: each.field, table: each.action.target.name }, range));
+        return mergeColumns(columns.map((each) => ({ field: each.field, table: each.action.target.name }))).map((each) => columnCompletionItem(each, range));
     }
 
     /**
