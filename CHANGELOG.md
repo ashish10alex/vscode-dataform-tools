@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.10...v2.0.11) (2026-10-21)
+
+
+### Features
+
+* one FROM/JOIN table list, per-file column completions, and operations with output as tables ([#546](https://github.com/ashish10alex/vscode-dataform-tools/issues/546)) ([906b117](https://github.com/ashish10alex/vscode-dataform-tools/commit/906b1179416cc0bfb4888fb92deec39ed6f4e6bf))
+
 ### [2.0.10](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.9...v2.0.10) (2026-10-20)
 
 
