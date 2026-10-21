@@ -41,7 +41,8 @@ suite('typing a table name that starts with digits', function () {
 
     test('after FROM in a .sqlx file the list of CTEs stays open', async () => {
         const document = await vscode.workspace.openTextDocument({ language: 'sqlx', content: sql });
-        assert.ok((await typeAndAccept(document, '030')).endsWith('FROM step_0300'));
+        const text = await typeAndAccept(document, '030');
+        assert.ok(text.endsWith('FROM step_0300'), text);
     });
 
     test('after FROM in a scratch query the list of tables stays open', async () => {
@@ -50,7 +51,8 @@ suite('typing a table name that starts with digits', function () {
         const file = path.join(folder, 'typing.sql');
         fs.writeFileSync(file, sql);
         const document = await vscode.workspace.openTextDocument(file);
-        assert.ok((await typeAndAccept(document, '030')).endsWith('FROM step_0300'));
+        const text = await typeAndAccept(document, '030');
+        assert.ok(text.endsWith('FROM step_0300'), text);
     });
 
     test('after a $ the list of refs stays open', async () => {
