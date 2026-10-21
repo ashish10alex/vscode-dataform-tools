@@ -121,15 +121,18 @@ export class BigQueryFunctionCompletionProvider implements vscode.CompletionItem
     }
 }
 
-/** The hover and the signature help of BigQuery functions in the files of a selector, and their completions when asked */
-export function registerBigQueryFunctionProviders(selector: vscode.DocumentSelector, withCompletions: boolean): vscode.Disposable[] {
+/**
+ * The hover and the signature help of BigQuery functions in the files of a selector, and their completions when asked.
+ * `wrap` is given each provider before it is registered, to change what it answers.
+ */
+export function registerBigQueryFunctionProviders(selector: vscode.DocumentSelector, withCompletions: boolean, wrap: <T extends object>(provider: T) => T = (provider) => provider): vscode.Disposable[] {
     const registered = [
-        vscode.languages.registerHoverProvider(selector, new BigQueryFunctionHoverProvider()),
+        vscode.languages.registerHoverProvider(selector, wrap(new BigQueryFunctionHoverProvider())),
         // Asked again at a space too, so that the help follows a keyword argument such as CAST's AS or EXTRACT's FROM
-        vscode.languages.registerSignatureHelpProvider(selector, new BigQuerySignatureHelpProvider(), { triggerCharacters: ['(', ','], retriggerCharacters: [' '] }),
+        vscode.languages.registerSignatureHelpProvider(selector, wrap(new BigQuerySignatureHelpProvider()), { triggerCharacters: ['(', ','], retriggerCharacters: [' '] }),
     ];
     if (withCompletions) {
-        registered.push(vscode.languages.registerCompletionItemProvider(selector, new BigQueryFunctionCompletionProvider()));
+        registered.push(vscode.languages.registerCompletionItemProvider(selector, wrap(new BigQueryFunctionCompletionProvider())));
     }
     return registered;
 }

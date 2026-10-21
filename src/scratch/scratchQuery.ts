@@ -15,6 +15,22 @@ export function isScratchPath(filePath: string): boolean {
     return /(^|[\\/])\.vscode-dataform-tools[\\/]tmp[\\/][^\\/]+\.sql$/i.test(filePath);
 }
 
+/**
+ * The editor provider, answering nothing in a scratch query. Each `provide...` method of a provider takes the document
+ * first. For the providers of a dbt Project's `.sql` files, whose selector also takes in its scratch queries
+ */
+export function exceptScratch<T extends object>(provider: T): T {
+    return new Proxy(provider, {
+        get(target, key, receiver) {
+            const value = Reflect.get(target, key, receiver);
+            if (typeof key !== 'string' || !key.startsWith('provide') || typeof value !== 'function') {
+                return value;
+            }
+            return (document: { uri: { fsPath: string } }, ...rest: unknown[]) => (isScratchPath(document.uri.fsPath) ? undefined : value.call(target, document, ...rest));
+        },
+    });
+}
+
 const two = (n: number) => String(n).padStart(2, '0');
 
 /** The name of a scratch query made at `now`, other than those in `taken`: `scratch-2026-10-12-1432.sql` */

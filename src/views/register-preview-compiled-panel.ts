@@ -70,6 +70,7 @@ import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
 import { extensionConfiguration } from '../project/settings';
+import { dependencyColumnsOf, forgetDependencyColumns, setDependencyColumns } from '../dependencyColumns';
 import { ROW_LAYOUT_KEY, RowLayout, TAB_LAYOUT_KEY, TabLayout, isRowLabel, isTabChoice, withRow, withTab } from '../shared/rowLayout';
 
 /** Recompiles the active document and refreshes the panel; set when the panel is registered. */
@@ -150,8 +151,8 @@ async function validatePropertyGraphs(send: (validations: PropertyGraphValidatio
  * defer to prod resolves) reuse it. Every save or switch reads the file again, so it fetches again.
  */
 const schemaFetches = new WeakMap<object, Promise<SchemaMetadata[]>>();
-/** The file whose schemas completions should show: a slower fetch for a file shown before must not replace them */
-let latestSchemaRequest: object | undefined;
+/** The latest compile of each document whose columns were asked for: a slower fetch from an earlier compile must not replace them */
+const latestSchemaRequest = new Map<string, object>();
 
 /** Whether the file declares tables made elsewhere, in the compile on show */
 function fileDeclares(file: string | undefined): boolean {
@@ -159,21 +160,28 @@ function fileDeclares(file: string | undefined): boolean {
     return !!graph && !!file && actionsInFile(graph, slashPath(file)).some((action) => action.kind === 'declaration');
 }
 
+/** Fetches the columns of the tables the compiled file reads, and keeps them for its document (see ../dependencyColumns) */
 function updateSchemaAutoCompletions(currentFileMetadata:any): Promise<void> {
     const fileMetadata = currentFileMetadata?.fileMetadata;
-    latestSchemaRequest = fileMetadata;
-    if (!fileMetadata?.tables) {
-        schemaAutoCompletions = [];
+    const uri: vscode.Uri | undefined = currentFileMetadata?.document?.uri;
+    if (!uri) {
         return Promise.resolve();
     }
+    const key = uri.toString();
+    if (!fileMetadata?.tables) {
+        latestSchemaRequest.delete(key);
+        setDependencyColumns(uri, []);
+        return Promise.resolve();
+    }
+    latestSchemaRequest.set(key, fileMetadata);
     let fetch = schemaFetches.get(fileMetadata);
     if (!fetch) {
         fetch = fetchSchemaAutoCompletions(fileMetadata.tables);
         schemaFetches.set(fileMetadata, fetch);
     }
     return fetch.then((columns) => {
-        if (latestSchemaRequest === fileMetadata) {
-            schemaAutoCompletions = columns;
+        if (latestSchemaRequest.get(key) === fileMetadata) {
+            setDependencyColumns(uri, columns);
         }
     });
 }
@@ -349,6 +357,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     }, globalThis.DEBOUNCE_WAIT);
 
     vscode.window.onDidChangeActiveTextEditor(debouncedActiveEditorChange, null, context.subscriptions);
+    // The columns kept for a document go with it
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((document) => {
+        latestSchemaRequest.delete(document.uri.toString());
+        forgetDependencyColumns(document.uri);
+    }));
 
     // A dbt compile that starts or ends, whoever asked for it, is shown when its Project is the one on show
     context.subscriptions.push(onDidChangeDbtCompile((root) => CompiledQueryPanel.centerPanel?.sendDbt(root)));
@@ -2245,7 +2258,7 @@ export class CompiledQueryPanel {
             fields: flattenSchemaFields(compiledQuerySchema?.fields || []),
         };
 
-        schemaAutoCompletions.forEach((column: { name: string; metadata: any }) => {
+        (curFileMeta.document ? dependencyColumnsOf(curFileMeta.document.uri) : []).forEach((column) => {
                 columnHoverDescription?.fields.push({
                     name: column.name,
                     type: column.metadata.type,

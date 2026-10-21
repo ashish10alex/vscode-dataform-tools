@@ -5,8 +5,9 @@ import type { ColumnMetadata } from '../../types';
 import { ColumnTable, aliasAt, columnsAfterDots, cteNames, dottedNameBefore, inFromList, mergeColumns, partMatch, sqlType, statementAt, structFields } from '../../utils/columnPaths';
 import { TableChoice, columnCompletionItem, tableCompletionItems } from '../../columnCompletionItem';
 import type { CompiledGraph } from '../../shared/compiledGraph';
-import { refAliasesIn, refChoices, refText } from '../../completions';
-import { tableAliasesIn, tableNameText } from '../../scratch/scratchQuery';
+import { fromListChoices, refAliasesIn, refChoices, refText } from '../../completions';
+import { dependencyColumnsOf, forgetDependencyColumns, setDependencyColumns } from '../../dependencyColumns';
+import { exceptScratch, tableAliasesIn, tableNameText } from '../../scratch/scratchQuery';
 
 const SHIPPING: ColumnMetadata = {
     name: 'shipping', type: 'RECORD', description: 'Where it goes',
@@ -200,21 +201,38 @@ suite('tableCompletionItems', () => {
 });
 
 suite('the refs after a $ in a .sqlx file', () => {
-    const action = (schema: string, name: string, kind: string, description?: string) =>
-        ({ id: `p.${schema}.${name}`, target: { database: 'p', schema, name }, kind, description });
+    const action = (schema: string, name: string, kind: string, description?: string, hasOutput?: boolean) =>
+        ({ id: `p.${schema}.${name}`, target: { database: 'p', schema, name }, kind, description, hasOutput });
     const graph = { actions: Object.fromEntries([
         action('shop', 'orders', 'table', 'Every order'), action('raw', 'orders', 'declaration'), action('shop', 'items', 'view'),
         action('shop_assertions', 'orders_unique', 'assertion'), action('shop', 'cleanup', 'operation'),
+        action('shop', 'snapshot', 'operation', undefined, true),
     ].map((each) => [each.id, each])) } as unknown as CompiledGraph;
 
-    test('the tables, by name, and no assertion', () => {
+    test('the tables, by name, an operation that creates its table, and no assertion', () => {
         const choices = refChoices(graph, "${ref('table_name')}");
         assert.deepStrictEqual(choices.map((choice) => `${choice.label} ${choice.kind} ${choice.insertText}`), [
             'shop.items view ${ref("items")}',
             'raw.orders declaration ${ref("raw", "orders")}',
             'shop.orders table ${ref("shop", "orders")}',
+            'shop.snapshot operation ${ref("snapshot")}',
         ]);
         assert.strictEqual(choices[2].description, 'Every order');
+    });
+
+    test('after FROM or JOIN: the CTEs of the statement only, then the tables, as the caller writes them', () => {
+        const sql = 'WITH old AS (SELECT 1) SELECT * FROM old;\nWITH recent AS (SELECT 2)\nSELECT * FROM ';
+        const choices = fromListChoices(sql, sql.length, graph, (target, nameIsShared) => (nameIsShared ? `${target.schema}.${target.name}` : target.name));
+        assert.deepStrictEqual(choices.map((choice) => `${choice.label} ${choice.kind} ${choice.insertText}`), [
+            'recent cte recent',
+            'shop.items view items',
+            'raw.orders declaration raw.orders',
+            'shop.orders table shop.orders',
+            'shop.snapshot operation snapshot',
+        ]);
+        assert.deepStrictEqual(choices[1].alsoMatches, ['items', 'p.shop.items']);
+        const ticked = fromListChoices(sql, sql.length, undefined, () => '', (name) => `\`${name}\``);
+        assert.deepStrictEqual(ticked.map((choice) => choice.insertText), ['`recent`'], 'no graph: the CTEs only');
     });
 
     test('written as the setting says', () => {
@@ -234,5 +252,38 @@ suite('the aliases of tables', () => {
         const aliases = tableAliasesIn('select * from shop.orders o\njoin `p.shop.customers` as c on true\nleft join shop.items where 1 = 1')
             .map(({ table, alias }) => `${tableNameText(table)} ${alias}`);
         assert.deepStrictEqual(aliases, ['shop.orders o', 'p.shop.customers c']);
+    });
+});
+
+suite('the columns of a .sqlx file\'s dependencies', () => {
+    const column = (name: string) => ({ name, metadata: { type: 'STRING', description: '', fullTableId: 'p.d.t' } });
+
+    test('are kept for each document: a file not compiled yet has none, an untitled one the global', () => {
+        const saved = schemaAutoCompletions;
+        schemaAutoCompletions = [column('from_the_global')];
+        const first = vscode.Uri.file('/project/definitions/first.sqlx');
+        const second = vscode.Uri.file('/project/definitions/second.sqlx');
+        const untitled = vscode.Uri.parse('untitled:Untitled-1');
+        try {
+            setDependencyColumns(first, [column('of_first')]);
+            assert.deepStrictEqual(dependencyColumnsOf(first).map((each) => each.name), ['of_first']);
+            assert.deepStrictEqual(dependencyColumnsOf(second), []);
+            assert.deepStrictEqual(dependencyColumnsOf(untitled).map((each) => each.name), ['from_the_global']);
+            forgetDependencyColumns(first);
+            assert.deepStrictEqual(dependencyColumnsOf(first), []);
+        } finally {
+            schemaAutoCompletions = saved;
+            forgetDependencyColumns(first);
+        }
+    });
+});
+
+suite('the BigQuery function help of a dbt Project', () => {
+    test('answers nothing in a scratch query', () => {
+        const provider = exceptScratch({ provideHover: (document: vscode.TextDocument) => document.uri.fsPath, other: 1 });
+        const at = (file: string) => provider.provideHover({ uri: vscode.Uri.file(file) } as vscode.TextDocument);
+        assert.strictEqual(at('/project/models/orders.sql'), vscode.Uri.file('/project/models/orders.sql').fsPath);
+        assert.strictEqual(at('/project/.vscode-dataform-tools/tmp/query.sql'), undefined);
+        assert.strictEqual(provider.other, 1);
     });
 });

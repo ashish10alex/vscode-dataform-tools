@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 import { SchemaMetadata } from './types';
 import { extensionConfiguration } from './project/settings';
 import { TableChoice, columnCompletionItem, tableCompletionItems } from './columnCompletionItem';
-import { ColumnTable, aliasAt, columnsAfterDots, cteNames, DIGITS, dottedNameBefore, inFromList, isDigitTrigger, mergeColumns } from './utils/columnPaths';
+import { ColumnTable, aliasAt, columnsAfterDots, cteNames, DIGITS, dottedNameBefore, inFromList, isDigitTrigger, mergeColumns, statementAt } from './utils/columnPaths';
 import { fileBackendHints, projects, ProjectState } from './project';
-import { CompiledGraph, isMadeUpTarget, kindHasTable } from './shared/compiledGraph';
+import { CompiledGraph, Target, buildsTable } from './shared/compiledGraph';
 import { getMetadataForSqlxFileBlocks } from './sqlxFileParser';
+import { dependencyColumnsOf } from './dependencyColumns';
 
 /** The ref() of a target as the `sourceAutoCompletionPreference` setting writes it. A name two actions have needs its dataset */
 export function refText(target: { schema: string, name: string }, preference: unknown, nameIsShared: boolean): string {
@@ -18,20 +19,53 @@ export function refText(target: { schema: string, name: string }, preference: un
     return `\${ref("${target.name}")}`;
 }
 
-/** The tables a .sqlx file can ref, as the list after a `$` offers them: no assertions, as nothing reads from one */
-export function refChoices(graph: CompiledGraph | undefined, preference: unknown): TableChoice[] {
+/**
+ * The tables of the Project that a query can read, by name: those that have a database, operations that create
+ * their table among them, and no assertion, as nothing reads from one. `insertText` writes each, and is told whether another table has the same name.
+ */
+function projectTableChoices(graph: CompiledGraph | undefined, insertText: (target: Target, nameIsShared: boolean) => string): TableChoice[] {
     const actions = Object.values(graph?.actions ?? {})
-        .filter((action) => kindHasTable(action.kind) && action.kind !== 'assertion' && !isMadeUpTarget(action.target))
+        .filter((action) => buildsTable(action) && action.kind !== 'assertion' && action.target.database)
         .sort((a, b) => a.target.name.localeCompare(b.target.name) || a.target.schema.localeCompare(b.target.schema));
     const count = new Map<string, number>();
     actions.forEach((action) => count.set(action.target.name, (count.get(action.target.name) ?? 0) + 1));
     return actions.map((action) => ({
         label: `${action.target.schema}.${action.target.name}`,
-        alsoMatches: [action.target.name],
+        alsoMatches: [action.target.name, `${action.target.database}.${action.target.schema}.${action.target.name}`],
         kind: action.kind,
         description: action.description,
-        insertText: refText(action.target, preference, (count.get(action.target.name) ?? 0) > 1),
+        insertText: insertText(action.target, (count.get(action.target.name) ?? 0) > 1),
     }));
+}
+
+/** The tables a .sqlx file can ref, as the list after a `$` offers them */
+export function refChoices(graph: CompiledGraph | undefined, preference: unknown): TableChoice[] {
+    return projectTableChoices(graph, (target, nameIsShared) => refText(target, preference, nameIsShared));
+}
+
+/**
+ * What can follow FROM or JOIN, the same in .sqlx files and scratch queries: the CTEs of the statement at `offset`,
+ * then the Project's tables (see `projectTableChoices`), written by `tableText`. Without a compiled graph, the CTEs only.
+ */
+export function fromListChoices(
+    sql: string,
+    offset: number,
+    graph: CompiledGraph | undefined,
+    tableText: (target: Target, nameIsShared: boolean) => string,
+    cteText: (name: string) => string = (name) => name,
+): TableChoice[] {
+    const [from, to] = statementAt(sql, offset);
+    const ctes = cteNames(sql.slice(from, to)).map((name) => ({ label: name, kind: 'cte', insertText: cteText(name) }));
+    return [...ctes, ...projectTableChoices(graph, tableText)];
+}
+
+/** The compiled graph of the Dataform Project a .sqlx file is in, if it has compiled. An untitled document is in none */
+function sqlxGraph(document: vscode.TextDocument): CompiledGraph | undefined {
+    if (document.uri.scheme !== 'file') {
+        return undefined;
+    }
+    const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
+    return found.kind === 'project' ? (found.project as ProjectState).dataformBackend?.graph : undefined;
 }
 
 /**
@@ -60,9 +94,7 @@ export const sourcesAutoCompletionDisposable = () => vscode.languages.registerCo
             if (!isInSqlBody(document, dollar)) {
                 return undefined;
             }
-            const found = projects.forFile(document.uri.fsPath, fileBackendHints(document.uri.fsPath));
-            const graph = found.kind === 'project' ? (found.project as ProjectState).dataformBackend?.graph : undefined;
-            const tables = refChoices(graph, extensionConfiguration().get('sourceAutoCompletionPreference'));
+            const tables = refChoices(sqlxGraph(document), extensionConfiguration().get('sourceAutoCompletionPreference'));
             return tables.length ? tableCompletionItems(tables, typed[1], new vscode.Range(dollar, position), typed[0]) : undefined;
         }
     },
@@ -128,10 +160,10 @@ export const tagsAutoCompletionDisposable = () => vscode.languages.registerCompl
 );
 
 
-/** The tables the current file's dependencies build, with their columns and the names the file qualifies them with */
-function sqlxColumnTables(text: string): ColumnTable[] {
+/** The tables the file's dependencies build, with their columns and the names the file qualifies them with */
+function sqlxColumnTables(columns: SchemaMetadata[], text: string): ColumnTable[] {
     const tables = new Map<string, ColumnTable>();
-    for (const column of schemaAutoCompletions) {
+    for (const column of columns) {
         const id = column.metadata.fullTableId;
         let table = tables.get(id);
         if (!table) {
@@ -163,17 +195,17 @@ export function refAliasesIn(text: string): { name: string, alias: string }[] {
     return found;
 }
 
-// Rebuilt only when the schemas change (a save or editor switch), not on every keystroke that asks for completions
-let schemaCompletionSource: SchemaMetadata[] | undefined;
-let schemaCompletionItems: vscode.CompletionItem[] = [];
+// Built once for each fetch of a file's columns, not on every keystroke that asks for completions
+const schemaCompletionItems = new WeakMap<SchemaMetadata[], vscode.CompletionItem[]>();
 
-function getSchemaCompletionItems(): vscode.CompletionItem[] {
-    if (schemaCompletionSource !== schemaAutoCompletions) {
-        schemaCompletionSource = schemaAutoCompletions;
-        const choices = sqlxColumnTables('').flatMap((table) => table.fields.map((field) => ({ field, table: table.table })));
-        schemaCompletionItems = mergeColumns(choices).map((column) => columnCompletionItem(column));
+function getSchemaCompletionItems(columns: SchemaMetadata[]): vscode.CompletionItem[] {
+    let items = schemaCompletionItems.get(columns);
+    if (!items) {
+        const choices = sqlxColumnTables(columns, '').flatMap((table) => table.fields.map((field) => ({ field, table: table.table })));
+        items = mergeColumns(choices).map((column) => columnCompletionItem(column));
+        schemaCompletionItems.set(columns, items);
     }
-    return schemaCompletionItems;
+    return items;
 }
 
 export const schemaAutoCompletionDisposable = () => vscode.languages.registerCompletionItemProvider(
@@ -184,10 +216,11 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
         if (!isInSqlBody(document, position)) {
             return undefined;
         }
+        const columns = dependencyColumnsOf(document.uri);
         // After a dot: the columns of the table an alias names, or the fields of a STRUCT column
         const dotted = dottedNameBefore(document.lineAt(position).text.slice(0, position.character));
         if (dotted) {
-            const choices = columnsAfterDots(dotted.qualifiers, sqlxColumnTables(document.getText()));
+            const choices = columnsAfterDots(dotted.qualifiers, sqlxColumnTables(columns, document.getText()));
             if (choices) {
                 const range = new vscode.Range(position.translate(0, -dotted.word.length), position);
                 return mergeColumns(choices).map((column) => columnCompletionItem(column, range));
@@ -197,21 +230,23 @@ export const schemaAutoCompletionDisposable = () => vscode.languages.registerCom
                 return undefined;
             }
         }
-        // Right after FROM or JOIN a table goes, not a column: the query's CTEs, beside the `$` list of refs
+        // Right after FROM or JOIN a table goes, not a column: the statement's CTEs and the Project's tables as refs.
+        // A `$` opens the list of refs on its own
         const word = /\w*$/.exec(document.lineAt(position).text.slice(0, position.character))?.[0] ?? '';
         const start = position.translate(0, -word.length);
         if (start.character > 0 && document.lineAt(position).text[start.character - 1] === '$') {
             return undefined;
         }
         if (inFromList(document.getText(new vscode.Range(new vscode.Position(0, 0), start)))) {
-            const ctes = cteNames(document.getText()).map((name) => ({ label: name, kind: 'cte', insertText: name }));
-            return ctes.length ? tableCompletionItems(ctes, word, new vscode.Range(start, position), word) : undefined;
+            const preference = extensionConfiguration().get('sourceAutoCompletionPreference');
+            const tables = fromListChoices(document.getText(), document.offsetAt(position), sqlxGraph(document), (target, nameIsShared) => refText(target, preference, nameIsShared));
+            return tables.length ? tableCompletionItems(tables, word, new vscode.Range(start, position), word) : undefined;
         }
         // A digit opens the list only where a table goes
         if (isDigitTrigger(context)) {
             return undefined;
         }
-        return getSchemaCompletionItems();
+        return getSchemaCompletionItems(columns);
       }
     },
     '.', ...DIGITS

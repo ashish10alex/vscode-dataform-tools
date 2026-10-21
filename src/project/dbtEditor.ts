@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { isScratchPath } from '../scratch/scratchQuery';
+import { exceptScratch, isScratchPath } from '../scratch/scratchQuery';
 import path from 'path';
 import * as vscode from 'vscode';
 import type { Editor, EditorDocument } from '../backend';
@@ -285,8 +285,9 @@ function register() {
         registered.push(vscode.languages.registerHoverProvider(dbtSelector(project.root, 'sql'), new DbtHoverProvider()));
         // Asked for at a quote, which starts an argument, and at a dot, which follows an alias
         registered.push(vscode.languages.registerCompletionItemProvider(dbtSelector(project.root, 'sql'), new DbtCompletionProvider(), "'", '"', '.'));
-        // BigQuery functions: their hover and signature help, and the completions a .sqlx file has from snippet files
-        registered.push(...registerBigQueryFunctionProviders(dbtSelector(project.root, 'sql'), true));
+        // BigQuery functions: their hover and signature help, and the completions a .sqlx file has from snippet files.
+        // The selector also takes in the scratch queries kept in the Project's folder, which have their own
+        registered.push(...registerBigQueryFunctionProviders(dbtSelector(project.root, 'sql'), true, exceptScratch));
     }
     // Said once for each state, not on every look
     if (says.join('\n') !== said) {

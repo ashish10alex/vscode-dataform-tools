@@ -91,8 +91,12 @@ suite('recorded panel output', function () {
     let subscription: vscode.Disposable | undefined;
     let panel: PanelApi | undefined;
 
-    /** Keeps the slices the way the panel does, and waits until compile and dry run have both reported and nothing more arrives */
-    async function slicesAfter(trigger: () => Thenable<unknown>): Promise<PanelSlices> {
+    /**
+     * Keeps the slices the way the panel does, and waits until the panel shows `file`, compile and dry run have both
+     * reported, and nothing more arrives. A file shown before, such as one a scratch query recording left open, can
+     * still be rendering when the next is opened: its slices must not be taken for those of `file`
+     */
+    async function slicesAfter(file: string, trigger: () => Thenable<unknown>): Promise<PanelSlices> {
         // Each file is recorded as a panel that starts with it would have it, so a recording does not depend on the one before
         slices = initialSlices();
         seen = 0;
@@ -108,12 +112,12 @@ suite('recorded panel output', function () {
                 quietSince = Date.now();
                 continue;
             }
-            const settled = seen > 0 && slices.compile?.status !== 'compiling' && (slices.bigquery?.dryRunning.length ?? 0) === 0;
+            const settled = seen > 0 && slices.file?.file === file && slices.compile?.status !== 'compiling' && (slices.bigquery?.dryRunning.length ?? 0) === 0;
             if (settled && Date.now() - quietSince >= 2500) {
                 return slices;
             }
         }
-        throw new Error(`The panel did not settle within 90s. It has: ${Object.keys(slices).join(', ')}`);
+        throw new Error(`The panel did not settle on ${file} within 90s. It shows ${slices.file?.file ?? 'no file'}, and has: ${Object.keys(slices).join(', ')}`);
     }
 
     suiteSetup(async function () {
@@ -139,7 +143,7 @@ suite('recorded panel output', function () {
     for (const [name, relativePath] of Object.entries(FILES)) {
         test(`${name}: ${relativePath}`, async function () {
             const uri = vscode.Uri.file(path.join(workspaceFolder!, relativePath));
-            const state = await slicesAfter(async () => {
+            const state = await slicesAfter(relativePath, async () => {
                 const document = await vscode.workspace.openTextDocument(uri);
                 await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.One, preview: false });
                 if (!panelOpen) {
