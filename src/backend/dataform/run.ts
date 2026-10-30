@@ -2,9 +2,12 @@ import type { RunOptions } from '../../shared/compiledGraph';
 import type { BackendRequest, Runner } from '../backend';
 import type { DataformOptions } from './options';
 
-/** The Dataform CLI as a command line names it: in quotes when its path has a space */
+/**
+ * A CLI path as a command line names it: in quotes when it has a space or a character the shell reads, such as
+ * `&` in cmd.exe. `~` is left out so that a path such as `~/bin/dataform` still expands.
+ */
 export function quotedCli(cliPath: string): string {
-    return /\s/.test(cliPath) ? `"${cliPath}"` : cliPath;
+    return /[^\w\-.\/\\:~+@]/.test(cliPath) ? `"${cliPath}"` : cliPath;
 }
 
 /**

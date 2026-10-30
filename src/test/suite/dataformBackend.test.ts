@@ -5,6 +5,7 @@ import { suite, test } from 'mocha';
 import type { BackendRequest } from '../../backend';
 import { affectsCompile, backendParts } from '../../backend';
 import { DataformBackend } from '../../backend/dataform/backend';
+import { quotedCli } from '../../backend/dataform/run';
 import { buildDataformGraph } from '../../backend/dataform/graph';
 import type { DataformOptions } from '../../backend/dataform/options';
 import type { RunOptions } from '../../shared/compiledGraph';
@@ -292,5 +293,14 @@ suite('Dataform Backend: the run command', () => {
             runner.command({ root, options: options({ compilerOptions: '--schema-suffix=dev --vars=env=dev', compileTimeout: '10m', executionTimeout: '1h' }), run: run({ actions: ['p.ds.orders'] }) }),
             '/usr/local/bin/dataform run "/repo/analytics" --schema-suffix=dev --vars=env=dev --timeout=10m --execution-timeout=1h --actions "p.ds.orders"'
         );
+    });
+
+    test('a CLI path is quoted when it has a space or a character the shell reads', () => {
+        assert.strictEqual(quotedCli('/usr/local/bin/dataform'), '/usr/local/bin/dataform');
+        assert.strictEqual(quotedCli('C:\\Users\\me\\AppData\\Roaming\\npm\\dataform.cmd'), 'C:\\Users\\me\\AppData\\Roaming\\npm\\dataform.cmd');
+        assert.strictEqual(quotedCli('~/bin/dataform'), '~/bin/dataform');
+        assert.strictEqual(quotedCli('C:\\Program Files\\sqlfluff.exe'), '"C:\\Program Files\\sqlfluff.exe"');
+        assert.strictEqual(quotedCli('C:\\Tools\\sql&fluff.exe'), '"C:\\Tools\\sql&fluff.exe"');
+        assert.strictEqual(quotedCli('C:\\Tools(x86)\\sqlfluff.exe'), '"C:\\Tools(x86)\\sqlfluff.exe"');
     });
 });
