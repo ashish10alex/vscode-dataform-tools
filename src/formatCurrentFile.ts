@@ -9,6 +9,7 @@ import { SqlxBlockMetadata } from './types';
 import { logger } from './logger';
 import { isRemoteMode } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
+import { quotedCli } from './backend/dataform/run';
 
 export async function formatDataformSqlxFile(document:vscode.TextDocument){
     let formattingCli = extensionConfiguration().get("formattingCli");
@@ -95,7 +96,7 @@ export async function formatSqlxFile(document:vscode.TextDocument, currentActive
     (jsBlockText === "") ? jsBlockText: jsBlockText = (spaceBetweenBlocks + jsBlockText);
 
     const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
-    let formatCmd = `${sqlfluffExecutablePath} fix -q --config=${sqlfluffConfigFilePath} ${sqlFileToFormatPath}`;
+    let formatCmd = `${quotedCli(sqlfluffExecutablePath)} fix -q --config "${sqlfluffConfigFilePath}" "${sqlFileToFormatPath}"`;
 
     try {
         await getStdoutFromCliRun(exec, formatCmd);
@@ -229,7 +230,7 @@ export async function lintSqlxFile(document: vscode.TextDocument, metadataForSql
 
     const sqlfluffExecutablePath = getSqlfluffExecutablePathFromSettings();
     // lint the temp file
-    let lintCmd = `${sqlfluffExecutablePath} lint "${sqlFileToFormatPath}" --config "${sqlfluffConfigFilePath}" --format json`;
+    let lintCmd = `${quotedCli(sqlfluffExecutablePath)} lint "${sqlFileToFormatPath}" --config "${sqlfluffConfigFilePath}" --format json`;
 
     try {
         const stdout = await new Promise<string>((resolve, reject) => {
