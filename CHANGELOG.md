@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.11...v2.0.12) (2026-10-31)
+
+
+### Bug Fixes
+
+* quote paths in sqlfluff format and lint commands on Windows ([#547](https://github.com/ashish10alex/vscode-dataform-tools/issues/547)) ([c7fdd50](https://github.com/ashish10alex/vscode-dataform-tools/commit/c7fdd503a9940864603e9356db1b1222ea431016))
+
+
+### CI
+
+* run checks and publish on Node.js 24.22.1 ([a079fcf](https://github.com/ashish10alex/vscode-dataform-tools/commit/a079fcf404baff3a2d24e3683d0260c44db1ab51))
+
 ### [2.0.11](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.10...v2.0.11) (2026-10-21)
 
 
