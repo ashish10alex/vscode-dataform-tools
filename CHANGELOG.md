@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.13](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.12...v2.0.13) (2026-11-01)
+
+
+### Features
+
+* show and set the prod project of defer to prod in the compiled query panel ([#548](https://github.com/ashish10alex/vscode-dataform-tools/issues/548)) ([1dccfad](https://github.com/ashish10alex/vscode-dataform-tools/commit/1dccfad6394f0b845342d48c7016e8cdcbe47859))
+
 ### [2.0.12](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.11...v2.0.12) (2026-10-31)
 
 
