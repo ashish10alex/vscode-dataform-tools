@@ -10,6 +10,9 @@ import { extensionConfiguration } from '../project/settings';
 import { dbtOptions, dbtSettings, forgetDbtCompile } from '../project/dbtCompile';
 import { dbtDeferToProdState, dbtProdTarget, forgetDbtProdManifest } from '../project/dbtDefer';
 import type { ProjectState } from '../project/registry';
+import { joinProdOptions, splitProdProject } from '../shared/prodOptions';
+import { readDefaultProjectFromSettings } from '../utils/remoteCompiler';
+import { projectFileSettings, SETTINGS_SECTION, settingsFileOf, settingValueRange } from '../project/settingsFile';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -32,6 +35,8 @@ function dbtTargetInUse(project: ProjectState): string | undefined {
 }
 
 let statusBarItem: vscode.StatusBarItem | undefined;
+/** Redraws the compiled query panel; set by `initDeferToProd` */
+let refreshPanelAfterWrite: (() => Promise<void> | void) | undefined;
 
 function currentWorkspaceFolder(): string | undefined {
     return activeDbtProject()?.root ?? currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -90,6 +95,65 @@ async function toggleDeferToProd(enabled?: boolean) {
     await config.update('deferToProd', value, target);
 }
 
+/**
+ * Writes the prodCompilerOptions setting where it is already set, so a User setting does not leak into the team's
+ * workspace settings. A Project below a workspace folder that sets it in its own `.vscode/settings.json` has it
+ * changed there, as VS Code's settings come after that file.
+ */
+export async function setProdCompilerOptions(prodOptions: string) {
+    const workspaceFolder = currentWorkspaceFolder();
+    const ownFile = workspaceFolder && !(vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.fsPath === workspaceFolder)
+        && Object.prototype.hasOwnProperty.call(projectFileSettings(workspaceFolder), 'prodCompilerOptions');
+    if (ownFile) {
+        await setInProjectFile(workspaceFolder, prodOptions.trim());
+        return;
+    }
+    const config = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    const target = pickConfigurationTarget(config.inspect<string>('prodCompilerOptions'), !!vscode.workspace.workspaceFolders?.length);
+    await config.update('prodCompilerOptions', prodOptions.trim(), target);
+}
+
+/**
+ * Replaces the string value of prodCompilerOptions in the Project's own settings file, keeping its comments, then
+ * does what a change of the setting does, as VS Code sends no event for that file. Where the value cannot be
+ * replaced in place (it is not a string, or the file has unsaved edits) the file is opened for the user to change.
+ */
+async function setInProjectFile(root: string, prodOptions: string) {
+    const uri = vscode.Uri.file(settingsFileOf(root));
+    const document = await vscode.workspace.openTextDocument(uri);
+    const range = settingValueRange(document.getText(), 'prodCompilerOptions');
+    if (!range || document.isDirty) {
+        await vscode.window.showTextDocument(document);
+        void vscode.window.showWarningMessage(`This Project sets "${SETTINGS_SECTION}.prodCompilerOptions" in ${vscode.workspace.asRelativePath(uri)}. Set it there to "${prodOptions}".`);
+        return;
+    }
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, new vscode.Range(document.positionAt(range.start), document.positionAt(range.end)), JSON.stringify(prodOptions));
+    if (!(await vscode.workspace.applyEdit(edit)) || !(await document.save())) {
+        void vscode.window.showWarningMessage(`Could not write prodCompilerOptions to ${vscode.workspace.asRelativePath(uri)}.`);
+        return;
+    }
+    refreshStatusBar();
+    await clearDeferCaches();
+    await refreshPanelAfterWrite?.();
+}
+
+/** Asks for the Google Cloud project prod is in and keeps the other prod compiler options */
+async function askForProdProject() {
+    const workspaceFolder = currentWorkspaceFolder();
+    const { project, rest } = splitProdProject(extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined).get<string>('prodCompilerOptions'));
+    const defaultProject = workspaceFolder ? readDefaultProjectFromSettings(workspaceFolder) : undefined;
+    const typed = await vscode.window.showInputBox({
+        title: "Defer to prod: prod project",
+        prompt: `The Google Cloud project of your prod tables, given to the prod compile as --default-database.${defaultProject ? ` Leave it empty for the project default, ${defaultProject}.` : ""}`,
+        placeHolder: defaultProject ?? "my-prod-project",
+        value: project,
+    });
+    if (typed !== undefined) {
+        await setProdCompilerOptions(joinProdOptions(typed, rest));
+    }
+}
+
 async function clearDeferCaches() {
     clearTableExistenceCache({ includeUnreadable: true });
     await clearProdTargetCache();
@@ -138,6 +202,11 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
     ] : [
         { label: enabled ? "$(circle-slash) Turn off defer to prod" : "$(cloud-download) Turn on defer to prod", run: () => toggleDeferToProd() },
         {
+            label: "$(edit) Set the prod project",
+            description: "The Google Cloud project prod tables are read from (--default-database)",
+            run: () => askForProdProject(),
+        },
+        {
             label: "$(refresh) Refresh prod targets and table cache",
             description: "Recompile with the prod options and look up dev and prod tables again",
             run: () => refreshDeferToProd(refreshPanel),
@@ -157,6 +226,7 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
 }
 
 export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: () => Promise<void> | void) {
+    refreshPanelAfterWrite = refreshPanel;
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 49);
     statusBarItem.command = 'vscode-dataform-tools.deferToProdActions';
     context.subscriptions.push(

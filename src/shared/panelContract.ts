@@ -464,6 +464,7 @@ export type DataformPanelMessage =
     | { command: 'dataform.toggleDeferToProd'; on: boolean }
     | { command: 'dataform.deferToProdActions' }
     | { command: 'dataform.openDeferToProdSettings' }
+    | { command: 'dataform.updateProdCompilerOptions'; prodCompilerOptions: string }
     | { command: 'dataform.retryDeferral' }
     | { command: 'dataform.removeProxyViews'; targets?: string[] }
     | { command: 'dataform.computeChangedActions' }

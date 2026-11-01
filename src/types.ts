@@ -430,6 +430,10 @@ export interface DeferToProdState {
     available: boolean;
     /** Why it cannot be applied, when it is not available */
     reason?: string;
+    /** Of a Dataform Project: the prodCompilerOptions setting, as typed */
+    prodOptions?: string;
+    /** Of a Dataform Project: its default project, which prod is in when prodOptions set no `--default-database` */
+    defaultProject?: string;
 }
 
 /** What the compiled query panel shows about defer to prod for the current file: its upstream tables, or why looking them up failed */

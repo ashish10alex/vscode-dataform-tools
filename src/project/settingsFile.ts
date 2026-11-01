@@ -61,6 +61,19 @@ function restAfterComments(text: string, from: number): string {
     }
 }
 
+/**
+ * Where the string value of an extension setting is in the text of a settings file, quotes included, so it can be
+ * replaced without touching the file's comments. The last entry, as the last one wins when the file is read; one in
+ * a line comment is no entry. Undefined when there is none, or its value is not a string.
+ */
+export function settingValueRange(text: string, name: string): { start: number; end: number } | undefined {
+    const key = `${SETTINGS_SECTION}.${name}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const entries = [...text.matchAll(new RegExp(`("${key}"\\s*:\\s*)"(?:[^"\\\\]|\\\\.)*"`, 'g'))]
+        .filter((match) => !text.slice(text.lastIndexOf('\n', match.index) + 1, match.index).includes('//'));
+    const entry = entries[entries.length - 1];
+    return entry ? { start: entry.index! + entry[1].length, end: entry.index! + entry[0].length } : undefined;
+}
+
 const held = new Map<string, { modified: number; size: number; values: Record<string, unknown> }>();
 
 /**

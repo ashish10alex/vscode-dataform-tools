@@ -7,6 +7,7 @@ import { findExistingDevTargets, findProxyViews, getDevLastModified, getProdStat
 import { proxyViewsMayExist } from './proxyViews';
 import { getProdCompilerOptions, getProdTargets, prefetchProdTargets } from './prodTargets';
 import { extensionConfiguration } from '../project/settings';
+import { readDefaultProjectFromSettings } from '../utils/remoteCompiler';
 
 export interface Deferral {
     entries: DeferralEntry[];
@@ -37,7 +38,7 @@ export type DeferAvailability = { available: true, prodOptions: string } | { ava
 export function getDeferAvailability(workspaceFolder: string): DeferAvailability {
     const prodOptions = getProdCompilerOptions(workspaceFolder);
     if (prodOptions === undefined) {
-        return { available: false, reason: "Dev and prod resolve to the same tables. Set the prod compiler options, e.g. --default-database=my-prod-project." };
+        return { available: false, reason: "Dev and prod resolve to the same tables. Set the prod project, or other prod compiler options." };
     }
     return { available: true, prodOptions };
 }
@@ -51,6 +52,8 @@ export function getDeferToProdState(workspaceFolder: string | undefined): DeferT
         enabled: isDeferEnabled(workspaceFolder),
         available: availability.available,
         reason: availability.available ? undefined : availability.reason,
+        prodOptions: settings(workspaceFolder).get<string>('prodCompilerOptions') ?? "",
+        defaultProject: readDefaultProjectFromSettings(workspaceFolder),
     };
 }
 

@@ -67,6 +67,7 @@ import { watchGitHead, watchGitState } from '../gitHeadWatcher';
 import { computeApiRunGitState } from '../apiRunGitState';
 import type { ApiRunGitState } from '../shared/apiRunGitState';
 import { getDeferToProdState, onDeferralUpdated, toDeferralView } from '../defer';
+import { setProdCompilerOptions } from '../defer/deferStatusBar';
 import { changedColumnCount, onDidRecordDryRunSchema } from '../columnLineage/impactReport';
 import { isRemoteMode, resolveDataformOptions, setCompilationMode } from '../project/dataformOptions';
 import { extensionConfiguration } from '../project/settings';
@@ -1492,6 +1493,9 @@ export class CompiledQueryPanel {
               }
               case 'dataform.openDeferToProdSettings':
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'vscode-dataform-tools.prodCompilerOptions');
+                return;
+              case 'dataform.updateProdCompilerOptions':
+                await setProdCompilerOptions(message.prodCompilerOptions);
                 return;
               case 'dataform.retryDeferral':
                 try {
