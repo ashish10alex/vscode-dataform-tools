@@ -39,6 +39,25 @@ function tableLine(label: string, color: string, name: string): string {
     return `<code>${colored(label.padEnd(4, ' '), color)} ${name}</code>`;
 }
 
+/**
+ * Two `project.dataset.name` IDs as HTML, each with the parts only it has highlighted. The project, the dataset and
+ * the name are diffed apart, as the compiled query panel does, so a project that differs and a schema suffix are two
+ * highlights rather than one that runs from the first to the last
+ */
+function diffIds(dev: string, prod: string): { dev: string; prod: string } {
+    const devParts = dev.split('.');
+    const prodParts = prod.split('.');
+    const pairs = devParts.length === prodParts.length ? devParts.map((part, index) => [part, prodParts[index]]) : [[dev, prod]];
+    const sides = pairs.map(([devPart, prodPart]) => {
+        const diff = diffNames(devPart, prodPart);
+        return {
+            dev: hoverText(diff.prefix) + highlighted(diff.before, REMOVED_BACKGROUND) + hoverText(diff.suffix),
+            prod: hoverText(diff.prefix) + highlighted(diff.after, INSERTED_BACKGROUND) + hoverText(diff.suffix),
+        };
+    });
+    return { dev: sides.map((side) => side.dev).join('.'), prod: sides.map((side) => side.prod).join('.') };
+}
+
 export interface DeferHover {
     tone: DeferHoverTone;
     /** A codicon name, e.g. `arrow-right` */
@@ -64,9 +83,9 @@ export function deferHoverMarkdown(hover: DeferHover): string {
     const heading = `${colored(`$(${hover.icon}) <strong>${hoverText(hover.heading)}</strong>`, TONE_COLOR[hover.tone])} &nbsp;<small>${hoverText(hover.caption ?? 'DEFER TO PROD')}</small>`;
     const lines: string[] = [];
     if (hover.dev && hover.prod) {
-        const diff = diffNames(hover.dev, hover.prod);
-        lines.push(tableLine('dev', DEV_COLOR, hoverText(diff.prefix) + highlighted(diff.before, REMOVED_BACKGROUND) + hoverText(diff.suffix)));
-        lines.push(tableLine('prod', PROD_COLOR, hoverText(diff.prefix) + highlighted(diff.after, INSERTED_BACKGROUND) + hoverText(diff.suffix)));
+        const diff = diffIds(hover.dev, hover.prod);
+        lines.push(tableLine('dev', DEV_COLOR, diff.dev));
+        lines.push(tableLine('prod', PROD_COLOR, diff.prod));
     } else if (hover.dev) {
         lines.push(tableLine('dev', PLAIN_COLOR, hoverText(hover.dev)));
     }

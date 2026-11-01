@@ -342,9 +342,10 @@ suite('deferRules.deferralEntryHint', () => {
         assert.strictEqual(hint.label, '→ deferred to prod');
         assert.strictEqual(hint.kind, 'prod');
         assert.match(hint.hover, /Not built in dev, so read from prod/);
-        // The part the dev and prod names differ in is highlighted on each side
-        assert.match(hint.hover, /proj-<span style="background-color:var\(--vscode-diffEditor-removedTextBackground\);border-radius:3px;">dev\.sales&#95;dev<\/span>\.orders/);
-        assert.match(hint.hover, /proj-<span style="background-color:var\(--vscode-diffEditor-insertedTextBackground\);border-radius:3px;">prod\.sales<\/span>\.orders/);
+        // Each part the dev and prod names differ in is highlighted on its own: the project, and the schema suffix
+        const removed = (text: string) => `<span style="background-color:var(--vscode-diffEditor-removedTextBackground);border-radius:3px;">${text}</span>`;
+        assert.ok(hint.hover.includes(` proj-${removed('dev')}.sales${removed('&#95;dev')}.orders</code>`), hint.hover);
+        assert.ok(hint.hover.includes(` proj-<span style="background-color:var(--vscode-diffEditor-insertedTextBackground);border-radius:3px;">prod</span>.sales.orders</code>`), hint.hover);
         assert.match(hint.hover, /Open prod table in BigQuery\]\(https:\/\/console\.cloud\.google\.com\/bigquery\?project=proj-prod&.*!2ssales!3sorders\)/);
     });
 

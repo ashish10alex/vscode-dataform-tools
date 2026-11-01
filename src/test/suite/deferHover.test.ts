@@ -28,6 +28,14 @@ suite('deferHover', () => {
         assert.strictEqual(parts[3], '[Open prod table in BigQuery](https://example.com)');
     });
 
+    test('highlights each part that differs on its own, not the span from the first to the last', () => {
+        const both = deferHoverMarkdown({ tone: 'warning', icon: 'warning', heading: 'prod', sentence: 'Changed on this branch.', dev: 'acme-dev.world_cup_dev.fct_teams', prod: 'acme-prod.world_cup.fct_teams' });
+        const removed = (text: string) => `<span style="background-color:var(--vscode-diffEditor-removedTextBackground);border-radius:3px;">${text}</span>`;
+        const inserted = (text: string) => `<span style="background-color:var(--vscode-diffEditor-insertedTextBackground);border-radius:3px;">${text}</span>`;
+        assert.ok(both.includes(` acme-${removed('dev')}.world&#95;cup${removed('&#95;dev')}.fct&#95;teams</code>`), both);
+        assert.ok(both.includes(` acme-${inserted('prod')}.world&#95;cup.fct&#95;teams</code>`), both);
+    });
+
     test('uses only span styles a hover keeps', () => {
         const styles = [...hover.matchAll(/style="([^"]*)"/g)].map((match) => match[1]);
         assert.ok(styles.length >= 4);
