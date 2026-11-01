@@ -341,8 +341,10 @@ suite('deferRules.deferralEntryHint', () => {
         const hint = deferralEntryHint(deferred('orders'));
         assert.strictEqual(hint.label, '→ deferred to prod');
         assert.strictEqual(hint.kind, 'prod');
-        assert.match(hint.hover, /not built in dev, so read from prod/);
-        assert.match(hint.hover, /`proj-dev\.sales_dev\.orders`\n\n→ `proj-prod\.sales\.orders`/);
+        assert.match(hint.hover, /Not built in dev, so read from prod/);
+        // The part the dev and prod names differ in is highlighted on each side
+        assert.match(hint.hover, /proj-<span style="background-color:var\(--vscode-diffEditor-removedTextBackground\);border-radius:3px;">dev\.sales&#95;dev<\/span>\.orders/);
+        assert.match(hint.hover, /proj-<span style="background-color:var\(--vscode-diffEditor-insertedTextBackground\);border-radius:3px;">prod\.sales<\/span>\.orders/);
         assert.match(hint.hover, /Open prod table in BigQuery\]\(https:\/\/console\.cloud\.google\.com\/bigquery\?project=proj-prod&.*!2ssales!3sorders\)/);
     });
 
@@ -366,8 +368,8 @@ suite('deferRules.deferralEntryHint', () => {
         const hint = deferralEntryHint({ dev: dev('orders'), status: 'missingEverywhere' });
         assert.strictEqual(hint.label, '⚠ not built in dev or prod');
         assert.strictEqual(hint.kind, 'warning');
-        assert.match(hint.hover, /not built in dev or prod/);
-        assert.doesNotMatch(hint.hover, /→/);
+        assert.match(hint.hover, /Not built in dev or prod/);
+        assert.doesNotMatch(hint.hover, /<br>/);
     });
 
     test('a built Dev Target is read from dev', () => {
@@ -376,8 +378,8 @@ suite('deferRules.deferralEntryHint', () => {
         assert.strictEqual(hint.label, '✓ dev · built 12 min ago');
         assert.strictEqual(builtInDevHint({ dev: dev('orders'), lastModified: built }, built + 3 * 3_600_000).label, '✓ dev · built 3 h ago');
         assert.strictEqual(hint.kind, 'dev');
-        assert.match(hint.hover, /built in dev, so read from dev/);
-        assert.match(hint.hover, /`proj-dev\.sales_dev\.orders`/);
+        assert.match(hint.hover, /Built in dev, so read from dev/);
+        assert.match(hint.hover, /proj-dev\.sales&#95;dev\.orders/);
         assert.match(hint.hover, /Last updated /);
         const unknownAge = builtInDevHint({ dev: dev('orders') }, built);
         assert.strictEqual(unknownAge.label, '✓ dev · built in dev');
@@ -388,8 +390,8 @@ suite('deferRules.deferralEntryHint', () => {
         const hint = declarationHint(prod('raw_orders', 'raw'));
         assert.strictEqual(hint.label, '✓ declaration');
         assert.strictEqual(hint.kind, 'dev');
-        assert.match(hint.hover, /a declaration, which the project does not build, so dev and prod read the same table/);
-        assert.match(hint.hover, /`proj-prod\.raw\.raw_orders`/);
+        assert.match(hint.hover, /A declaration, which the project does not build, so dev and prod read the same table/);
+        assert.match(hint.hover, /proj-prod\.raw\.raw&#95;orders/);
         assert.match(hint.hover, /Open table in BigQuery\]\(https:\/\/console\.cloud\.google\.com\/bigquery\?project=proj-prod&.*!2sraw!3sraw_orders\)/);
     });
 

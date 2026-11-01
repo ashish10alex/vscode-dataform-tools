@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { diffNames } from '../../../webviews/preview_compiled/utils/nameDiff';
+import { diffNames } from '../../shared/nameDiff';
 
 suite('nameDiff.diffNames', () => {
     test('a table prefix is the only difference', () => {

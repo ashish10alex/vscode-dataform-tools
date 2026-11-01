@@ -31,10 +31,11 @@ suite('dbt defer to prod: the labels after a ref()', () => {
 
     test('the hover gives the table in the dbt target, the one in prod, and a link to it', () => {
         const [deferred, built] = dbtRefHints(SQL, resolve(SQL), reads, () => undefined, NOW);
-        assert.match(deferred.hover, /not built in dev, so read from prod/);
-        assert.match(deferred.hover, /`p-dev\.shop\.fct_orders`[\s\S]*→ `p-prod\.shop\.fct_orders`/);
+        assert.match(deferred.hover, /Not built in dev, so read from prod/);
+        // The projects are what differs, so they are highlighted
+        assert.match(deferred.hover, />dev\u00a0<\/span> p-<span[^>]*>dev<\/span>\.shop\.fct&#95;orders<\/code><br><code>[^]*>prod<\/span> p-<span[^>]*>prod<\/span>\.shop\.fct&#95;orders<\/code>/);
         assert.match(deferred.hover, /\[Open prod table in BigQuery\]\(https:\/\/console\.cloud\.google\.com\/bigquery/);
-        assert.match(built.hover, /built in dev, so read from dev[\s\S]*`p-dev\.shop\.dim_customers`/);
+        assert.match(built.hover, /Built in dev, so read from dev[\s\S]*p-dev\.shop\.dim&#95;customers/);
     });
 
     test('the age of a table in the dbt target is said where it is known', () => {
