@@ -135,9 +135,10 @@ function HoverCard({ hover }: { hover: NonNullable<DemoSource["hover"]> }) {
 }
 
 // The editor draws a hint after its ref() in the editor's own font, with the colours the extension contributes
-// (package.json: dataformTools.deferredRef, deferredRefWarning and builtInDevRef) and no rounding
+// (package.json: dataformTools.deferredRef, deferredRefWarning and builtInDevRef) and no rounding. deferredRef is
+// the theme's textLink.foreground on its editor.hoverHighlightBackground: here those of Light and Dark Modern
 const HINT_CLASS: Record<SourceHint["kind"], string> = {
-  prod: "bg-[#8A64001A] text-[#8A6400] dark:bg-[#E5C07B1F] dark:text-[#E5C07B]",
+  prod: "bg-[#ADD6FF26] text-[#005FB8] dark:bg-[#264f7840] dark:text-[#4daafc]",
   warning: "bg-[#B34D001A] text-[#B34D00] dark:bg-[#F0A15A1F] dark:text-[#F0A15A]",
   dev: "bg-[#388A341A] text-[#388A34] dark:bg-[#89D1851F] dark:text-[#89D185]",
 };

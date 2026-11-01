@@ -351,20 +351,20 @@
         "colors": [
             {
                 "id": "dataformTools.deferredRef.foreground",
-                "description": "Label after a ref that defer to prod reads from prod",
+                "description": "Label after a ref that defer to prod reads from prod. Defaults to the theme's link colour",
                 "defaults": {
-                    "dark": "#E5C07B",
-                    "light": "#8A6400",
-                    "highContrast": "#FFD700",
-                    "highContrastLight": "#7A5800"
+                    "dark": "textLink.foreground",
+                    "light": "textLink.foreground",
+                    "highContrast": "textLink.foreground",
+                    "highContrastLight": "textLink.foreground"
                 }
             },
             {
                 "id": "dataformTools.deferredRef.background",
-                "description": "Background of the label after a ref that defer to prod reads from prod",
+                "description": "Background of the label after a ref that defer to prod reads from prod. Defaults to the theme's hover highlight",
                 "defaults": {
-                    "dark": "#E5C07B1F",
-                    "light": "#8A64001A",
+                    "dark": "editor.hoverHighlightBackground",
+                    "light": "editor.hoverHighlightBackground",
                     "highContrast": null,
                     "highContrastLight": null
                 }
