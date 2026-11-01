@@ -11,7 +11,7 @@ import { projects } from '../project';
 import type { ProjectState } from '../project/registry';
 import { ActionId, isTestKind } from '../shared/compiledGraph';
 import { DbtRefHint, dbtRefHints } from './dbtRefHints';
-import { builtInDevDecoration, deferredDecoration, hintsEnabled } from './deferEditorHints';
+import { builtInDevDecoration, deferHover, deferredDecoration, hintsEnabled } from './deferEditorHints';
 
 /*
  * The labels after each `ref()` in a .sql file of a dbt Project, with defer to prod on (see dbtRefHints.ts for what
@@ -98,7 +98,7 @@ function decorate(editor: vscode.TextEditor) {
     }
     const decorations = (kind: DbtRefHint['kind']): vscode.DecorationOptions[] => hints.filter((hint) => hint.kind === kind).map((hint) => ({
         range: new vscode.Range(document.positionAt(hint.start), document.positionAt(hint.end)),
-        hoverMessage: new vscode.MarkdownString(hint.hover),
+        hoverMessage: deferHover(hint.hover),
         renderOptions: { after: { contentText: ` ${hint.label} ` } },
     }));
     editor.setDecorations(deferredDecoration, decorations('prod'));

@@ -1,6 +1,7 @@
 import type { Action } from '../shared/compiledGraph';
 import { DataformCompiledJson, QueryMeta, Target } from '../types';
 import { formatRelativeTime } from '../utils/relativeTime';
+import { deferHoverMarkdown } from '../shared/deferHover';
 
 /*
  * Defer to prod (like dbt's `--defer`): an upstream action that is not selected and has not been built in
@@ -397,25 +398,45 @@ function bigQueryConsoleUrl(target: Target): string {
 }
 
 export function deferralEntryHint(entry: DeferralEntry): DeferralEntryHint {
-    const route = entry.prod ? `\`${targetId(entry.dev)}\`\n\n→ \`${targetId(entry.prod)}\`` : `\`${targetId(entry.dev)}\``;
-    const openProd = entry.prod ? `\n\n[Open prod table in BigQuery](${bigQueryConsoleUrl(entry.prod)})` : "";
+    const tables = { dev: targetId(entry.dev), prod: entry.prod && targetId(entry.prod) };
+    const openProd = entry.prod ? [`[Open prod table in BigQuery](${bigQueryConsoleUrl(entry.prod)})`] : [];
     if (entry.status === "deferred" && entry.stale) {
-        return { label: "⚠ prod · changed on this branch", kind: "warning", hover: `**Defer to prod:** read from prod, but changed on this branch, so prod may be out of date.\n\n${route}${openProd}` };
+        return {
+            label: "⚠ prod · changed on this branch",
+            kind: "warning",
+            hover: deferHoverMarkdown({ tone: "warning", icon: "warning", heading: "prod", sentence: "Read from prod, but changed on this branch, so prod may be out of date.", ...tables, footer: openProd }),
+        };
     }
     if (entry.status === "deferred") {
-        return { label: "→ deferred to prod", kind: "prod", hover: `**Defer to prod:** not built in dev, so read from prod.\n\n${route}${openProd}` };
+        return {
+            label: "→ deferred to prod",
+            kind: "prod",
+            hover: deferHoverMarkdown({ tone: "prod", icon: "arrow-right", heading: "prod", sentence: "Not built in dev, so read from prod.", ...tables, footer: openProd }),
+        };
     }
     if (entry.status === "unreadable") {
-        return { label: "⚠ not built in dev · no prod access", kind: "warning", hover: `**Defer to prod:** not built in dev, and no read access to prod.\n\n${route}` };
+        return {
+            label: "⚠ not built in dev · no prod access",
+            kind: "warning",
+            hover: deferHoverMarkdown({ tone: "warning", icon: "warning", heading: "no prod access", sentence: "Not built in dev, and no read access to prod.", ...tables }),
+        };
     }
-    return { label: "⚠ not built in dev or prod", kind: "warning", hover: `**Defer to prod:** not built in dev or prod.\n\n${route}` };
+    return {
+        label: "⚠ not built in dev or prod",
+        kind: "warning",
+        hover: deferHoverMarkdown({ tone: "warning", icon: "warning", heading: "not built", sentence: "Not built in dev or prod.", ...tables }),
+    };
 }
 
 /** An upstream action that has a Prod Target but is built in dev, so it is read from dev. `now` ages the label. */
 export function builtInDevHint(entry: BuiltInDevEntry, now: number): DeferralEntryHint {
-    const updated = entry.lastModified ? `\n\nLast updated ${new Date(entry.lastModified).toLocaleString()}` : "";
+    const updated = entry.lastModified ? [`Last updated ${new Date(entry.lastModified).toLocaleString()}`] : [];
     const label = entry.lastModified ? `✓ dev · built ${formatRelativeTime(entry.lastModified, now)}` : "✓ dev · built in dev";
-    return { label, kind: "dev", hover: `**Defer to prod:** built in dev, so read from dev.\n\n\`${targetId(entry.dev)}\`${updated}` };
+    return {
+        label,
+        kind: "dev",
+        hover: deferHoverMarkdown({ tone: "dev", icon: "check", heading: "dev", sentence: "Built in dev, so read from dev.", dev: targetId(entry.dev), footer: updated }),
+    };
 }
 
 /** The dependencies that are declarations of the compile, which no Deferral lists as they read the same table in dev and prod */
@@ -429,6 +450,13 @@ export function declarationHint(target: Target): DeferralEntryHint {
     return {
         label: "✓ declaration",
         kind: "dev",
-        hover: `**Defer to prod:** a declaration, which the project does not build, so dev and prod read the same table.\n\n\`${targetId(target)}\`\n\n[Open table in BigQuery](${bigQueryConsoleUrl(target)})`,
+        hover: deferHoverMarkdown({
+            tone: "dev",
+            icon: "check",
+            heading: "declaration",
+            sentence: "A declaration, which the project does not build, so dev and prod read the same table.",
+            table: targetId(target),
+            footer: [`[Open table in BigQuery](${bigQueryConsoleUrl(target)})`],
+        }),
     };
 }

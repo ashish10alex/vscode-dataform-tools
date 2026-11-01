@@ -25,6 +25,7 @@ import { resolveDataformOptions } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
 import { tableOfError, tableOfMetadata } from './project/heldTable';
 import { COPY_COLUMNS_COMMAND, SEARCH_COLUMNS_COMMAND, tableHoverText } from './project/tableHoverText';
+import { deferHintOfRef } from './defer/deferEditorHints';
 
 /** The text of a table's hover as the Markdown a hover shows: its icons drawn, and its two commands allowed to run */
 export function tableHoverMarkdown(text: string): vscode.MarkdownString {
@@ -429,16 +430,20 @@ export class DataformHoverProvider implements vscode.HoverProvider {
     }
 
     if (reference) {
-      const { database, schema, name } = reference.target;
+      // With defer to prod on, what the ref reads goes first; one that is not built in dev reads prod, so its table is shown
+      const deferHint = reference.source === "rawBigQueryId" ? undefined : await deferHintOfRef(document, reference.target);
+      const target = deferHint?.prod ?? reference.target;
+      const { database, schema, name } = target;
       const table = await fetchTableMetadata(database, schema, name).then(tableOfMetadata, tableOfError);
-      return new vscode.Hover(tableHoverMarkdown(tableHoverText({
-        target: reference.target,
+      const tableHover = tableHoverMarkdown(tableHoverText({
+        target,
         // A raw id can point at anything: it is no Action of the Project
         ...(reference.source === "rawBigQueryId" ? {} : { kind: reference.type }),
         description: reference.description,
         columns: reference.columns,
         partition: reference.partitionBy,
-      }, table, formatTimestamp)));
+      }, table, formatTimestamp));
+      return new vscode.Hover(deferHint ? [deferHint.hover, tableHover] : tableHover);
     }
 
     // Not a table. Inside a ${...} that is not a ref it may still be a JS variable or function.
