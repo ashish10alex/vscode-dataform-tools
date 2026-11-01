@@ -10,6 +10,8 @@ import { extensionConfiguration } from '../project/settings';
 import { dbtOptions, dbtSettings, forgetDbtCompile } from '../project/dbtCompile';
 import { dbtDeferToProdState, dbtProdTarget, forgetDbtProdManifest } from '../project/dbtDefer';
 import type { ProjectState } from '../project/registry';
+import { joinProdOptions, splitProdProject } from '../shared/prodOptions';
+import { readDefaultProjectFromSettings } from '../utils/remoteCompiler';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -90,6 +92,30 @@ async function toggleDeferToProd(enabled?: boolean) {
     await config.update('deferToProd', value, target);
 }
 
+/** Writes the prodCompilerOptions setting where it is already set, so a User setting does not leak into the team's workspace settings */
+export async function setProdCompilerOptions(prodOptions: string) {
+    const workspaceFolder = currentWorkspaceFolder();
+    const config = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
+    const target = pickConfigurationTarget(config.inspect<string>('prodCompilerOptions'), !!vscode.workspace.workspaceFolders?.length);
+    await config.update('prodCompilerOptions', prodOptions.trim(), target);
+}
+
+/** Asks for the Google Cloud project prod is in and keeps the other prod compiler options */
+async function askForProdProject() {
+    const workspaceFolder = currentWorkspaceFolder();
+    const { project, rest } = splitProdProject(extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined).get<string>('prodCompilerOptions'));
+    const defaultProject = workspaceFolder ? readDefaultProjectFromSettings(workspaceFolder) : undefined;
+    const typed = await vscode.window.showInputBox({
+        title: "Defer to prod: prod project",
+        prompt: `The Google Cloud project of your prod tables, given to the prod compile as --default-database.${defaultProject ? ` Leave it empty for the project default, ${defaultProject}.` : ""}`,
+        placeHolder: defaultProject ?? "my-prod-project",
+        value: project,
+    });
+    if (typed !== undefined) {
+        await setProdCompilerOptions(joinProdOptions(typed, rest));
+    }
+}
+
 async function clearDeferCaches() {
     clearTableExistenceCache({ includeUnreadable: true });
     await clearProdTargetCache();
@@ -137,6 +163,11 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
         },
     ] : [
         { label: enabled ? "$(circle-slash) Turn off defer to prod" : "$(cloud-download) Turn on defer to prod", run: () => toggleDeferToProd() },
+        {
+            label: "$(edit) Set the prod project",
+            description: "The Google Cloud project prod tables are read from (--default-database)",
+            run: () => askForProdProject(),
+        },
         {
             label: "$(refresh) Refresh prod targets and table cache",
             description: "Recompile with the prod options and look up dev and prod tables again",

@@ -97,7 +97,8 @@ function getContext(): vscode.ExtensionContext {
     return extensionContext;
 }
 
-function readDefaultProjectFromSettings(workspaceFolder: string): string | undefined {
+/** The `defaultProject` of the Project's workflow_settings.yaml, or `defaultDatabase` of its dataform.json */
+export function readDefaultProjectFromSettings(workspaceFolder: string): string | undefined {
     try {
         const workflowSettingsPath = path.join(workspaceFolder, "workflow_settings.yaml");
         if (fs.existsSync(workflowSettingsPath)) {

@@ -6,6 +6,8 @@ import { vscode } from "../utils/vscode";
 import { ModifierSwitch } from "./ModifierSwitch";
 import { formatRelativeTime } from "../utils/compilationInfoFormat";
 import { diffNames } from "../utils/nameDiff";
+import { ROW_TOKEN, ROW_TOKEN_SET } from "./SummaryRow";
+import { joinProdOptions, splitProdProject } from "../../../src/shared/prodOptions";
 
 type DeferralEntryView = Extract<DeferralView, { status: "ready" }>["entries"][number];
 
@@ -83,6 +85,117 @@ const BUILT_IN_DEV_TITLE = "Built in dev, so it is read from dev, like dbt --def
 /** In a dbt Project dbt defers itself, when it compiles and when it runs */
 export const DBT_SWITCH_TITLE = "Read upstream tables that are not built in your dbt target from prod, in the compiled SQL, dry run, Preview Data and runs (dbt --defer)";
 export const SWITCH_TITLE = "Read upstream tables that are not built in dev from prod, in the compiled SQL, dry run, Preview Data and runs (like dbt --defer)";
+
+/**
+ * A prod compiler option as a token to click and type in, like the compiler overrides beside it. What is typed is
+ * kept on Enter or when the field loses focus, not on every key, as each change compiles prod again.
+ */
+function ProdOptionToken({ label, value, shown, placeholder, help, mono = true, onCommit }: {
+  label: string;
+  /** What the setting has: empty when it is not set */
+  value: string;
+  /** What is in prod when the setting is not set, e.g. the project default. Shown plainly, as it is no override */
+  shown?: string;
+  placeholder: string;
+  help: string;
+  mono?: boolean;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  if (draft !== null) {
+    const commit = () => {
+      if (draft.trim() !== value) {
+        onCommit(draft);
+      }
+      setDraft(null);
+    };
+    return (
+      <span className={clsx(ROW_TOKEN, "border-[var(--vscode-focusBorder)]")} title={help}>
+        <span className="text-[var(--vscode-descriptionForeground)]">{label}</span>
+        <input
+          autoFocus
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              commit();
+            } else if (e.key === "Escape") {
+              setDraft(null);
+            }
+          }}
+          placeholder={placeholder}
+          aria-label={help}
+          size={Math.max(16, draft.length + 1)}
+          className={clsx("bg-transparent border-0 outline-none p-0 text-xs text-[var(--vscode-input-foreground,var(--vscode-foreground))] placeholder:text-[var(--vscode-input-placeholderForeground)]", mono && "font-mono")}
+        />
+      </span>
+    );
+  }
+  if (value) {
+    return (
+      <span className={ROW_TOKEN} style={ROW_TOKEN_SET} title={help}>
+        <button type="button" onClick={() => setDraft(value)} className="flex items-center gap-1.5 bg-transparent border-0 p-0 text-inherit min-w-0">
+          <span className="opacity-75">{label}</span>
+          <span className={clsx("truncate", mono && "font-mono")}>{value}</span>
+        </button>
+        <button type="button" onClick={() => onCommit("")} aria-label={`Remove the ${label}`} title={`Remove the ${label}`} className="bg-transparent border-0 p-0 px-0.5 text-inherit opacity-60 hover:opacity-100">×</button>
+      </span>
+    );
+  }
+  if (shown) {
+    return (
+      <button type="button" onClick={() => setDraft("")} title={help} className={ROW_TOKEN}>
+        <span className="text-[var(--vscode-descriptionForeground)]">{label}</span>
+        <span className={clsx("truncate", mono && "font-mono")}>{shown}</span>
+      </button>
+    );
+  }
+  return (
+    <button type="button" onClick={() => setDraft("")} title={help} className={clsx(ROW_TOKEN, "border-dashed text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)]")}>
+      + {label}
+    </button>
+  );
+}
+
+/**
+ * Where prod is, as tokens to change it: the prod project (`--default-database` of the prod compiler options) and
+ * any other prod option. `resolved` is the project the upstream tables were found in, for when the options set none.
+ */
+function ProdOptionTokens({ deferToProd, resolved }: { deferToProd: DeferToProdState; resolved?: string }) {
+  const { project, rest } = splitProdProject(deferToProd.prodOptions);
+  const update = (prodCompilerOptions: string) => vscode.postMessage({ command: "dataform.updateProdCompilerOptions", prodCompilerOptions });
+  // Not applied, prod is where dev is: the project default is no answer, so the token asks for a project
+  const shown = deferToProd.available ? resolved ?? deferToProd.defaultProject : undefined;
+  return (
+    <>
+      <ProdOptionToken
+        label="prod project"
+        value={project}
+        shown={shown}
+        placeholder={deferToProd.defaultProject ?? "my-prod-project"}
+        help={project
+          ? `Prod tables are read from the Google Cloud project ${project}\n--default-database=${project} (prodCompilerOptions)`
+          : `${shown ? `Prod tables are read from ${shown}, the project default. ` : ""}Click to give the Google Cloud project of your prod tables (--default-database in prodCompilerOptions)`}
+        onCommit={(value) => update(joinProdOptions(value, rest))}
+      />
+      {rest && (
+        <ProdOptionToken
+          label="prod options"
+          value={rest}
+          placeholder="--vars=env=prod"
+          help={`Other prod compiler options (prodCompilerOptions)\n${rest}`}
+          // A --default-database typed here is the prod project, so the options never have two
+          onCommit={(value) => {
+            const typed = splitProdProject(value);
+            update(joinProdOptions(typed.project || project, typed.rest));
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 /** What a lookup of the upstream tables found, in a line */
 function lookupSummary(entries: DeferralEntryView[], builtInDev: { dev: string }[]): { text: string; noneInProd: boolean } {
@@ -241,7 +354,7 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
         <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
         <span className="font-semibold text-[var(--vscode-foreground)]">On but not applied.</span>
         <span className="text-[var(--vscode-descriptionForeground)]">{deferToProd.reason}</span>
-        {setProdOptionsButton("Set prod options", true)}
+        {dbt ? setProdOptionsButton("Set prod options", true) : <ProdOptionTokens deferToProd={deferToProd} />}
       </div>
     );
   }
@@ -253,8 +366,9 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
           {deferSwitch}
           <AlertTriangle className="w-3.5 h-3.5 text-[var(--vscode-editorWarning-foreground)]" />
           <span className="font-semibold text-[var(--vscode-foreground)]">{dbt ? "Could not make the prod manifest, so nothing is read from prod." : "Could not look up the upstream tables, so nothing is read from prod."}</span>
+          {!dbt && <ProdOptionTokens deferToProd={deferToProd} />}
           <div className="flex-grow" />
-          {setProdOptionsButton("Set prod options", true)}
+          {dbt && setProdOptionsButton("Set prod options", true)}
           {retryButton}
           {logsButton}
         </div>
@@ -307,10 +421,11 @@ export function DeferralBanner({ deferral, deferToProd, leftoverProxies, bare, o
           )}
           {hasEntries && <Chevron className="w-3.5 h-3.5 text-zinc-400" />}
         </button>
+        {!dbt && <ProdOptionTokens deferToProd={deferToProd} resolved={entryProjects.prod} />}
         <div className="flex-grow" />
         {pending && slow && retryButton}
         {pending && slow && logsButton}
-        {noneInProd && setProdOptionsButton("Check prod options", false)}
+        {dbt && noneInProd && setProdOptionsButton("Check prod options", false)}
         <button
           onClick={() => vscode.postMessage({ command: dbt ? "dbt.deferToProdActions" : "dataform.deferToProdActions" })}
           title={dbt ? "Parse the prod manifest again or configure defer to prod" : "Refresh, remove proxy views or configure defer to prod"}
