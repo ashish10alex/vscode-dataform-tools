@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { suite, suiteSetup, suiteTeardown, test } from 'mocha';
-import { projectFileSettings, settingsFileOf } from '../../project/settingsFile';
+import { projectFileSettings, settingsFileOf, settingValueRange } from '../../project/settingsFile';
 
 suite('the settings file of a Project', () => {
     let tmp: string;
@@ -57,5 +57,35 @@ suite('the settings file of a Project', () => {
         assert.deepStrictEqual(projectFileSettings(root), { gitRepoName: 'another' });
         fs.rmSync(settingsFileOf(root));
         assert.deepStrictEqual(projectFileSettings(root), {});
+    });
+});
+
+suite('settingValueRange', () => {
+    const replaced = (text: string, value: string) => {
+        const range = settingValueRange(text, 'prodCompilerOptions');
+        return range && text.slice(0, range.start) + JSON.stringify(value) + text.slice(range.end);
+    };
+
+    test('replaces the value alone, keeping the comments and the other settings', () => {
+        const text = '{\n  // prod is the shared project\n  "vscode-dataform-tools.prodCompilerOptions": "--default-database=old",\n  "vscode-dataform-tools.deferToProd": true,\n}\n';
+        assert.strictEqual(
+            replaced(text, '--default-database=new'),
+            '{\n  // prod is the shared project\n  "vscode-dataform-tools.prodCompilerOptions": "--default-database=new",\n  "vscode-dataform-tools.deferToProd": true,\n}\n',
+        );
+    });
+
+    test('takes a value with escaped quotes whole', () => {
+        const text = '{ "vscode-dataform-tools.prodCompilerOptions": "--vars=\\"a=1\\" --default-database=old" }';
+        assert.strictEqual(replaced(text, 'x'), '{ "vscode-dataform-tools.prodCompilerOptions": "x" }');
+    });
+
+    test('skips an entry in a line comment and takes the last entry', () => {
+        const text = '{\n  // "vscode-dataform-tools.prodCompilerOptions": "commented",\n  "vscode-dataform-tools.prodCompilerOptions": "first",\n  "vscode-dataform-tools.prodCompilerOptions": "last"\n}';
+        assert.strictEqual(replaced(text, 'x'), '{\n  // "vscode-dataform-tools.prodCompilerOptions": "commented",\n  "vscode-dataform-tools.prodCompilerOptions": "first",\n  "vscode-dataform-tools.prodCompilerOptions": "x"\n}');
+    });
+
+    test('finds nothing for a value that is not a string, or a setting that is not there', () => {
+        assert.strictEqual(settingValueRange('{ "vscode-dataform-tools.prodCompilerOptions": null }', 'prodCompilerOptions'), undefined);
+        assert.strictEqual(settingValueRange('{ "vscode-dataform-tools.compilerOptions": "--x" }', 'prodCompilerOptions'), undefined);
     });
 });

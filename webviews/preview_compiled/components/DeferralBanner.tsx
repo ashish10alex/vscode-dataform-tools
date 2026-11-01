@@ -119,7 +119,8 @@ function ProdOptionToken({ label, value, shown, placeholder, help, mono = true, 
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            // Enter that confirms an input method's composition is not the end of the value
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
               commit();
             } else if (e.key === "Escape") {
               setDraft(null);

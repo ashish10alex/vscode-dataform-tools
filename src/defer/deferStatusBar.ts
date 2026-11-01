@@ -12,6 +12,7 @@ import { dbtDeferToProdState, dbtProdTarget, forgetDbtProdManifest } from '../pr
 import type { ProjectState } from '../project/registry';
 import { joinProdOptions, splitProdProject } from '../shared/prodOptions';
 import { readDefaultProjectFromSettings } from '../utils/remoteCompiler';
+import { projectFileSettings, SETTINGS_SECTION, settingsFileOf, settingValueRange } from '../project/settingsFile';
 
 /*
  * Status bar toggle for defer to prod, and the commands behind it. Changing a defer setting refreshes the
@@ -34,6 +35,8 @@ function dbtTargetInUse(project: ProjectState): string | undefined {
 }
 
 let statusBarItem: vscode.StatusBarItem | undefined;
+/** Redraws the compiled query panel; set by `initDeferToProd` */
+let refreshPanelAfterWrite: (() => Promise<void> | void) | undefined;
 
 function currentWorkspaceFolder(): string | undefined {
     return activeDbtProject()?.root ?? currentDataformRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -92,12 +95,47 @@ async function toggleDeferToProd(enabled?: boolean) {
     await config.update('deferToProd', value, target);
 }
 
-/** Writes the prodCompilerOptions setting where it is already set, so a User setting does not leak into the team's workspace settings */
+/**
+ * Writes the prodCompilerOptions setting where it is already set, so a User setting does not leak into the team's
+ * workspace settings. A Project below a workspace folder that sets it in its own `.vscode/settings.json` has it
+ * changed there, as VS Code's settings come after that file.
+ */
 export async function setProdCompilerOptions(prodOptions: string) {
     const workspaceFolder = currentWorkspaceFolder();
+    const ownFile = workspaceFolder && !(vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.fsPath === workspaceFolder)
+        && Object.prototype.hasOwnProperty.call(projectFileSettings(workspaceFolder), 'prodCompilerOptions');
+    if (ownFile) {
+        await setInProjectFile(workspaceFolder, prodOptions.trim());
+        return;
+    }
     const config = extensionConfiguration(workspaceFolder ? vscode.Uri.file(workspaceFolder) : undefined);
     const target = pickConfigurationTarget(config.inspect<string>('prodCompilerOptions'), !!vscode.workspace.workspaceFolders?.length);
     await config.update('prodCompilerOptions', prodOptions.trim(), target);
+}
+
+/**
+ * Replaces the string value of prodCompilerOptions in the Project's own settings file, keeping its comments, then
+ * does what a change of the setting does, as VS Code sends no event for that file. Where the value cannot be
+ * replaced in place (it is not a string, or the file has unsaved edits) the file is opened for the user to change.
+ */
+async function setInProjectFile(root: string, prodOptions: string) {
+    const uri = vscode.Uri.file(settingsFileOf(root));
+    const document = await vscode.workspace.openTextDocument(uri);
+    const range = settingValueRange(document.getText(), 'prodCompilerOptions');
+    if (!range || document.isDirty) {
+        await vscode.window.showTextDocument(document);
+        void vscode.window.showWarningMessage(`This Project sets "${SETTINGS_SECTION}.prodCompilerOptions" in ${vscode.workspace.asRelativePath(uri)}. Set it there to "${prodOptions}".`);
+        return;
+    }
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, new vscode.Range(document.positionAt(range.start), document.positionAt(range.end)), JSON.stringify(prodOptions));
+    if (!(await vscode.workspace.applyEdit(edit)) || !(await document.save())) {
+        void vscode.window.showWarningMessage(`Could not write prodCompilerOptions to ${vscode.workspace.asRelativePath(uri)}.`);
+        return;
+    }
+    refreshStatusBar();
+    await clearDeferCaches();
+    await refreshPanelAfterWrite?.();
 }
 
 /** Asks for the Google Cloud project prod is in and keeps the other prod compiler options */
@@ -188,6 +226,7 @@ async function deferToProdActions(refreshPanel: () => Promise<void> | void) {
 }
 
 export function initDeferToProd(context: vscode.ExtensionContext, refreshPanel: () => Promise<void> | void) {
+    refreshPanelAfterWrite = refreshPanel;
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 49);
     statusBarItem.command = 'vscode-dataform-tools.deferToProdActions';
     context.subscriptions.push(
