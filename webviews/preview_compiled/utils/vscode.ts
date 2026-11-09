@@ -1,5 +1,5 @@
 import type { WebviewApi } from "vscode-webview";
-import type { PanelMessage } from "../../../src/shared/panelContract";
+import type { PanelMessage, WatchPanelMessage } from "../../../src/shared/panelContract";
 
 declare function acquireVsCodeApi(): WebviewApi<unknown>;
 
@@ -18,7 +18,7 @@ class VSCodeAPIWrapper {
    * has no case for does not type-check.
    * @param message The message to send
    */
-  public postMessage(message: PanelMessage) {
+  public postMessage(message: PanelMessage | WatchPanelMessage) {
     if (this.vsCodeApi) {
       this.vsCodeApi.postMessage(message);
     } else {

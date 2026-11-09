@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { PanelState, WorkflowAction, WorkflowUrlEntry } from '../types';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration } from '../../../src/shared/jobTiming';
-import { isTerminalRun, runProgress } from '../../../src/shared/cliRunJobs';
+import { isTerminalRun, ownRuns, runProgress } from '../../../src/shared/cliRunJobs';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { useTick } from './WorkflowActionsTable';
 import { RunStageChecklist, RunStartSummary, clock, jobsLookedFor, runVia } from './RunStages';
@@ -63,7 +63,7 @@ export function RunStatusPill({ state, onDetails, runs }: {
     /** The runs the pill is of, when they are not all those of the history: a dbt Project's panel tells of its own */
     runs?: WorkflowUrlEntry[];
 }) {
-    const latest = (runs ?? state.dataform.workflowUrls ?? []).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
+    const latest = (runs ?? ownRuns(state.dataform.workflowUrls ?? [])).slice().sort((a, b) => b.timestamp - a.timestamp)[0];
     const [open, setOpen] = useState(false);
     const [dismissed, setDismissed] = useState<number | null>(null);
     const seenGoing = useRef<Set<number>>(new Set());

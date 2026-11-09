@@ -568,7 +568,7 @@ export interface WorkflowUrlEntry {
     includeDependents: boolean;
     fullRefresh: boolean;
     /** `cli` is a `dataform run` sent to the terminal, `dbt` a `dbt build`: neither has a `url`, `workspace` or `repositoryName` */
-    executionMode?: 'api' | 'api_workspace' | 'cli' | 'dbt';
+    executionMode?: 'api' | 'api_workspace' | 'cli' | 'dbt' | 'external';
     /** The invocation's ID. For a CLI run, an ID of the extension's own: the run is no workflow invocation */
     workflowInvocationId?: string;
     /** CLI run: what the IDs of its BigQuery jobs start with. `actions` then has a row for each job, not each action */

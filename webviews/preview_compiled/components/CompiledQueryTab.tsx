@@ -46,7 +46,7 @@ import { bigQueryView } from "../utils/bigQueryView";
 import { compilationInfoParts, compilationInfoTooltip } from "../utils/compilationInfoFormat";
 import { TERMINAL_WORKFLOW_STATES } from "../utils/workflowPolling";
 import { describeApiRunGitState } from "../../../src/shared/apiRunGitState";
-import { isTerminalRun, runProgress } from "../../../src/shared/cliRunJobs";
+import { isTerminalRun, ownRuns, runProgress } from "../../../src/shared/cliRunJobs";
 import { runStage } from "../../../src/shared/runStages";
 import { formatDuration } from "../../../src/shared/jobTiming";
 
@@ -163,7 +163,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
     setTimeout(() => setRunningModel(false), api ? 3000 : 10000);
   };
   const latestApiRun = useMemo(
-    () => (state.dataform.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
+    () => ownRuns(state.dataform.workflowUrls || []).reduce<WorkflowUrlEntry | undefined>((latest, entry) => (!latest || entry.timestamp > latest.timestamp ? entry : latest), undefined),
     [state.dataform.workflowUrls]
   );
 

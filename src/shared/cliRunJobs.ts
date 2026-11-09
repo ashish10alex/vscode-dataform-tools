@@ -141,6 +141,16 @@ export function isTerminalRun(entry: { executionMode?: string }): boolean {
     return entry.executionMode === 'cli' || entry.executionMode === 'dbt';
 }
 
+/** Whether a run in the history is a workflow the extension did not start, which it only watches: it is never cancelled or run again */
+export function isExternalRun(entry: { executionMode?: string }): boolean {
+    return entry.executionMode === 'external';
+}
+
+/** The runs of the history the extension started itself: what "the latest run" is chosen from */
+export function ownRuns<T extends { executionMode?: string }>(history: T[]): T[] {
+    return history.filter((entry) => !isExternalRun(entry));
+}
+
 /** Whether a row's job has not ended */
 export function isActiveJob(row: WorkflowAction): boolean {
     return row.state === 'RUNNING' || row.state === 'PENDING';
@@ -253,6 +263,15 @@ export function quietVerdict(at: { now: number; startedAt: number; sawJobs: bool
         return at.now - (at.lastActiveAt ?? at.startedAt) >= QUIET_MS ? 'ended' : undefined;
     }
     return at.now - at.startedAt >= NO_JOBS_MS ? 'no jobs' : undefined;
+}
+
+/** The history with `entry` in place of the run of the same invocation, or added when there is none */
+export function withRunUpserted<T extends { workflowInvocationId?: string }>(history: T[], entry: T, max: number = MAX_RUN_HISTORY): T[] {
+    const index = entry.workflowInvocationId ? history.findIndex((item) => item.workflowInvocationId === entry.workflowInvocationId) : -1;
+    if (index === -1) {
+        return withRunAdded(history, entry, max);
+    }
+    return history.map((item, i) => (i === index ? entry : item));
 }
 
 /** The history with `entry` added, trimmed to the newest runs */

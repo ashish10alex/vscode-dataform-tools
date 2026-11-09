@@ -11,7 +11,7 @@ import { RunStartSummary, clock } from './RunStages';
 import { ROW_BUTTON, ROW_LABEL } from './SummaryRow';
 import { formatAgo } from './LastRunCard';
 import { useNow } from './CompilationInfoBadge';
-import { isTerminalRun, runProgress } from '../../../src/shared/cliRunJobs';
+import { isExternalRun, isTerminalRun, runProgress } from '../../../src/shared/cliRunJobs';
 import { formatDuration } from '../../../src/shared/jobTiming';
 
 /*
@@ -41,7 +41,7 @@ export function runFacts(entry: WorkflowUrlEntry): string {
     const failed = ended && (entry.state === "FAILED" || progress.failed > 0);
     const duration = workflowDurationMs(entry);
     return [
-        isTerminalRun(entry) ? null : `${entry.executionMode === "api_workspace" ? "workspace" : "git commit"} ${entry.workspace || "unknown"}`,
+        isTerminalRun(entry) ? null : isExternalRun(entry) ? `repository ${entry.repositoryName || entry.workspace || "unknown"}` : `${entry.executionMode === "api_workspace" ? "workspace" : "git commit"} ${entry.workspace || "unknown"}`,
         entry.includeDependencies ? "+deps" : null,
         entry.includeDependents ? "+dependents" : null,
         entry.fullRefresh ? "full refresh" : null,

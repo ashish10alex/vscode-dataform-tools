@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import os from 'os';
 import { QueryWtType, Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
+import { registerWorkflowWatchPanel } from './views/register-workflow-watch-panel';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformColumnHoverProvider, DataformHoverProvider } from './hoverProvider';
@@ -150,6 +151,8 @@ export async function activate(context: vscode.ExtensionContext) {
     registerDeferEditorHints(context);
     registerDbtDeferEditorHints(context);
     registerExecutedSqlProvider(context);
+
+    registerWorkflowWatchPanel(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider, {

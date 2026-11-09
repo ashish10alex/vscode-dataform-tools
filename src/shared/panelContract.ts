@@ -509,4 +509,43 @@ export type DbtPanelMessage =
 
 export type PanelMessage = SharedPanelMessage | DataformPanelMessage | DbtPanelMessage;
 
+/** What the Dataform Workflow view at the bottom shows: a workflow the extension did not start, watched until it ends */
+export interface WatchView {
+    /** The workflow watched, or last watched */
+    entry?: WorkflowUrlEntry;
+    /** Whether it is being followed: it has not ended and watching was not stopped */
+    watching: boolean;
+    /** Whether a paste is being looked up */
+    looking: boolean;
+    /** What was pasted, while it is looked up */
+    lookingFor?: string;
+    /** Whether the workflow's actions are being read for the first time */
+    readingActions?: boolean;
+    /** How many finished actions' BigQuery jobs are still to be read for their cost */
+    jobsLeft?: number;
+    /** Why the last paste or check failed */
+    error?: string;
+    /** How watching ended, when it ended before the workflow did */
+    note?: string;
+}
+
+/** The host's one message to the Dataform Workflow view */
+export interface WatchHostMessage {
+    type: 'watchState';
+    view: WatchView;
+}
+
+/**
+ * Messages of the Dataform Workflow view. Its table of jobs sends the run messages of the compiled query panel
+ * (`dataform.openBigQueryJob` and the like), which the view's host answers too.
+ */
+export type WatchPanelMessage =
+    | { command: 'watch.ready' }
+    /** Watch what was pasted: a workflow ID, its console URL or its resource name */
+    | { command: 'watch.submit'; input: string }
+    /** Stop following it; it is never cancelled */
+    | { command: 'watch.stop' }
+    /** Open the watched workflow's page in the Cloud console */
+    | { command: 'watch.openInConsole' };
+
 export type PanelCommand = PanelMessage['command'];

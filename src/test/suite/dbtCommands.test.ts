@@ -49,7 +49,7 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
 
     test('every other command is Dataform\'s, and is not listed while the active Project is a dbt one', () => {
         const others = commands.filter((command) => command.category !== 'Dataform/dbt');
-        assert.strictEqual(others.length, 25);
+        assert.strictEqual(others.length, 26);
         for (const command of others) {
             assert.strictEqual(command.category, 'Dataform', command.command);
             assert.ok(hiddenInDbt(command.command.slice(PREFIX.length)), `${command.command} is listed in a dbt Project`);
