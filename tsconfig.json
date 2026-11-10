@@ -29,6 +29,7 @@
 		"webviews/preview_compiled/**/*",
 		"webviews/dependency-inspector/**/*",
 		"webviews/column_lineage/**/*",
+		"webviews/workflow_watch/**/*",
 		"src/globals.d.ts"
 	],
 	"exclude": [

@@ -54,6 +54,11 @@
                     "id": "queryResultsContainer",
                     "title": "BigQuery Results",
                     "icon": ""
+                },
+                {
+                    "id": "workflowWatchContainer",
+                    "title": "Dataform Workflow",
+                    "icon": ""
                 }
             ]
         },
@@ -64,6 +69,15 @@
                     "type": "webview",
                     "id": "queryResultsView",
                     "name": "BigQuery Results"
+                }
+            ],
+            "workflowWatchContainer": [
+                {
+                    "icon": "",
+                    "type": "webview",
+                    "id": "workflowWatchView",
+                    "name": "Dataform Workflow",
+                    "when": "vscode-dataform-tools.workflowWatchShown"
                 }
             ]
         },
@@ -126,6 +140,11 @@
                 "command": "vscode-dataform-tools.runFilesTagsWtOptionsApi",
                 "category": "Dataform",
                 "title": "Run file(s) / tag(s) with options using API"
+            },
+            {
+                "command": "vscode-dataform-tools.watchWorkflow",
+                "category": "Dataform",
+                "title": "Watch a workflow by ID or URL (cost of each job)"
             },
             {
                 "command": "vscode-dataform-tools.runChangedActions",
@@ -474,6 +493,10 @@
                 },
                 {
                     "command": "vscode-dataform-tools.runFilesTagsWtOptionsApi",
+                    "when": "vscode-dataform-tools.backend != dbt"
+                },
+                {
+                    "command": "vscode-dataform-tools.watchWorkflow",
                     "when": "vscode-dataform-tools.backend != dbt"
                 },
                 {

@@ -5,7 +5,7 @@ import { vscode } from '../utils/vscode';
  * Shows what went wrong when the panel fails while it draws, and offers to load it again. Without it React takes
  * the whole panel down, and it stays empty until it is closed and opened again.
  */
-export class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+export class ErrorBoundary extends Component<{ children: ReactNode; panelName?: string }, { error: Error | null }> {
   state: { error: Error | null } = { error: null };
 
   static getDerivedStateFromError(error: Error) {
@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('The Compiled Query panel failed while it drew', error, info.componentStack);
+    console.error(`The ${this.props.panelName ?? 'Compiled Query'} panel failed while it drew`, error, info.componentStack);
   }
 
   render() {
@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     }
     return (
       <div className="p-4 text-[var(--vscode-foreground)]">
-        <p className="m-0 mb-2">The Compiled Query panel ran into an error.</p>
+        <p className="m-0 mb-2">The {this.props.panelName ?? 'Compiled Query'} panel ran into an error.</p>
         <pre className="m-0 mb-3 p-2 text-xs whitespace-pre-wrap rounded border border-[var(--vscode-widget-border)] text-[var(--vscode-errorForeground)]">{error.message}</pre>
         <button
           className="px-3 py-1 rounded-sm text-[var(--vscode-button-foreground)] bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)]"

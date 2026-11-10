@@ -13,7 +13,8 @@ export default defineConfig({
         preview_compiled: './webviews/preview_compiled/index.tsx',
         query_results: './webviews/query_results/index.tsx',
         'dependency-inspector': './webviews/dependency-inspector/index.tsx',
-        column_lineage: './webviews/column_lineage/index.tsx'
+        column_lineage: './webviews/column_lineage/index.tsx',
+        workflow_watch: './webviews/workflow_watch/index.tsx'
       },
       output: {
         entryFileNames: '[name].js',

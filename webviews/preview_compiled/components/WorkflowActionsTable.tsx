@@ -1,11 +1,11 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, FileCode, Download } from 'lucide-react';
+import { CircleDashed, CheckCircle2, XCircle, RefreshCw, Clock, FileCode, Download, Loader2 } from 'lucide-react';
 import { WorkflowAction, WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration, needsJobStats } from '../../../src/shared/jobTiming';
-import { isTerminalRun } from '../../../src/shared/cliRunJobs';
+import { isExternalRun, isTerminalRun } from '../../../src/shared/cliRunJobs';
 
 /*
  * The list of a run's actions with what their BigQuery jobs did. A run through the API has a line for each action; a
@@ -56,8 +56,8 @@ export function RunViaTag({ entry }: { entry: WorkflowUrlEntry }) {
     const chip = 'px-1.5 py-0.5 rounded text-[10px] font-medium border border-[var(--vscode-widget-border)] text-[var(--vscode-descriptionForeground)]';
     return (
         <>
-            <span className={chip} title={entry.executionMode === 'dbt' ? 'Run with dbt build in the terminal' : entry.executionMode === 'cli' ? 'Run with the Dataform CLI in the terminal' : 'Run through the Dataform API'}>
-                {isTerminalRun(entry) ? entry.executionMode : 'api'}
+            <span className={chip} title={entry.executionMode === 'dbt' ? 'Run with dbt build in the terminal' : entry.executionMode === 'cli' ? 'Run with the Dataform CLI in the terminal' : isExternalRun(entry) ? "A workflow this extension didn't start; watched read-only" : 'Run through the Dataform API'}>
+                {isTerminalRun(entry) || isExternalRun(entry) ? entry.executionMode : 'api'}
             </span>
             {entry.interrupted && (
                 <span className={chip} title="The window was closed or reloaded while the run was going, so how it ended is told by its BigQuery jobs alone">
@@ -73,6 +73,23 @@ const STATE_RANK: Record<string, number> = { FAILED: 0, CANCELLED: 0, RUNNING: 1
 const rankOf = (action: WorkflowAction) => STATE_RANK[action.state] ?? 4;
 const timeOf = (action: WorkflowAction) => action.jobStats?.durationMs ?? runningElapsedMs(action) ?? -1;
 const problemsThenSlowest = (a: WorkflowAction, b: WorkflowAction) => rankOf(a) - rankOf(b) || timeOf(b) - timeOf(a);
+// What cost the most is first. What has no cost yet, or none at all, follows in the order above
+const costOf = (action: WorkflowAction) => action.jobStats?.cost;
+const costliestFirst = (a: WorkflowAction, b: WorkflowAction) => {
+    const costA = costOf(a);
+    const costB = costOf(b);
+    if (costA === undefined || costB === undefined) {
+        return costA !== undefined ? -1 : costB !== undefined ? 1 : problemsThenSlowest(a, b);
+    }
+    return costB - costA || (b.jobStats?.totalSlotMs ?? 0) - (a.jobStats?.totalSlotMs ?? 0) || problemsThenSlowest(a, b);
+};
+
+/** The orders the list can be in, with the words its heading says them in */
+const ORDERS = {
+    problems: { compare: problemsThenSlowest, heading: 'problems first, then slowest' },
+    cost: { compare: costliestFirst, heading: 'costliest first' },
+} as const;
+export type ActionsOrder = keyof typeof ORDERS;
 
 /** The states a count of the list can narrow it to, in the order their counts are shown */
 const NARROWING = [
@@ -94,7 +111,7 @@ const MUTED = 'text-[var(--vscode-descriptionForeground)]';
 const ICON_BUTTON = 'grid place-items-center w-[22px] h-[22px] flex-shrink-0 rounded border-0 bg-transparent text-[var(--vscode-descriptionForeground)] hover:text-[var(--vscode-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--vscode-focusBorder)]';
 
 /** One action, or one job, of a run: how it ended, its name, which opens its BigQuery job, and what the job did */
-function ActionLine({ action, workflowInvocationId, isCli }: { action: WorkflowAction; workflowInvocationId: string | undefined; isCli: boolean }) {
+function ActionLine({ action, workflowInvocationId, isCli, costsLoading }: { action: WorkflowAction; workflowInvocationId: string | undefined; isCli: boolean; costsLoading?: boolean }) {
     const parts = action.target.split('.');
     // A job that no action could be told for goes by the end of its ID, which has no dataset
     const dataset = parts.length > 1 ? parts[parts.length - 2] : undefined;
@@ -103,6 +120,8 @@ function ActionLine({ action, workflowInvocationId, isCli }: { action: WorkflowA
     const canOpen = !!action.jobId && !!workflowInvocationId;
     const succeeded = action.state === 'SUCCEEDED';
     const elapsedMs = runningElapsedMs(action);
+    // Its job has finished and is being read: the columns of what it did say so rather than stay blank
+    const reading = !!costsLoading && needsJobStats(action);
     return (
         <div className="border-b border-[color-mix(in_srgb,var(--vscode-widget-border)_45%,transparent)]">
             <div className="flex items-center gap-2 min-h-[26px] px-3 py-0.5 text-[12.5px] hover:bg-[var(--vscode-list-hoverBackground)]">
@@ -144,9 +163,16 @@ function ActionLine({ action, workflowInvocationId, isCli }: { action: WorkflowA
                 </span>
                 <span className={clsx(BILLED_COLUMN, MUTED)} title={stats?.error}>{stats?.error ? 'n/a' : stats?.bytesBilledLabel ?? ''}</span>
                 {/* Where there is no cost to tell, the state is told in its place: the line says in words why it has none */}
-                <span className={clsx(COST_COLUMN, !succeeded && !stats?.costLabel && MUTED)}>
-                    {stats?.costLabel ?? (succeeded ? '' : action.state.toLowerCase())}
-                </span>
+                {reading ? (
+                    <span className={clsx(COST_COLUMN, MUTED, 'inline-flex justify-end')} title="Reading this action's BigQuery job" role="status">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span className="sr-only">reading its cost</span>
+                    </span>
+                ) : (
+                    <span className={clsx(COST_COLUMN, !succeeded && !stats?.costLabel && MUTED)}>
+                        {stats?.costLabel ?? (succeeded ? '' : action.state.toLowerCase())}
+                    </span>
+                )}
             </div>
             {action.failureReason && (
                 <div className="pl-[34px] pr-3 pb-1.5 text-[11.5px] whitespace-pre-wrap break-words text-[var(--vscode-errorForeground)]">{action.failureReason}</div>
@@ -159,7 +185,15 @@ function ActionLine({ action, workflowInvocationId, isCli }: { action: WorkflowA
  * The list, under a line with its filter, its counts and the CSV export. `tools` are at the end of that line. A line
  * still running shows the time since it started, so the list is drawn again every second while there is one.
  */
-export function WorkflowActionsTable({ entry, className, tools }: { entry: WorkflowUrlEntry; className: string; tools?: ReactNode }) {
+export function WorkflowActionsTable({ entry, className, tools, costsLoading, order = 'problems' }: {
+    entry: WorkflowUrlEntry;
+    className: string;
+    tools?: ReactNode;
+    /** Whether the jobs of finished actions are being read, so those still without a cost show it is coming */
+    costsLoading?: boolean;
+    /** What comes first: what failed or is at work, then the slowest (the default), or what cost the most */
+    order?: ActionsOrder;
+}) {
     const isCli = isTerminalRun(entry);
     const rows = useMemo<WorkflowAction[]>(() => entry.actions ?? [], [entry.actions]);
     const [filter, setFilter] = useState('');
@@ -186,7 +220,7 @@ export function WorkflowActionsTable({ entry, className, tools }: { entry: Workf
     // A count that has gone to none narrows nothing: a run that goes on has its last running line end
     const narrowing = counts.find((candidate) => candidate.key === only);
     const wanted = filter.trim().toLowerCase();
-    const shown = rows.filter((row) => (!wanted || row.target.toLowerCase().includes(wanted)) && (!narrowing || narrowing.has(row))).sort(problemsThenSlowest);
+    const shown = rows.filter((row) => (!wanted || row.target.toLowerCase().includes(wanted)) && (!narrowing || narrowing.has(row))).sort(ORDERS[order].compare);
     const done = rows.filter((row) => row.state === 'SUCCEEDED').length;
     // A dbt run has a row for each node dbt's log tells of, with or without a job
     const what = entry.executionMode === 'dbt' ? 'node' : isCli ? 'BigQuery job' : 'action';
@@ -229,13 +263,13 @@ export function WorkflowActionsTable({ entry, className, tools }: { entry: Workf
             </div>
             <div className={className}>
                 <div className="sticky top-0 z-[1] flex items-center gap-2 h-6 px-3 border-b border-[var(--vscode-widget-border)] bg-[var(--vscode-editor-background)]">
-                    <span className={clsx(HEADING, 'flex-1 min-w-0 truncate')}>problems first, then slowest</span>
+                    <span className={clsx(HEADING, 'flex-1 min-w-0 truncate')}>{ORDERS[order].heading}</span>
                     <span className={clsx(HEADING, TIME_COLUMN)} title={DURATION_HELP}>Time</span>
                     <span className={clsx(HEADING, SLOT_COLUMN)} title={SLOT_TIME_HELP}>Slot</span>
                     <span className={clsx(HEADING, BILLED_COLUMN)}>Billed</span>
                     <span className={clsx(HEADING, COST_COLUMN)}>Cost</span>
                 </div>
-                {shown.map((row) => <ActionLine key={`${row.target}\n${row.jobId ?? ''}`} action={row} workflowInvocationId={entry.workflowInvocationId} isCli={isCli} />)}
+                {shown.map((row) => <ActionLine key={`${row.target}\n${row.jobId ?? ''}`} action={row} workflowInvocationId={entry.workflowInvocationId} isCli={isCli} costsLoading={costsLoading} />)}
                 {shown.length === 0 && <p className={clsx('m-0 px-3 py-2 text-xs', MUTED)}>Nothing matches.</p>}
             </div>
         </div>

@@ -30,7 +30,7 @@ import { runActions } from "../runActions";
 import { previewAction } from "../previewQueryResults";
 import { runMultipleTagsFromSelection, runTagWtApi } from "../runTag";
 import { runTests } from "../runTests";
-import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WorkflowUrlEntry, ActionCounts, WorkflowAction, SchemaMetadata, CachedResults } from "../types";
+import { ActionDescription, CurrentFileMetadata, SupportedCurrency, WorkflowUrlEntry, SchemaMetadata, CachedResults } from "../types";
 import { currencySymbolMapping } from "../constants";
 import { costEstimator } from "../costEstimator";
 import { getModelLastModifiedTime } from "../bigqueryDryRun";
@@ -39,14 +39,13 @@ import { PerfSpan, perfStart, perfTimed } from "../perf";
 import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
-import { loadDataformTools } from "../lazySdk";
 import { parseCompilationStack } from "../parseCompilationStack";
 import { cancelWorkflowInvocation } from "../dataformApiUtils";
 import { cancelCliRun, cliRunHint, isFollowedRun } from "../cliRunJobs";
 import { pendingRun } from "../runFeedback";
-import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, workflowActionTarget } from "../workflowJobTelemetry";
-import { timestampToMs } from "../shared/jobTiming";
+import { canRefreshFromApi, exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, refreshWorkflowEntry } from "../workflowJobTelemetry";
 import { isTerminalRun } from "../shared/cliRunJobs";
+import { isWatchedInvocation } from "../workflowWatch/watchWorkflow";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
 import {
     PROPERTY_GRAPHS_MIN_CORE_VERSION,
@@ -1735,75 +1734,15 @@ export class CompiledQueryPanel {
                 if (urlsToRefresh.length > 0) {
                     const refreshedUrls = await Promise.all(urlsToRefresh.map(async (original) => {
                         const item = { ...original };
-                        if (isTerminalRun(item)) { return item; }
+                        // The bottom panel follows the workflow it watches, and saves it as it goes
+                        if (isTerminalRun(item) || isWatchedInvocation(item.workflowInvocationId)) { return item; }
                         const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
                         const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
                         const needsCountsBackfill = !item.actionCounts;
                         const needsActionsBackfill = !item.actions;
-                        if ((isNonTerminal || needsActionBackfill || needsCountsBackfill || needsActionsBackfill) && item.workflowInvocationId && item.projectId && item.location && item.repositoryName) {
+                        if ((isNonTerminal || needsActionBackfill || needsCountsBackfill || needsActionsBackfill) && canRefreshFromApi(item)) {
                             try {
-                                const dataformClient = new (await loadDataformTools())(item.projectId, item.location);
-                                const invocation = await dataformClient.getWorkflowInvocation(item.repositoryName, item.workflowInvocationId);
-                                if (invocation && invocation.state) {
-                                  item.state = invocation.state as string;
-                                }
-                                item.invocationStartTime = timestampToMs(invocation?.invocationTiming?.startTime) ?? item.invocationStartTime;
-                                item.invocationEndTime = timestampToMs(invocation?.invocationTiming?.endTime) ?? item.invocationEndTime;
-                                try {
-                                    const actions = await dataformClient.queryWorkflowInvocationActions(item.repositoryName, item.workflowInvocationId);
-                                    const list = (actions || []) as any[];
-                                    const counts: ActionCounts = { total: list.length, pending: 0, running: 0, succeeded: 0, failed: 0, cancelled: 0, skipped: 0 };
-                                    const actionInfos: WorkflowAction[] = [];
-                                    const previousJobStats = new Map((item.actions ?? []).map((a) => [a.target, a.jobStats]));
-                                    for (const a of list) {
-                                        const s = a?.state;
-                                        if (s === 'PENDING') { counts.pending++; }
-                                        else if (s === 'RUNNING') { counts.running++; }
-                                        else if (s === 'SUCCEEDED') { counts.succeeded++; }
-                                        else if (s === 'FAILED') { counts.failed++; }
-                                        else if (s === 'CANCELLED') { counts.cancelled++; }
-                                        else if (s === 'SKIPPED' || s === 'DISABLED') { counts.skipped++; }
-
-                                        const target = workflowActionTarget(a);
-                                        actionInfos.push({
-                                            target,
-                                            state: typeof s === 'string' ? s : 'UNKNOWN',
-                                            failureReason: a?.failureReason || undefined,
-                                            jobId: a?.bigqueryAction?.jobId || undefined,
-                                            jobStats: previousJobStats.get(target),
-                                            startTime: timestampToMs(a?.invocationTiming?.startTime),
-                                        });
-                                    }
-                                    item.actionCounts = counts;
-                                    item.actions = actionInfos;
-                                    // Loaded here rather than on request from the webview so each action's bytes billed
-                                    // shows as soon as it finishes, and so this refresh cannot overwrite stats loaded concurrently.
-                                    try {
-                                        await loadJobStatsForInvocation(item);
-                                    } catch (e: any) {
-                                        logger.error(`Error loading BigQuery job stats: ${e.message}`);
-                                    }
-
-                                    if (item.state === 'FAILED') {
-                                        const failedActions = list
-                                            .filter((a: any) => !!a?.failureReason)
-                                            .map((a: any) => ({ target: workflowActionTarget(a), failureReason: a.failureReason as string }));
-                                        item.failedActions = failedActions.length > 0 ? failedActions : [{
-                                            target: '(workflow)',
-                                            failureReason: `Workflow invocation reported FAILED but the Dataform API returned no per-action failure reasons (${list.length} action(s) inspected). This usually means the failure happened before any action ran (e.g. compilation or workspace sync). Open in GCP for full logs.`,
-                                        }];
-                                    } else {
-                                        item.failedActions = undefined;
-                                    }
-                                } catch (e: any) {
-                                    logger.error(`Error fetching workflow invocation actions: ${e.message}`);
-                                    if (item.state === 'FAILED') {
-                                        item.failedActions = [{
-                                            target: '(error)',
-                                            failureReason: `Unable to fetch failure details from the Dataform API: ${e.message}`,
-                                        }];
-                                    }
-                                }
+                                return await refreshWorkflowEntry(item);
                             } catch (e: any) {
                                 logger.error(`Error fetching workflow invocation status: ${e.message}`);
                             }

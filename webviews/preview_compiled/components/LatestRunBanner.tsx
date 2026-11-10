@@ -5,6 +5,7 @@ import { PanelState, ActionCounts } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration } from '../../../src/shared/jobTiming';
+import { ownRuns } from '../../../src/shared/cliRunJobs';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
 import { SHOW_RUN_DETAILS_EVENT } from './RunStatusPill';
 import { IncludedTargetsList } from './IncludedTargetsList';
@@ -41,7 +42,8 @@ function countsLine(counts: ActionCounts | undefined, what: string): string | nu
 export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps) {
     // Full width covers the whole panel with the run details, giving the list room.
     const [fullWidth, setFullWidth] = useState(false);
-    const items = state.dataform.workflowUrls || [];
+    // A workflow watched from the Dataform Workflow view is not one of yours
+    const items = ownRuns(state.dataform.workflowUrls || []);
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
 
     // The pill in the header asks for the details from wherever the panel is scrolled to

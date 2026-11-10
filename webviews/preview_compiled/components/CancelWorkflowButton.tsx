@@ -4,6 +4,7 @@ import { CircleStop, Loader2 } from 'lucide-react';
 import { WorkflowUrlEntry } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
+import { isExternalRun } from '../../../src/shared/cliRunJobs';
 
 /**
  * Labelled stop button for an invocation that is still running; renders nothing once it can no longer be cancelled.
@@ -25,7 +26,9 @@ export function CancelWorkflowButton({ entry }: { entry: WorkflowUrlEntry }) {
         return () => window.removeEventListener('message', handleMessage);
     }, [requested, entry.workflowInvocationId]);
 
+    // A workflow the extension did not start is only watched: it is never cancelled from here
     const cancellable = !!entry.workflowInvocationId
+        && !isExternalRun(entry)
         && entry.state !== 'CANCELING'
         && !(entry.state && TERMINAL_WORKFLOW_STATES.has(entry.state));
     if (!cancellable) { return null; }

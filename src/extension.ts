@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import os from 'os';
 import { QueryWtType, Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
+import { registerWorkflowWatchPanel } from './views/register-workflow-watch-panel';
+import { ownRuns } from './shared/cliRunJobs';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
 import { DataformColumnHoverProvider, DataformHoverProvider } from './hoverProvider';
@@ -150,6 +152,8 @@ export async function activate(context: vscode.ExtensionContext) {
     registerDeferEditorHints(context);
     registerDbtDeferEditorHints(context);
     registerExecutedSqlProvider(context);
+
+    registerWorkflowWatchPanel(context);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider, {
@@ -365,8 +369,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.commands.registerCommand('vscode-dataform-tools.openLastWorkflowExecution', async () => {
         const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-        // A CLI run has no page to open
-        const lastEntry = workflowUrls.filter((entry) => entry.url).pop();
+        // A CLI run has no page to open, and a watched workflow is not one of yours
+        const lastEntry = ownRuns(workflowUrls).filter((entry) => entry.url).pop();
         if (!lastEntry) {
             vscode.window.showInformationMessage('No workflow execution found. Run a file or tag using the API first.');
             return;
