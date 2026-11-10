@@ -37,6 +37,11 @@ suite('typing a table name that starts with digits', function () {
 
     suiteSetup(async () => {
         await vscode.extensions.getExtension('ashishalex.dataform-lsp-vscode')?.activate();
+        // The window is still busy laying itself out, its panel views too, just after the extension activates: keys
+        // typed then can go in before the list opens. One word typed and thrown away lets it settle first
+        const warmUp = await vscode.workspace.openTextDocument({ language: 'sqlx', content: sql });
+        await typeAndAccept(warmUp, '0');
+        await wait(1000);
     });
 
     test('after FROM in a .sqlx file the list of CTEs stays open', async () => {

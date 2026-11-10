@@ -8,7 +8,7 @@ const container = document.getElementById('root');
 if (container) {
   createRoot(container).render(
     <React.StrictMode>
-      <ErrorBoundary panelName="Dataform Workflow">
+      <ErrorBoundary panelName="Runs">
         <App />
       </ErrorBoundary>
     </React.StrictMode>

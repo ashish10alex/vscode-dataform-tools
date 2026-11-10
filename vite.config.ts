@@ -14,7 +14,7 @@ export default defineConfig({
         query_results: './webviews/query_results/index.tsx',
         'dependency-inspector': './webviews/dependency-inspector/index.tsx',
         column_lineage: './webviews/column_lineage/index.tsx',
-        workflow_watch: './webviews/workflow_watch/index.tsx'
+        runs: './webviews/runs/index.tsx'
       },
       output: {
         entryFileNames: '[name].js',

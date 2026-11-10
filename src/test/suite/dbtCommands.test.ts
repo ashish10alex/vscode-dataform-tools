@@ -38,11 +38,11 @@ suite('the commands of the manifest, by Backend (xf#63)', () => {
     const hiddenInDbt = (name: string) => (palette.get(name) ?? '').includes('vscode-dataform-tools.backend != dbt');
     const shared = commands.filter((command) => command.category === 'Dataform/dbt').map((command) => command.command.slice(PREFIX.length));
 
-    test('the twenty-four that work in a dbt Project, and the Project picker, are in the category of both', () => {
+    test('the twenty-five that work in a dbt Project, and the Project picker, are in the category of both', () => {
         assert.deepStrictEqual(shared.sort(), [
             'cancelQuery', 'clearExtensionCache', 'copyTableColumns', 'dependencyGraphPanel', 'newEmptyScratchQuery', 'newScratchQuery', 'queryTableInScratch', 'rerunLastExecution', 'runAssertions', 'runChangedActions', 'runCurrentFile', 'runCurrentFileWtDeps',
             'runCurrentFileWtDownstreamDeps', 'runFilesTagsWtOptions', 'runQuery', 'runTag', 'runTagWtDeps', 'runTagWtDownstreamDeps',
-            'searchTableColumns', 'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'showProjectInfo', 'snoozeCompilation', 'stopSnoozeCompilation',
+            'searchTableColumns', 'selectWorkspaceFolder', 'showCompiledQueryInWebView', 'showCompiledQueryWtDryRun', 'showProjectInfo', 'showRuns', 'snoozeCompilation', 'stopSnoozeCompilation',
         ]);
         assert.ok(shared.every((name) => !hiddenInDbt(name)));
     });

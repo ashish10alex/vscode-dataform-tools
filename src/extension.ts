@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import os from 'os';
 import { QueryWtType, Target, WorkflowUrlEntry } from './types';
 import { CustomViewProvider } from './views/register-query-results-panel';
-import { registerWorkflowWatchPanel } from './views/register-workflow-watch-panel';
+import { registerRunsPanel } from './views/register-runs-panel';
+import { initRunsController } from './runs/runsController';
 import { ownRuns } from './shared/cliRunJobs';
 import { dataformCodeActionProviderDisposable, applyCodeActionUsingDiagnosticMessage } from './codeActionProvider';
 import { DataformRequireDefinitionProvider, DataformJsDefinitionProvider, DataformCTEDefinitionProvider } from './definitionProvider';
@@ -106,6 +107,8 @@ export async function activate(context: vscode.ExtensionContext) {
     initRemoteCompiler(context);
     initLastRun(context);
     initRunFeedback(context);
+    // The run history, which the panels show and the CLI runs write
+    const runs = initRunsController(context);
     initCliRunJobs(context);
     initChangedActions(context);
     initProjects(context);
@@ -153,7 +156,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerDbtDeferEditorHints(context);
     registerExecutedSqlProvider(context);
 
-    registerWorkflowWatchPanel(context);
+    registerRunsPanel(context, runs);
 
     const queryResultsViewProvider = new CustomViewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('queryResultsView', queryResultsViewProvider, {

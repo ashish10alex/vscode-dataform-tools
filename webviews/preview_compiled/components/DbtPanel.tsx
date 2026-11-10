@@ -16,9 +16,9 @@ import { ROW_BUTTON, ROW_TOKEN, ROW_TOKEN_SET, RowChip, RowTone, SummaryRow } fr
 import { SqlBlock, SqlTabs, shownSqlBlock, sqlTabLabels } from "./SqlTabs";
 import { LineageEntry, LineageLists } from "./LineageColumns";
 import { formatAgo } from "./LastRunCard";
-import { RunHistory, runFacts } from "./RunHistory";
+import { runFacts } from "../../runs/RunList";
 import { RunStartSummary } from "./RunStages";
-import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
+import { RunStatusPill } from "./RunStatusPill";
 import { CancelWorkflowButton } from "./CancelWorkflowButton";
 import { WorkflowActionsTable, getStatusIcon, useTick } from "./WorkflowActionsTable";
 import { TERMINAL_WORKFLOW_STATES } from "../utils/workflowPolling";
@@ -38,8 +38,8 @@ import { ModifierSwitch } from "./ModifierSwitch";
  * in src/shared/panelDbtView.ts; the components here only draw it. Nothing here reads the `dataform` block.
  */
 
-const TAB_LABEL: Record<DbtTab, string> = { compiled: "Compiled query", schema: "Schema", runs: "Runs", project: "Project" };
-const TAB_KEY: Record<string, DbtTab> = { c: "compiled", s: "schema", r: "runs", p: "project" };
+const TAB_LABEL: Record<DbtTab, string> = { compiled: "Compiled query", schema: "Schema", project: "Project" };
+const TAB_KEY: Record<string, DbtTab> = { c: "compiled", s: "schema", p: "project" };
 
 const PRIMARY_BUTTON = "px-3 py-1.5 rounded text-sm bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)]";
 const SECONDARY_BUTTON = "px-3 py-1.5 rounded text-sm bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)] border border-[var(--vscode-widget-border)]";
@@ -637,13 +637,6 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
   useTick(!!lastEntry && !lastEnded);
   const lastJobs = lastEntry?.actions?.filter((row) => row.jobId).length ?? 0;
   const lastNodes = (lastEntry?.actions?.length ?? 0) - lastJobs;
-  // The pill in the header asks for the run's details
-  const [detailsAsked, setDetailsAsked] = useState(0);
-  useEffect(() => {
-    const show = () => setDetailsAsked((asked) => asked + 1);
-    window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
-    return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
-  }, []);
 
   // ---- Target: the tests are one line that opens. The one test of a file that defines nothing else is what the
   // file is for, so it is in full
@@ -760,7 +753,6 @@ function CompiledTab({ state, view }: { state: PanelSlices; view: DbtView }) {
         <SummaryRow
           label="Last run"
           tone={lastEntry?.state === "FAILED" ? "error" : "calm"}
-          openRequest={detailsAsked}
           staysClosed
           summary={lastEntry ? (
             <span data-dbt="last run" data-run={lastEntry.state || "UNKNOWN"} title={lastCommand} className="inline-flex items-center gap-1.5 min-w-0 max-w-full align-middle">
@@ -946,15 +938,7 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
           ))}
           actions={<>
             {view.page === "panel" && (
-              <RunStatusPill
-                state={state}
-                runs={dbtRunsOf(state)}
-                onDetails={() => {
-                  setChosen("compiled");
-                  // The Last run row is drawn only once its tab is the one on show
-                  setTimeout(() => window.dispatchEvent(new Event(SHOW_RUN_DETAILS_EVENT)), 50);
-                }}
-              />
+              <RunStatusPill state={state} runs={dbtRunsOf(state)} />
             )}
             <ReportIssueLink />
           </>}
@@ -979,13 +963,6 @@ export function DbtPanel({ state }: { state: PanelSlices }) {
             {tab !== "schema" && (
               <div className="p-4">
                 {view.page === "panel" && tab === "compiled" && <CompiledTab state={state} view={view} />}
-                {view.page === "panel" && tab === "runs" && (
-                  <div className="pb-10">
-                    <div data-dbt="runs" className="-mx-4 -mt-4">
-                      <RunHistory urls={dbtRunsOf(state)} refreshable={false} empty="No runs yet. Runs with dbt build appear here, with their BigQuery jobs" />
-                    </div>
-                  </div>
-                )}
                 {tab === "project" && <ProjectInfoTab state={state} />}
               </div>
             )}

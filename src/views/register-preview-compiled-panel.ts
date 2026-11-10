@@ -40,12 +40,10 @@ import { formatCurrentFile } from "../formatCurrentFile";
 import * as fs from 'fs';
 import { debounce } from "../debounce";
 import { parseCompilationStack } from "../parseCompilationStack";
-import { cancelWorkflowInvocation } from "../dataformApiUtils";
-import { cancelCliRun, cliRunHint, isFollowedRun } from "../cliRunJobs";
+import { cliRunHint } from "../cliRunJobs";
 import { pendingRun } from "../runFeedback";
-import { canRefreshFromApi, exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql, refreshWorkflowEntry } from "../workflowJobTelemetry";
-import { isTerminalRun } from "../shared/cliRunJobs";
-import { isWatchedInvocation } from "../workflowWatch/watchWorkflow";
+import { exportWorkflowActionsCsv, loadJobStatsForInvocation, openBigQueryJobInConsole, openExecutedSql } from "../workflowJobTelemetry";
+import { cancelRun, runsController } from "../runs/runsController";
 import { queryDryRun, getLineAndColumnNumberFromErrorMessage } from "../bigqueryDryRun";
 import {
     PROPERTY_GRAPHS_MIN_CORE_VERSION,
@@ -211,7 +209,32 @@ let armedPreviewSpan: ((attrs?: PerfSpan['attrs']) => void) | undefined;
 const RUN_BACKEND_KEY = 'dataform_run_backend';
 let apiRunGitStateGeneration = 0;
 let apiRunGitStateCache: { folder: string, generation: number, state: Promise<ApiRunGitState> } | undefined;
-const refreshApiRunGitStateSoon = debounce(() => CompiledQueryPanel.centerPanel?.postApiRunGitState(), 500);
+const apiRunGitStateEmitter = new vscode.EventEmitter<void>();
+/** What an API run would leave out may have changed: the Runs view reads it again too */
+export const onDidChangeApiRunGitState = apiRunGitStateEmitter.event;
+const refreshApiRunGitStateSoon = debounce(() => {
+    CompiledQueryPanel.centerPanel?.postApiRunGitState();
+    apiRunGitStateEmitter.fire();
+}, 500);
+
+/** What a run through the Dataform API from the git remote would leave out, computed once for each change */
+export function cachedApiRunGitState(): Promise<ApiRunGitState> | undefined {
+    // Read the resolved folder directly: resolving it here could prompt or warn on every git change
+    const folder = globalThis.workspaceFolder;
+    if (!folder) {
+        return undefined;
+    }
+    if (apiRunGitStateCache?.folder !== folder || apiRunGitStateCache.generation !== apiRunGitStateGeneration) {
+        const cache = { folder, generation: apiRunGitStateGeneration, state: computeApiRunGitState(folder) };
+        apiRunGitStateCache = cache;
+        cache.state.catch(() => {
+            if (apiRunGitStateCache === cache) {
+                apiRunGitStateCache = undefined; // Try again next time
+            }
+        });
+    }
+    return apiRunGitStateCache.state;
+}
 /** Whether the git extension will report a change to this file, see `watchGitState` */
 let gitStateIsWatchedFor: (filePath: string) => boolean = () => false;
 /** How long a save waits for the git extension to report the change before reporting it itself */
@@ -295,10 +318,11 @@ export function registerCompiledQueryPanel(context: ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => {
+        // Whatever writes the run history says so with this; the history tells both panels
+        vscode.commands.registerCommand('vscode-dataform-tools.refreshWorkflowUrls', () => runsController().changed()),
+        runsController().onDidChange(() => {
             if (CompiledQueryPanel.centerPanel?.webviewPanel) {
-                const workflowUrls = context.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls, cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
+                CompiledQueryPanel.centerPanel.updateDataformBlock({ workflowUrls: runsController().history(), cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
             }
         }),
         vscode.commands.registerCommand('vscode-dataform-tools.snoozeCompilation', async () => {
@@ -1648,19 +1672,14 @@ export class CompiledQueryPanel {
                 return;
               }
               case 'dataform.loadWorkflowUrls':
-                const currentWorkflowUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                this.centerPanel?.updateDataformBlock({ workflowUrls: currentWorkflowUrls, cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
+                this.centerPanel?.updateDataformBlock({ workflowUrls: runsController().history(), cliRunHint: cliRunHint(), pendingRun: pendingRun() ?? null });
                 return;
-              case 'dataform.clearWorkflowUrls':
-                await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', []);
-                this.centerPanel?.updateDataformBlock({ workflowUrls: [] });
+              case 'runs.show':
+                await vscode.commands.executeCommand('vscode-dataform-tools.showRuns', message.key);
                 return;
               case 'dataform.cancelWorkflowInvocation':
                 if (message.workflowInvocationId && this.centerPanel) {
-                    const cancelled = isFollowedRun(message.workflowInvocationId)
-                        ? await cancelCliRun(message.workflowInvocationId)
-                        : await cancelWorkflowInvocation(this.centerPanel.extensionContext, message.workflowInvocationId);
-                    if (!cancelled) {
+                    if (!await cancelRun(this.centerPanel.extensionContext, message.workflowInvocationId)) {
                         this.centerPanel?.sendEvent({ event: 'workflow cancel failed', workflowInvocationId: message.workflowInvocationId });
                     }
                 }
@@ -1669,10 +1688,9 @@ export class CompiledQueryPanel {
               case 'dataform.exportWorkflowActionsCsv':
               case 'dataform.openExecutedSql':
               case 'dataform.openBigQueryJob': {
-                const context = this.centerPanel?.extensionContext;
-                const storedUrls = context?.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
+                const storedUrls = runsController().history();
                 const entry = storedUrls.find((item) => item.workflowInvocationId === message.workflowInvocationId);
-                if (!context || !entry) {
+                if (!entry) {
                     return;
                 }
                 if (message.command === 'dataform.openExecutedSql') {
@@ -1687,8 +1705,7 @@ export class CompiledQueryPanel {
                         openBigQueryJobInConsole(entry, action);
                     }
                 } else if (await loadJobStatsForInvocation(entry)) {
-                    await context.workspaceState.update('dataform_workflow_urls', storedUrls);
-                    this.centerPanel?.updateDataformBlock({ workflowUrls: storedUrls });
+                    await runsController().save(storedUrls);
                 }
                 return;
               }
@@ -1727,41 +1744,6 @@ export class CompiledQueryPanel {
               }
               case 'dataform.runWithOptions':
                 await vscode.commands.executeCommand(message.workspace ? 'vscode-dataform-tools.runFilesTagsWtOptionsInRemoteWorkspace' : 'vscode-dataform-tools.runFilesTagsWtOptionsApi');
-                return;
-              case 'dataform.refreshWorkflowStatuses':
-                const urlsToRefresh = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-
-                if (urlsToRefresh.length > 0) {
-                    const refreshedUrls = await Promise.all(urlsToRefresh.map(async (original) => {
-                        const item = { ...original };
-                        // The bottom panel follows the workflow it watches, and saves it as it goes
-                        if (isTerminalRun(item) || isWatchedInvocation(item.workflowInvocationId)) { return item; }
-                        const isNonTerminal = item.state !== 'SUCCEEDED' && item.state !== 'FAILED' && item.state !== 'CANCELLED';
-                        const needsActionBackfill = item.state === 'FAILED' && (!item.failedActions || item.failedActions.length === 0);
-                        const needsCountsBackfill = !item.actionCounts;
-                        const needsActionsBackfill = !item.actions;
-                        if ((isNonTerminal || needsActionBackfill || needsCountsBackfill || needsActionsBackfill) && canRefreshFromApi(item)) {
-                            try {
-                                return await refreshWorkflowEntry(item);
-                            } catch (e: any) {
-                                logger.error(`Error fetching workflow invocation status: ${e.message}`);
-                            }
-                        }
-                        return item;
-                    }));
-
-                    // Merge into the current history rather than overwriting it: entries may have been added,
-                    // cleared or cancelled while the API calls above were in flight.
-                    const latestUrls = this.centerPanel?.extensionContext.workspaceState.get<WorkflowUrlEntry[]>('dataform_workflow_urls') || [];
-                    const updatedUrls = latestUrls.map((current) => {
-                        const index = urlsToRefresh.findIndex((item) => item.workflowInvocationId && item.workflowInvocationId === current.workflowInvocationId);
-                        // A CLI run is not the Dataform API's to tell of: what follows its jobs writes its entry meanwhile
-                        if (index === -1 || isTerminalRun(current) || urlsToRefresh[index].state !== current.state) { return current; }
-                        return refreshedUrls[index];
-                    });
-                    await this.centerPanel?.extensionContext.workspaceState.update('dataform_workflow_urls', updatedUrls);
-                    this.centerPanel?.updateDataformBlock({ workflowUrls: updatedUrls });
-                }
                 return;
               case 'dataform.loadPropertyGraphElementSchema': {
                 const { elementName, table: target } = message;
@@ -2258,22 +2240,12 @@ export class CompiledQueryPanel {
         if (this.centerPanelDisposed) {
             return;
         }
-        // Read the resolved folder directly: resolving it here could prompt or warn on every git change
-        const folder = globalThis.workspaceFolder;
-        if (!folder) {
+        const state = cachedApiRunGitState();
+        if (!state) {
             return;
         }
         const request = ++this.apiRunGitStateRequest;
-        if (apiRunGitStateCache?.folder !== folder || apiRunGitStateCache.generation !== apiRunGitStateGeneration) {
-            const cache = { folder, generation: apiRunGitStateGeneration, state: computeApiRunGitState(folder) };
-            apiRunGitStateCache = cache;
-            cache.state.catch(() => {
-                if (apiRunGitStateCache === cache) {
-                    apiRunGitStateCache = undefined; // Try again next time
-                }
-            });
-        }
-        const apiRunGitState = await apiRunGitStateCache.state;
+        const apiRunGitState = await state;
         // A slower earlier request must not overwrite a newer answer
         if (request === this.apiRunGitStateRequest) {
             this.updateDataformBlock({ apiRunGitState });

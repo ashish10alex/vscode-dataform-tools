@@ -1,19 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useVSCodeMessage } from './hooks/useVSCodeMessage';
 import { Loader2, Info, Settings, Terminal, Cloud } from 'lucide-react';
 import { vscode } from './utils/vscode';
 import { CompiledQueryTab } from './components/CompiledQueryTab';
 import { SchemaTab } from './components/SchemaTab';
 import { CostEstimatorTab } from './components/CostEstimatorTab';
-import { WorkflowURLsTab } from './components/WorkflowURLsTab';
-import {
-  TERMINAL_WORKFLOW_STATES,
-  POLL_FAST_MS,
-  POLL_CANCELING_MS,
-  POLL_SLOW_MS,
-  POLL_FAST_DURATION_MS,
-  POLL_TIMEOUT_MS,
-} from './utils/workflowPolling';
 
 import { DeclarationsView } from './components/DeclarationsView';
 import { ProjectConfigTab } from './components/ProjectConfigTab';
@@ -26,15 +17,14 @@ import { PanelSlices, fileOnShow } from '../../src/shared/panelState';
 import { DbtPanel } from './components/DbtPanel';
 import { ProjectInfoTab, useProjectInfoRequest } from './components/ProjectInfoTab';
 import { PanelHeader, HeaderTab, HeaderMenu } from './components/PanelHeader';
-import { RunStatusPill, SHOW_RUN_DETAILS_EVENT } from './components/RunStatusPill';
-import { isTerminalRun } from '../../src/shared/cliRunJobs';
+import { RunStatusPill } from './components/RunStatusPill';
 
 /** The panel of a Dataform Project, and of a file in no Project */
 function DataformPanel({ state }: { state: PanelSlices }) {
   const problem = panelProblem(state);
   const view = fileView(state.file);
   const fileName = fileOnShow(state);
-  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'workflow_urls' | 'project_config' | 'project'>('compilation');
+  const [activeTab, setActiveTab] = useState<'compilation' | 'schema' | 'cost' | 'project_config' | 'project'>('compilation');
   useProjectInfoRequest(useCallback(() => setActiveTab('project'), []));
   const [now, setNow] = useState(Date.now());
 
@@ -66,52 +56,6 @@ function DataformPanel({ state }: { state: PanelSlices }) {
   const handleStopSnooze = () => {
     vscode.postMessage({ command: "dataform.stopSnooze" });
   };
-  const [isPolling, setIsPolling] = useState(false);
-  const pollStartedAtRef = useRef<number | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    // A run sent to a terminal is followed by the host, by its BigQuery jobs: the Dataform API knows nothing of it
-    const items = (state.dataform.workflowUrls || []).filter(i => !isTerminalRun(i));
-    const hasNonTerminal = items.some(i => !i.state || !TERMINAL_WORKFLOW_STATES.has(i.state));
-    const hasFailedMissingActions = items.some(i =>
-      i.state === 'FAILED' && (!i.failedActions || i.failedActions.length === 0)
-    );
-    const shouldPoll = hasNonTerminal || hasFailedMissingActions;
-
-    if (!shouldPoll) {
-      if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
-      pollStartedAtRef.current = null;
-      setIsPolling(false);
-      return;
-    }
-
-    const justStarted = pollStartedAtRef.current === null;
-    if (justStarted) { pollStartedAtRef.current = Date.now(); }
-    setIsPolling(true);
-
-    const elapsed = Date.now() - pollStartedAtRef.current!;
-    if (elapsed >= POLL_TIMEOUT_MS) {
-      if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
-      setIsPolling(false);
-      return;
-    }
-
-    if (justStarted) {
-      vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
-      return;
-    }
-
-    const isCanceling = items.some(i => i.state === 'CANCELING');
-    const delay = isCanceling ? POLL_CANCELING_MS : elapsed < POLL_FAST_DURATION_MS ? POLL_FAST_MS : POLL_SLOW_MS;
-    pollTimerRef.current = setTimeout(() => {
-      vscode.postMessage({ command: 'dataform.refreshWorkflowStatuses' });
-    }, delay);
-
-    return () => {
-      if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
-    };
-  }, [state.dataform.workflowUrls]);
 
   const isConfigFile = fileName === 'workflow_settings.yaml' || fileName === 'dataform.json' || fileName === 'package.json';
 
@@ -156,7 +100,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
         setActiveTab('compilation');
       } else if (e.key === 'w') {
         e.preventDefault();
-        setActiveTab('workflow_urls');
+        vscode.postMessage({ command: 'runs.show' });
       } else if (e.key === 'p') {
         e.preventDefault();
         setActiveTab('project');
@@ -184,13 +128,6 @@ function DataformPanel({ state }: { state: PanelSlices }) {
     return <DeclarationsView declarations={view.declarations} />;
   }
 
-
-  // The run's details are under the compiled query, which is drawn only once its tab is the one on show
-  const showRunDetails = () => {
-    setActiveTab('compilation');
-    setTimeout(() => window.dispatchEvent(new Event(SHOW_RUN_DETAILS_EVENT)), 50);
-  };
-
   return (
     <div className="flex flex-col h-screen bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] overflow-hidden">
       <PanelHeader
@@ -210,14 +147,13 @@ function DataformPanel({ state }: { state: PanelSlices }) {
               <>
                 <HeaderTab active={activeTab === 'schema'} onClick={() => setActiveTab('schema')} title="Schema (S)">Schema</HeaderTab>
                 <HeaderTab active={activeTab === 'cost'} onClick={() => setActiveTab('cost')} title="Cost Estimator">Cost</HeaderTab>
-                <HeaderTab active={activeTab === 'workflow_urls'} onClick={() => setActiveTab('workflow_urls')} title="Workflow Executions (W)">Executions</HeaderTab>
               </>
             )}
             <HeaderTab active={activeTab === 'project'} onClick={() => setActiveTab('project')} title="Project (P)">Project</HeaderTab>
           </>
         )}
         actions={<>
-          {!isConfigFile && <RunStatusPill state={state} onDetails={showRunDetails} />}
+          {!isConfigFile && <RunStatusPill state={state} />}
           <HeaderMenu
             snoozeTimeLeft={isSnoozed ? timeLeftFormatted : undefined}
             onStartSnooze={handleStartSnooze}
@@ -226,7 +162,7 @@ function DataformPanel({ state }: { state: PanelSlices }) {
               ...(isConfigFile ? [] : [{ label: 'Compiled Query', hint: 'C', onSelect: () => setActiveTab('compilation') }]),
               ...(isConfigFile || isPropertyGraphFile ? [] : [
                 { label: 'Schema', hint: 'S', onSelect: () => setActiveTab('schema') },
-                { label: 'Workflow Executions', hint: 'W', onSelect: () => setActiveTab('workflow_urls') },
+                { label: 'Runs (at the bottom)', hint: 'W', onSelect: () => vscode.postMessage({ command: 'runs.show' }) },
               ]),
               { label: 'Project', hint: 'P', onSelect: () => setActiveTab('project') },
             ]}
@@ -301,7 +237,6 @@ function DataformPanel({ state }: { state: PanelSlices }) {
         {showCompiledQuery && <CompiledQueryTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'schema' && <SchemaTab state={state} />}
         {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'cost' && <CostEstimatorTab state={state} />}
-        {!isConfigFile && !view.isHelperFile && !isPropertyGraphFile && activeTab === 'workflow_urls' && <WorkflowURLsTab state={state} isPolling={isPolling} />}
         </>)}
 
       </div>

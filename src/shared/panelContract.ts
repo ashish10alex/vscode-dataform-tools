@@ -434,6 +434,8 @@ export type SharedPanelMessage =
     | { command: 'lintFile' }
     | { command: 'showLogs' }
     | { command: 'openExternal'; url: string }
+    /** Open the Runs view at the bottom, at the run with this `runKey` where one is given */
+    | { command: 'runs.show'; key?: string }
     /** The Project tab is on show: the host sends the `project info` slice, and keeps it current until the tab is hidden */
     | { command: 'projectInfoShown' }
     | { command: 'projectInfoHidden' }
@@ -472,8 +474,6 @@ export type DataformPanelMessage =
     | { command: 'dataform.estimateTagCost'; tags: string[]; includeDependencies: boolean; includeDependents: boolean }
     | { command: 'dataform.exportTagCostCsv'; fileName: string; content: string }
     | { command: 'dataform.loadWorkflowUrls' }
-    | { command: 'dataform.clearWorkflowUrls' }
-    | { command: 'dataform.refreshWorkflowStatuses' }
     | { command: 'dataform.cancelWorkflowInvocation'; workflowInvocationId: string }
     | { command: 'dataform.loadWorkflowJobStats'; workflowInvocationId: string }
     | { command: 'dataform.exportWorkflowActionsCsv'; workflowInvocationId: string }
@@ -509,43 +509,57 @@ export type DbtPanelMessage =
 
 export type PanelMessage = SharedPanelMessage | DataformPanelMessage | DbtPanelMessage;
 
-/** What the Dataform Workflow view at the bottom shows: a workflow the extension did not start, watched until it ends */
+/** How the paste box of the Runs view is doing: a workflow being looked up, or why it could not be */
 export interface WatchView {
-    /** The workflow watched, or last watched */
-    entry?: WorkflowUrlEntry;
-    /** Whether it is being followed: it has not ended and watching was not stopped */
-    watching: boolean;
     /** Whether a paste is being looked up */
     looking: boolean;
     /** What was pasted, while it is looked up */
     lookingFor?: string;
-    /** Whether the workflow's actions are being read for the first time */
-    readingActions?: boolean;
-    /** How many finished actions' BigQuery jobs are still to be read for their cost */
-    jobsLeft?: number;
-    /** Why the last paste or check failed */
+    /** Why the last paste failed */
     error?: string;
     /** How watching ended, when it ended before the workflow did */
     note?: string;
 }
 
-/** The host's one message to the Dataform Workflow view */
-export interface WatchHostMessage {
-    type: 'watchState';
-    view: WatchView;
+/** What the Runs view at the bottom shows: the runs of the workspace, and the one chosen with its jobs */
+export interface RunsView {
+    /** Oldest first, as kept */
+    history: WorkflowUrlEntry[];
+    /** The `runKey` of the run whose jobs are shown */
+    selected?: string;
+    /** What a check is reading of a run, before it is saved, by `runKey` */
+    progress: Record<string, { entry: WorkflowUrlEntry; jobsLeft: number }>;
+    /** Why a run is no longer asked about, by `runKey` */
+    problems: Record<string, string>;
+    watch: WatchView;
+    /** The Backend of the active Project: a dbt Project's runs are started from its panel, and nothing is watched */
+    backend: string;
+    /** What a run through the Dataform API from the git remote would leave out */
+    apiRunGitState?: ApiRunGitState;
+    /** Why the jobs of CLI runs are not listed, when they can't be */
+    cliRunHint?: string;
+}
+
+/** The host's one message to the Runs view */
+export interface RunsHostMessage {
+    type: 'runsState';
+    view: RunsView;
 }
 
 /**
- * Messages of the Dataform Workflow view. Its table of jobs sends the run messages of the compiled query panel
- * (`dataform.openBigQueryJob` and the like), which the view's host answers too.
+ * Messages of the Runs view. It also sends run messages of the compiled query panel (`dataform.openBigQueryJob`,
+ * `dataform.cancelWorkflowInvocation`, `dataform.runWithOptions` and the like), which its host answers too.
  */
-export type WatchPanelMessage =
-    | { command: 'watch.ready' }
+export type RunsPanelMessage =
+    | { command: 'runs.ready' }
+    | { command: 'dataform.clearWorkflowUrls' }
+    /** Ask about the runs again: those that have not ended, and those whose actions are missing */
+    | { command: 'dataform.refreshWorkflowStatuses' }
+    /** Show this run's jobs */
+    | { command: 'runs.select'; key: string }
     /** Watch what was pasted: a workflow ID, its console URL or its resource name */
     | { command: 'watch.submit'; input: string }
-    /** Stop following it; it is never cancelled */
-    | { command: 'watch.stop' }
-    /** Open the watched workflow's page in the Cloud console */
-    | { command: 'watch.openInConsole' };
+    /** Stop following a watched workflow; it is never cancelled */
+    | { command: 'watch.stop'; workflowInvocationId: string };
 
 export type PanelCommand = PanelMessage['command'];

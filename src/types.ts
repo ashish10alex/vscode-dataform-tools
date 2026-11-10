@@ -600,6 +600,8 @@ export interface WorkflowUrlEntry {
     includedTargets?: Target[];
     /** `includedTargets` counted by action type when the run was dispatched; absent on older entries */
     includedTargetTypes?: ActionTypeCounts;
+    /** A watched workflow whose watching was stopped: it is no longer asked about. Watching it again clears this */
+    unwatched?: boolean;
 }
 
 export interface FailedAction {

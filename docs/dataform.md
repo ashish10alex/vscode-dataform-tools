@@ -4,7 +4,7 @@ Set-up is in the [README](../README.md#installation). Every feature is described
 
 ## BigQuery jobs of a CLI run
 
-A `dataform run` sent to the terminal is listed with the API runs, in the Executions tab and the latest-run banner, tagged `cli`. It has a row for each BigQuery job, live while the run goes: state, duration, slot time, bytes billed, estimated cost, the failure reason and a link to the job in the Cloud console. "Stop run" cancels the run's jobs.
+A `dataform run` sent to the terminal is listed with the API runs, in the Runs view at the bottom and the Last run row of the compiled query, tagged `cli`. It has a row for each BigQuery job, live while the run goes: state, duration, slot time, bytes billed, estimated cost, the failure reason and a link to the job in the Cloud console. "Stop run" cancels the run's jobs.
 
 The run is given `--job-prefix vscode-<id>`, so the IDs of its jobs start with `dataform-vscode-<id>-`, and your jobs are listed for the ones that have it. It needs a Dataform CLI with `--job-prefix` and the `bigquery.jobs.list` permission. A job is named after the table it writes to; one that writes to none goes by the end of its ID. Turn it off with `vscode-dataform-tools.trackCliRunJobs`.
 

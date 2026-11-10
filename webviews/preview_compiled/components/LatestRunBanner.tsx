@@ -1,17 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { ExternalLink, Loader2, Maximize2, Minimize2 } from 'lucide-react';
+import { ExternalLink, Loader2, PanelBottom } from 'lucide-react';
 import { PanelState, ActionCounts } from '../types';
 import { vscode } from '../utils/vscode';
 import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration } from '../../../src/shared/jobTiming';
 import { ownRuns } from '../../../src/shared/cliRunJobs';
-import { CancelWorkflowButton } from './CancelWorkflowButton';
-import { SHOW_RUN_DETAILS_EVENT } from './RunStatusPill';
 import { IncludedTargetsList } from './IncludedTargetsList';
-import { RunViaTag, WorkflowActionsTable, getStatusIcon } from './WorkflowActionsTable';
+import { RunViaTag, WorkflowActionsTable } from './WorkflowActionsTable';
 import { RunStartSummary } from './RunStages';
 import { isTerminalRun } from '../../../src/shared/cliRunJobs';
+import { runKey } from '../../../src/shared/runPolling';
 
 interface LatestRunBannerProps {
     state: PanelState;
@@ -40,26 +38,9 @@ function countsLine(counts: ActionCounts | undefined, what: string): string | nu
  * was run, how it ended and what it came to, so none of that is said again here.
  */
 export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps) {
-    // Full width covers the whole panel with the run details, giving the list room.
-    const [fullWidth, setFullWidth] = useState(false);
     // A workflow watched from the Dataform Workflow view is not one of yours
     const items = ownRuns(state.dataform.workflowUrls || []);
     const latest = items.slice().sort((a, b) => b.timestamp - a.timestamp)[0];
-
-    // The pill in the header asks for the details from wherever the panel is scrolled to
-    const banner = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        const show = () => banner.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
-        return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
-    }, []);
-
-    useEffect(() => {
-        if (!fullWidth) { return; }
-        const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { setFullWidth(false); } };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [fullWidth]);
 
     const isSubmitting = submittingSince !== null && submittingSince !== undefined && (!latest || latest.timestamp <= submittingSince);
 
@@ -87,24 +68,22 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                     <ExternalLink className="w-3.5 h-3.5" />
                 </button>
             )}
+            {/* The Runs view at the bottom has the room for the list, beside the other runs */}
             <button
-                onClick={() => setFullWidth(v => !v)}
+                onClick={() => vscode.postMessage({ command: 'runs.show', key: runKey(latest) })}
                 className={ICON_BUTTON}
-                title={fullWidth ? 'Exit full width (Esc)' : 'Show run details full width'}
-                aria-label={fullWidth ? 'Exit full width' : 'Show run details full width'}
-                aria-pressed={fullWidth}
+                title="Show the run in the Runs view at the bottom"
+                aria-label="Show the run in the Runs view"
             >
-                {fullWidth ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <PanelBottom className="w-3.5 h-3.5" />
             </button>
         </>
     );
 
     return (
-        <div ref={banner} className={fullWidth ? 'fixed inset-0 z-50 flex flex-col overflow-auto bg-[var(--vscode-editor-background)] pt-3' : 'flex flex-col'}>
-            <div className={clsx('flex flex-col gap-0.5 pb-1.5 text-xs', MUTED, fullWidth && 'px-3')}>
+        <div className="flex flex-col">
+            <div className={clsx('flex flex-col gap-0.5 pb-1.5 text-xs', MUTED)}>
                 <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                    {/* Full width covers the row, which has how the run ended and the button that stops it */}
-                    {fullWidth && <>{getStatusIcon(latest.state)}<span className="text-[var(--vscode-foreground)]">{latest.state || 'UNKNOWN'}</span><CancelWorkflowButton entry={latest} /><span>·</span></>}
                     <span title={new Date(latest.timestamp).toISOString()}>started {new Date(latest.timestamp).toLocaleString()}</span>
                     <span>·</span>
                     <RunViaTag entry={latest} />
@@ -125,8 +104,8 @@ export function LatestRunBanner({ state, submittingSince }: LatestRunBannerProps
                 {latest.jobsNote && <div>{latest.jobsNote}</div>}
             </div>
             {/* The list runs from edge to edge of the row, as the rows of the panel do */}
-            <div className={fullWidth ? 'flex-1 min-h-0 flex flex-col' : '-mx-3'}>
-                <WorkflowActionsTable entry={latest} tools={tools} className={fullWidth ? 'flex-1 min-h-[12rem] overflow-auto' : 'max-h-[28rem] overflow-auto'} />
+            <div className="-mx-3">
+                <WorkflowActionsTable entry={latest} tools={tools} className="max-h-[28rem] overflow-auto" />
             </div>
         </div>
     );
