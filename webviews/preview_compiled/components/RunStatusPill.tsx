@@ -6,12 +6,12 @@ import { TERMINAL_WORKFLOW_STATES } from '../utils/workflowPolling';
 import { formatDuration } from '../../../src/shared/jobTiming';
 import { isTerminalRun, ownRuns, runProgress } from '../../../src/shared/cliRunJobs';
 import { CancelWorkflowButton } from './CancelWorkflowButton';
+import { vscode } from '../utils/vscode';
+import { runKey } from '../../../src/shared/runPolling';
 import { useTick } from './WorkflowActionsTable';
 import { RunStageChecklist, RunStartSummary, clock, jobsLookedFor, runVia } from './RunStages';
 import { runStage } from '../../../src/shared/runStages';
 
-/** Asks the latest-run banner, which is under the compiled query, to open and come into view */
-export const SHOW_RUN_DETAILS_EVENT = 'dataform:show-run-details';
 
 const LINK = 'text-[var(--vscode-textLink-foreground)]';
 const SUCCESS = 'text-[var(--vscode-extensionIcon-preReleaseForeground)]';
@@ -52,14 +52,13 @@ function rowTime(row: WorkflowAction): string {
  * The newest run, in the panel's header: whether it went through the CLI or the Dataform API, how many of its jobs
  * (CLI) or actions (API) are running, have succeeded and have failed, and for how long it has run. It is there while
  * a run goes, and stays for a run that ended while the panel was open until it is dismissed or the next run starts:
- * a run that had ended before the panel opened is old news, and is in the Executions tab. A click lists the jobs.
+ * a run that had ended before the panel opened is old news, and is in the Runs view. A click lists the jobs.
  *
  * It is there from the moment a run is invoked, before the run is in the history: until its first job it says which
  * stage the run is in (see src/shared/runStages.ts), and a click lists the stages.
  */
-export function RunStatusPill({ state, onDetails, runs }: {
+export function RunStatusPill({ state, runs }: {
     state: PanelState;
-    onDetails: () => void;
     /** The runs the pill is of, when they are not all those of the history: a dbt Project's panel tells of its own */
     runs?: WorkflowUrlEntry[];
 }) {
@@ -206,9 +205,9 @@ export function RunStatusPill({ state, onDetails, runs }: {
                     )}
                     <div className="flex items-center gap-2 mt-1 pt-1.5 px-1.5 border-t border-[var(--vscode-menu-separatorBackground,var(--vscode-widget-border))]">
                         <button
-                            onClick={() => { setOpen(false); onDetails(); }}
+                            onClick={() => { setOpen(false); vscode.postMessage({ command: 'runs.show', key: runKey(latest) }); }}
                             className={clsx('inline-flex items-center gap-1 bg-transparent border-0 p-0 hover:underline', LINK)}
-                            title="Show the run under the compiled query, with what each job cost"
+                            title="Show the run in the Runs view at the bottom, with what each job cost"
                         >
                             Details <ArrowDown className="w-3 h-3" />
                         </button>
@@ -218,7 +217,7 @@ export function RunStatusPill({ state, onDetails, runs }: {
                             <button
                                 onClick={() => { setOpen(false); setDismissed(latest.timestamp); }}
                                 className={clsx('bg-transparent border-0 p-0 hover:underline', MUTED)}
-                                title={`Hide this until the next run. The run stays in the ${isDbt ? 'Runs' : 'Executions'} tab`}
+                                title="Hide this until the next run. The run stays in the Runs view"
                             >
                                 Dismiss
                             </button>

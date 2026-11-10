@@ -2,20 +2,17 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { WorkflowURLsTab, gitRunLine } from '../../../webviews/preview_compiled/components/WorkflowURLsTab';
-import type { PanelState } from '../../../webviews/preview_compiled/types';
+import { ApiRunRow, gitRunLine } from '../../../webviews/runs/ApiRunRow';
 import type { ApiRunGitState } from '../../shared/apiRunGitState';
-import { EMPTY_DATAFORM_BLOCK } from '../../shared/panelState';
 
 const tracking = (fields: Partial<Extract<ApiRunGitState, { kind: 'tracking' }>> = {}): ApiRunGitState =>
     ({ kind: 'tracking', branch: 'feat/x', upstream: 'origin/feat/x', uncommitted: [], unpushedCommits: 0, unpushedFiles: [], behind: 0, ...fields });
 
 function render(apiRunGitState?: ApiRunGitState): string {
-    const state: PanelState = { dataform: { ...EMPTY_DATAFORM_BLOCK, apiRunGitState } };
-    return renderToStaticMarkup(createElement(WorkflowURLsTab, { state }));
+    return renderToStaticMarkup(createElement(ApiRunRow, { gitState: apiRunGitState }));
 }
 
-suite('WorkflowURLsTab: what a run from the git remote would use', () => {
+suite('The API run row of the Runs view: what a run from the git remote would use', () => {
     test('names the branch on the remote, and says so where it is what the local files are', () => {
         assert.strictEqual(gitRunLine(tracking()), 'Runs origin/feat/x, which matches your local files');
         assert.strictEqual(gitRunLine(tracking({ behind: 2 })), "Runs origin/feat/x, which has 2 commits you don't have locally");

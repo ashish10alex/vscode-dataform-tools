@@ -56,8 +56,8 @@
                     "icon": ""
                 },
                 {
-                    "id": "workflowWatchContainer",
-                    "title": "Dataform Workflow",
+                    "id": "runsContainer",
+                    "title": "Runs",
                     "icon": ""
                 }
             ]
@@ -71,13 +71,12 @@
                     "name": "BigQuery Results"
                 }
             ],
-            "workflowWatchContainer": [
+            "runsContainer": [
                 {
                     "icon": "",
                     "type": "webview",
-                    "id": "workflowWatchView",
-                    "name": "Dataform Workflow",
-                    "when": "vscode-dataform-tools.workflowWatchShown"
+                    "id": "runsView",
+                    "name": "Runs"
                 }
             ]
         },
@@ -145,6 +144,11 @@
                 "command": "vscode-dataform-tools.watchWorkflow",
                 "category": "Dataform",
                 "title": "Watch a workflow by ID or URL (cost of each job)"
+            },
+            {
+                "command": "vscode-dataform-tools.showRuns",
+                "category": "Dataform/dbt",
+                "title": "Show runs"
             },
             {
                 "command": "vscode-dataform-tools.runChangedActions",

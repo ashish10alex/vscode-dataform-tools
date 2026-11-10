@@ -7,7 +7,6 @@ import { LastRunCard, formatAgo, useRerun } from "./LastRunCard";
 import { CompilationInfoBadge, CompileModeToken, useNow } from "./CompilationInfoBadge";
 import { CompilationError } from "./CompilationError";
 import { CancelWorkflowButton } from "./CancelWorkflowButton";
-import { SHOW_RUN_DETAILS_EVENT } from "./RunStatusPill";
 import { clock, runVia } from "./RunStages";
 import { workflowDurationMs, useTick } from "./WorkflowActionsTable";
 import { LineageColumns } from "./LineageColumns";
@@ -183,13 +182,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
   const openedAt = useRef(Date.now());
   // The time a run has gone for is counted here, between what the host sends
   useTick(!!state.dataform.pendingRun || (!!latestRun && !(latestRun.state && TERMINAL_WORKFLOW_STATES.has(latestRun.state))));
-  // The pill in the header asks for the run's details: the row that has them opens
-  const [runDetailsRequests, setRunDetailsRequests] = useState(0);
-  useEffect(() => {
-    const show = () => setRunDetailsRequests((count) => count + 1);
-    window.addEventListener(SHOW_RUN_DETAILS_EVENT, show);
-    return () => window.removeEventListener(SHOW_RUN_DETAILS_EVENT, show);
-  }, []);
 
   const isPropertyGraphFile = (state.dataform.propertyGraphs?.length ?? 0) > 0;
   const handleRun = (backend: RunBackend) => {
@@ -681,7 +673,6 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
           label="Last run"
           tone={lastRunTone}
           summary={lastRunSummary}
-          openRequest={runDetailsRequests}
           staysClosed
           wide
           actions={latestRun && !latestEnded ? (
