@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.16](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.15...v2.0.16) (2026-11-10)
+
+
+### Features
+
+* one Runs view at the bottom, with the run history and the jobs of the run chosen ([#551](https://github.com/ashish10alex/vscode-dataform-tools/issues/551)) ([5176c98](https://github.com/ashish10alex/vscode-dataform-tools/commit/5176c98d278a1b8349e3a21acc9f8a43ac84c978))
+
 ### [2.0.15](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.14...v2.0.15) (2026-11-10)
 
 
