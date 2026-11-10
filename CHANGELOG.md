@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.15](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.14...v2.0.15) (2026-11-10)
+
+
+### Features
+
+* watch a workflow by ID or URL, with the cost of each job ([#550](https://github.com/ashish10alex/vscode-dataform-tools/issues/550)) ([18f72bb](https://github.com/ashish10alex/vscode-dataform-tools/commit/18f72bb688c1b9b3075b327f9cdf9089b5cd2f5e))
+
 ### [2.0.14](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.13...v2.0.14) (2026-11-01)
 
 
