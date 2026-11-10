@@ -1705,7 +1705,8 @@ export class CompiledQueryPanel {
                         openBigQueryJobInConsole(entry, action);
                     }
                 } else if (await loadJobStatsForInvocation(entry)) {
-                    await runsController().save(storedUrls);
+                    // Only what was read, on the history as it is now: the poller may have written it meanwhile
+                    await runsController().update(message.workflowInvocationId, { actions: entry.actions, jobStatsSummary: entry.jobStatsSummary });
                 }
                 return;
               }

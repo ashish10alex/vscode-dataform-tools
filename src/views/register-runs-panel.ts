@@ -187,7 +187,8 @@ export class RunsViewProvider implements vscode.WebviewViewProvider {
                     const action = entry.actions?.find((a) => a.target === message.action && (!message.jobId || a.jobId === message.jobId));
                     if (action) { openBigQueryJobInConsole(entry, action); }
                 } else if (await loadJobStatsForInvocation(entry)) {
-                    await this.runs.save(history);
+                    // Only what was read, on the history as it is now: the poller may have written it meanwhile
+                    await this.runs.update(message.workflowInvocationId, { actions: entry.actions, jobStatsSummary: entry.jobStatsSummary });
                 }
                 return;
             }
