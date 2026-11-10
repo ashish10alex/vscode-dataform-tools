@@ -75,6 +75,10 @@ export class WorkflowWatchViewProvider implements vscode.WebviewViewProvider {
             case 'watch.ready':
                 this.post();
                 return;
+            case 'reloadPage':
+                // After an error while it drew: the page loads again and asks for the state with watch.ready
+                if (this.view) { this.view.webview.html = this.html(this.view.webview); }
+                return;
             case 'watch.submit':
                 await this.watcher.watch(message.input);
                 return;

@@ -52,6 +52,7 @@ export class WorkflowWatcher implements vscode.Disposable {
             const entry = await this.lookUp(input);
             if (generation !== this.generation) { return; }
             await this.save(entry);
+            if (generation !== this.generation) { return; }
             this.set({ entry, looking: false, lookingFor: undefined, watching: !ENDED_RUN_STATES.has(entry.state ?? ''), readingActions: !entry.actions });
             await this.check(generation);
         } catch (error: any) {
@@ -167,6 +168,7 @@ export class WorkflowWatcher implements vscode.Disposable {
         if (generation !== this.generation) { return; }
         this.failures = 0;
         await this.save(entry);
+        if (generation !== this.generation) { return; }
         const ended = ENDED_RUN_STATES.has(entry.state ?? '');
         if (ended) {
             followed = undefined;

@@ -84,7 +84,7 @@ export const CompiledQueryTab: React.FC<CompiledQueryTabProps> = ({
 
   useEffect(() => {
     if (submittingSince === null) { return; }
-    const newer = (state.dataform.workflowUrls || []).some(i => i.timestamp > submittingSince);
+    const newer = ownRuns(state.dataform.workflowUrls || []).some(i => i.timestamp > submittingSince);
     if (newer) { setSubmittingSince(null); return; }
     const timeoutId = setTimeout(() => setSubmittingSince(null), 30000);
     return () => clearTimeout(timeoutId);
