@@ -3,6 +3,7 @@ import { ExecutionMode } from './types';
 import { getWorkspaceFolder } from './utils';
 import { resolveExecutionMode } from './utils/remoteCompiler';
 import { changedFileKey, describeComparison, displayReasons, renamedFromLabels } from './shared/changeComparison';
+import { typeLabel } from './shared/actionTypes';
 import { ChangedActionsResult, dispatchChangedActions, noChangesMessage, prepareChangedActions } from './changedActions';
 import { ColumnLineagePanel } from './views/columnLineagePanel';
 
@@ -35,7 +36,7 @@ function pickRunType(result: ChangedActionsResult): Promise<RunTypeItem['runType
             const from = renamedFrom.get(changedFileKey(action.fileName));
             items.push({ label: from ? `${action.fileName}  ${from}` : action.fileName, kind: vscode.QuickPickItemKind.Separator });
         }
-        items.push({ label: action.target.split('.').slice(1).join('.'), description: `${action.type} · ${displayReasons(action).join(', ')}` });
+        items.push({ label: action.target.split('.').slice(1).join('.'), description: `${typeLabel(action.type)} · ${displayReasons(action).join(', ')}` });
     }
     // A renamed action is listed once, under its new name
     for (const action of result.deleted.filter((deleted) => !deleted.renamedTo)) {

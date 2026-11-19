@@ -1,5 +1,9 @@
 import * as assert from 'assert';
+import fs from 'fs';
+import path from 'path';
 import { suite, test } from 'mocha';
+import { findProjectRoot } from './helper';
+import { typeLabel } from '../../shared/actionTypes';
 import { diffCompiledGraphs } from '../../utils/compiledGraphDiff';
 import { DataformCompiledJson } from '../../types';
 
@@ -11,7 +15,7 @@ function table(name: string, overrides: Record<string, unknown> = {}) {
     return { type: 'table', fileName: `definitions/${name}.sqlx`, target: target(name), query: `select 1 as ${name}`, tags: [], ...overrides };
 }
 
-function graph(parts: Partial<Record<'tables' | 'operations' | 'assertions' | 'notebooks' | 'declarations', unknown[]>>): DataformCompiledJson {
+function graph(parts: Partial<Record<'tables' | 'operations' | 'assertions' | 'notebooks' | 'declarations' | 'propertyGraphs', unknown[]>>): DataformCompiledJson {
     return { tables: [], operations: [], assertions: [], notebooks: [], declarations: [], tests: [], targets: [], ...parts } as unknown as DataformCompiledJson;
 }
 
@@ -67,5 +71,30 @@ suite('compiledGraphDiff.diffCompiledGraphs', () => {
             ['proj.ds.a', 'assertion'],
             ['proj.ds.op', 'operations'],
         ]);
+    });
+
+    test('counts an edit to a property graph: its body as SQL, disabled as config', () => {
+        const propertyGraph = (graphBody: string, disabled = false) => ({
+            fileName: 'definitions/graph.yaml', target: target('LibraryGraph'), graphBody, disabled, description: 'd', nodes: [{ name: 'Author' }],
+        });
+        const base = graph({ propertyGraphs: [propertyGraph('NODE TABLES (a)')] });
+        assert.deepStrictEqual(diffCompiledGraphs(base, base), { changed: [], deleted: [] });
+        const described = graph({ propertyGraphs: [{ ...propertyGraph('NODE TABLES (a)'), description: 'other' }] });
+        assert.deepStrictEqual(diffCompiledGraphs(base, described), { changed: [], deleted: [] }, 'a description changes nothing a run builds');
+        for (const [head, reason] of [[propertyGraph('NODE TABLES (b)'), 'sql'], [propertyGraph('NODE TABLES (a)', true), 'config']] as const) {
+            const { changed } = diffCompiledGraphs(base, graph({ propertyGraphs: [head] }));
+            assert.deepStrictEqual(changed.map((c) => [c.target, c.type, c.reasons]), [['proj.ds.LibraryGraph', 'propertyGraph', [reason]]]);
+        }
+        const { deleted } = diffCompiledGraphs(base, graph({}));
+        assert.deepStrictEqual(deleted.map((d) => [d.target, d.type]), [['proj.ds.LibraryGraph', 'propertyGraph']]);
+        assert.strictEqual(typeLabel('propertyGraph'), 'property graph');
+    });
+
+    test('finds nothing changed in a real compile with a property graph against itself', () => {
+        const file = path.join(findProjectRoot(__dirname), 'src', 'test', 'fixtures', 'property_graph_3.1.5.json');
+        const compiled = JSON.parse(fs.readFileSync(file, 'utf8')) as DataformCompiledJson;
+        assert.deepStrictEqual(diffCompiledGraphs(compiled, compiled), { changed: [], deleted: [] });
+        const edited = { ...compiled, propertyGraphs: compiled.propertyGraphs!.map((g) => ({ ...g, graphBody: `${g.graphBody} ` })) };
+        assert.deepStrictEqual(diffCompiledGraphs(compiled, edited).changed.map((c) => [c.fileName, c.reasons]), [['definitions/graph.yaml', ['sql']]]);
     });
 });

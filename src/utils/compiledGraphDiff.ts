@@ -95,6 +95,15 @@ function collectRunnableActions(graph: DataformCompiledJson): Map<string, Compar
             config: { disabled: n.disabled },
         });
     }
+    // From definitions/**/graph.yaml: the compiled body is what CREATE PROPERTY GRAPH runs
+    for (const graphAction of graph.propertyGraphs ?? []) {
+        add(graphAction.target, {
+            fileName: graphAction.fileName,
+            type: 'propertyGraph',
+            sql: { graphBody: graphAction.graphBody },
+            config: { disabled: graphAction.disabled },
+        });
+    }
     return actions;
 }
 

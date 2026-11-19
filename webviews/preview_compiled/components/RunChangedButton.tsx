@@ -4,7 +4,7 @@ import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, Refr
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
 import { changedFileKey, describeComparison, displayReasons, renamedFromLabels } from "../../../src/shared/changeComparison";
-import { countTypeNames, describeTypeCounts } from "../../../src/shared/actionTypes";
+import { countTypeNames, describeTypeCounts, typeLabel } from "../../../src/shared/actionTypes";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
 const REASONS = ["new", "renamed", "sql", "config", "macro"] as const;
@@ -150,7 +150,7 @@ const ChangedFileGroup: React.FC<{
               <li key={action.target} className="grid grid-cols-[1fr_auto] items-start gap-3 pl-10">
                 <ActionName target={action.target} />
                 <span className="flex items-center gap-1 whitespace-nowrap">
-                  <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{action.type}</span>
+                  <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{typeLabel(action.type)}</span>
                   {displayReasons(action).map((reason) => <ReasonBadge key={reason} reason={reason} />)}
                 </span>
               </li>

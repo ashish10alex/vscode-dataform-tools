@@ -52,6 +52,11 @@ function toActionTypeKey(type: string): ActionTypeKey {
 }
 
 /** Counts actions by their compiled `type`, e.g. the types of the changed actions. */
+/** How a compiled action's `type` reads: `property graph` for `propertyGraph`, the others as they are */
+export function typeLabel(type: string): string {
+    return type === 'propertyGraph' ? 'property graph' : type;
+}
+
 export function countTypeNames(types: string[]): ActionTypeCounts {
     const counts: ActionTypeCounts = {};
     for (const type of types) {
