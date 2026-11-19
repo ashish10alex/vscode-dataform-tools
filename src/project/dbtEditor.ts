@@ -6,6 +6,7 @@ import type { Editor, EditorDocument } from '../backend';
 import { logger } from '../logger';
 import { Action, Target, actionsInFile, buildsTable, isMadeUpTarget, slashPath, targetId } from '../shared/compiledGraph';
 import { dbtDryRunResults } from './dbtBigQuery';
+import { ctePreviewProviders } from '../ctePreviewCommand';
 import { formatTimestamp } from '../utils';
 import { rawTableIdAt, tableHoverMarkdown } from '../hoverProvider';
 import type { ColumnSource, SearchedModel } from '../searchTableColumns';
@@ -288,6 +289,8 @@ function register() {
         // BigQuery functions: their hover and signature help, and the completions a .sqlx file has from snippet files.
         // The selector also takes in the scratch queries kept in the Project's folder, which have their own
         registered.push(...registerBigQueryFunctionProviders(dbtSelector(project.root, 'sql'), true, exceptScratch));
+        // Preview CTE: Power User for dbt has its own, and turns these features off in "auto"
+        registered.push(...ctePreviewProviders(dbtSelector(project.root, 'sql')));
     }
     // Said once for each state, not on every look
     if (says.join('\n') !== said) {

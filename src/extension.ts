@@ -20,6 +20,7 @@ import { runFilesTagsWtOptions } from './runFilesTagsWtOptions';
 import { runChangedActionsCommand, RunChangedActionsArgs } from './runChangedActionsCommand';
 import { createNewDataformProject } from './createNewDataformProject';
 import { AssertionRunnerCodeLensProvider, TagsRunnerCodeLensProvider } from './codeLensProvider';
+import { registerCtePreview } from './ctePreviewCommand';
 import { cancelBigQueryJob } from './bigqueryRunQuery';
 import { renameProvider } from './renameProvider';
 import { formatDataformSqlxFile, lintCurrentFile } from './formatCurrentFile';
@@ -273,6 +274,8 @@ export async function activate(context: vscode.ExtensionContext) {
         )
     );
 
+
+    registerCtePreview(context);
 
     const tagsCodeLensProvider = new TagsRunnerCodeLensProvider();
     context.subscriptions.push(

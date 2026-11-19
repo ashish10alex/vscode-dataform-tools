@@ -1,16 +1,18 @@
 import * as vscode from 'vscode';
 import { ensureFreshCompilation, getCurrentFileMetadata, getWorkspaceFolder, handleSemicolonPrePostOps } from "./utils";
+import { runCompilation } from "./utils/dataformCompiler";
 import { CustomViewProvider } from './views/register-query-results-panel';
 import { DataformCompiledJson, QueryWtType, TablesWtFullQuery } from './types';
 import { queryDryRun } from './bigqueryDryRun';
 import { countDeferred, Deferral, handleAccessDenied, resolveDeferralForActions } from './defer';
 import { applyDeferralToAction } from './defer/deferRules';
-import { previewQuery } from './bigquery/preview';
+import * as path from 'path';
+import { CtePreviewOptions, previewQuery } from './bigquery/preview';
 import { declarationPreviewSql, previewMethod, tableName } from './bigquery/tablePreview';
 import { getTableType } from './bigqueryRunQuery';
 import { compiledGraph, compiledJson } from './project';
 import { resolveDataformOptions } from './project/dataformOptions';
-import { Action, CompiledGraph, Kind, Target, actionsInFile, isMadeUpTarget, previewSection, targetId } from './shared/compiledGraph';
+import { Action, CompiledGraph, Kind, Target, actionsInFile, isMadeUpTarget, previewSection, slashPath, targetId } from './shared/compiledGraph';
 import { withoutPreOperations } from './utils/dryRunOrchestrator';
 import { extensionConfiguration } from './project/settings';
 
@@ -179,7 +181,7 @@ function resultsType(kind: Kind): string {
  * `skipPreOpsInPreviewQuery` setting says so. Undefined when the section cannot be previewed.
  */
 export async function dataformPreviewQuery(
-    graph: CompiledGraph, compiled: DataformCompiledJson, workspaceFolder: string, action: Action, section: string, alone?: boolean,
+    graph: CompiledGraph, compiled: DataformCompiledJson, workspaceFolder: string, action: Action, section: string, alone?: boolean, cte?: CtePreviewOptions,
 ): Promise<DeferredPreview | undefined> {
     const skipPreOps = extensionConfiguration().get('skipPreOpsInPreviewQuery') ?? false;
     // Deferral is decided for the file's actions together, as it is for what the panel shows of the file
@@ -190,8 +192,51 @@ export async function dataformPreviewQuery(
     }));
     const deferral = await resolveDeferralForActions(selected, compiled, workspaceFolder);
     const deferred = applyDeferralToAction(action, deferral?.entries ?? []);
-    const query = previewQuery(skipPreOps ? withoutPreOperations(deferred) : deferred, section, { alone })?.sql;
+    const query = previewQuery(skipPreOps ? withoutPreOperations(deferred) : deferred, section, { alone, cte })?.sql;
     return query ? { query, deferral } : undefined;
+}
+
+/**
+ * Previews the rows of a CTE of the Dataform file at `fsPath`, in the query of the file's first action that has it.
+ * The variant of an incremental table is the one the results view's "incremental" switch chooses, and Deferred
+ * Actions are read from prod, as for a preview of the whole file. False when no action of the file has the CTE, which
+ * the caller then says.
+ */
+export async function previewDataformCte(fsPath: string, cte: CtePreviewOptions): Promise<boolean> {
+    const workspaceFolder = await getWorkspaceFolder({ explain: true });
+    if (!workspaceFolder) {
+        return true;
+    }
+    const options = resolveDataformOptions(workspaceFolder);
+    const file = slashPath(path.relative(workspaceFolder, fsPath));
+    await ensureFreshCompilation(workspaceFolder, options);
+    // A file the last compile did not have, as one just made, is compiled first
+    if (!compiledGraph(workspaceFolder)?.files[file]) {
+        await runCompilation(workspaceFolder, options);
+    }
+    const graph = compiledGraph(workspaceFolder);
+    const compiled = compiledJson(workspaceFolder);
+    if (!graph || !compiled) {
+        vscode.window.showWarningMessage("No query to run");
+        return true;
+    }
+    for (const action of actionsInFile(graph, file)) {
+        const section = (incrementalCheckBox ? previewSection(action, true) : undefined) ?? previewSection(action);
+        // Deferral is resolved only for the action that has the CTE, as it asks BigQuery about tables
+        if (!section || !previewQuery(action, section, { cte })) {
+            continue;
+        }
+        const read = () => dataformPreviewQuery(graph, compiled, workspaceFolder, action, section, false, cte);
+        let preview = await read();
+        if (preview && countDeferred(preview.deferral) > 0) {
+            preview = await checkDeferredPreview(preview, read);
+        }
+        if (preview) {
+            await vscode.commands.executeCommand('vscode-dataform-tools.runGeneratedQuery', preview.query, resultsType(action.kind));
+        }
+        return true;
+    }
+    return false;
 }
 
 /**

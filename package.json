@@ -106,6 +106,11 @@
                 "icon": "$(play)"
             },
             {
+                "command": "vscode-dataform-tools.previewCte",
+                "category": "Dataform/dbt",
+                "title": "Preview CTE results"
+            },
+            {
                 "command": "vscode-dataform-tools.newScratchQuery",
                 "category": "Dataform/dbt",
                 "title": "New scratch query"
@@ -472,6 +477,10 @@
         "menus": {
             "commandPalette": [
                 {
+                    "command": "vscode-dataform-tools.previewCte",
+                    "when": "(resourceExtname == .sqlx || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)) && !vscode-dataform-tools.scratchQuery"
+                },
+                {
                     "command": "vscode-dataform-tools.queryTableInScratch",
                     "when": "(resourceExtname == .sqlx || resourceExtname == .js || vscode-dataform-tools.backend == dbt) && !vscode-dataform-tools.scratchQuery"
                 },
@@ -589,6 +598,11 @@
                     "command": "vscode-dataform-tools.searchTableColumns",
                     "when": "((resourceExtname == .sqlx && vscode-dataform-tools.backend != dbt) || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)) && !vscode-dataform-tools.scratchQuery",
                     "group": "navigation@10"
+                },
+                {
+                    "command": "vscode-dataform-tools.previewCte",
+                    "when": "(resourceExtname == .sqlx || (resourceExtname == .sql && vscode-dataform-tools.backend == dbt)) && !vscode-dataform-tools.scratchQuery",
+                    "group": "navigation@11"
                 }
             ],
             "editor/title": [
@@ -904,6 +918,11 @@
                     "type": "boolean",
                     "default": false,
                     "markdownDescription": "If enabled, the pre-operations (and incremental pre-operations) block is excluded from the query run by `Preview Data` / `Run`. Useful to preview a model's output without executing side effects such as `DELETE`/`MERGE` in `pre_operations`. By default, pre-operations are included."
+                },
+                "vscode-dataform-tools.ctePreviewCodeLens": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Show a `▶ Preview CTE` CodeLens above each CTE of a query. It runs the query's `WITH` clause up to that CTE and shows the CTE's rows. `Preview CTE results` is also in the editor's context menu and the command palette, and the light bulb offers it, with this off too."
                 },
                 "vscode-dataform-tools.formatOrdering": {
                     "type": "array",
