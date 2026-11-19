@@ -51,6 +51,16 @@ suite('Column impact summary: readers', () => {
         assert.strictEqual(mentions('SELECT total$ FROM t', 'total'), false, '$ is part of an identifier in Dataform JS output');
     });
 
+    test('matches a dotted table path with or without backticks round each part', () => {
+        assert.strictEqual(mentions('SELECT * FROM `p.marts.customers`', 'marts.customers'), true);
+        assert.strictEqual(mentions('SELECT * FROM `p`.`Marts`.`customers` c', 'marts.customers'), true);
+        assert.strictEqual(mentions('SELECT * FROM marts.customers', 'marts.customers'), true);
+        assert.strictEqual(mentions('SELECT * FROM `p.crm.customers`', 'marts.customers'), false, 'moved to another dataset');
+        assert.strictEqual(mentions('SELECT * FROM `p.old_marts.customers`', 'marts.customers'), false);
+        assert.strictEqual(mentions('SELECT * FROM `p.marts.customers_v2`', 'marts.customers'), false);
+        assert.strictEqual(mentions('SELECT * FROM `p.martsXcustomers`', 'marts.customers'), false, 'the dot is literal');
+    });
+
     test('flags readers outside the project, and judges readers changed on the branch by their new SQL', () => {
         const ctx = context(['p.marts.revenue', 'p.marts.daily'], {
             'p.marts.revenue': 'SELECT order_id, amount FROM `p.marts.orders`',
@@ -138,6 +148,21 @@ suite('Column impact summary: build', () => {
         assert.deepStrictEqual(result.safe.map((entry) => [entry.table, entry.added]), [['p.marts.daily', ['orders']]]);
         assert.deepStrictEqual(result.unchecked, [{ table: 'p.marts.ops', fileName: undefined, reason: 'operation: a dry run of a script has no schema' }]);
         assert.ok(!source.calls.some((call) => call.includes('p.marts.daily')), 'no lookups for a safe table');
+    });
+
+    test('settles a reader of a table moved to another dataset, and matches it as the compiled SQL names it', async () => {
+        // The branch moves customers from marts to crm, and revenue's ref() follows it: its new SQL still names
+        // customers, but in crm
+        const source = fakeSource({}, { 'p.marts.customers': [{ table: 'p.marts.revenue', dependencyType: 'TABLE_ONLY' }] });
+        const moved = await buildImpactSummary([{ table: 'p.marts.customers', type: 'table', deleted: true }], source,
+            context(['p.marts.revenue'], { 'p.marts.revenue': 'SELECT amount AS net FROM `p.crm.customers`' }));
+        assert.deepStrictEqual(moved!.atRisk[0].readers?.map((reader) => [reader.probablyUpdated, reader.stillNamed]), [[true, undefined]]);
+        assert.strictEqual(isLowImpact(moved!.atRisk[0]), true);
+
+        // Compiled with a schema suffix, the reader still names the dev table the Prod Target was guessed from
+        const suffixed = await buildImpactSummary([{ table: 'p.marts.customers', type: 'table', deleted: true, named: 'dev.marts_ashish.customers' }], source,
+            context(['p.marts.revenue'], { 'p.marts.revenue': 'SELECT amount AS net FROM `dev.marts_ashish.customers`' }));
+        assert.deepStrictEqual(suffixed!.atRisk[0].readers?.map((reader) => reader.stillNamed), [true]);
     });
 
     test('lists a new action as new: with no table it has nothing to lose, and with one it is still compared', async () => {

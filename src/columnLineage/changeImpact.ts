@@ -165,7 +165,7 @@ export async function checkDeleted(action: ActionRef, table: string | undefined,
         return { table, fileName, type, uncheckedReason: `deleted, and ${table} could not be read: ${prod.error}` };
     }
     return prod.columns?.length
-        ? { table, fileName, type, deleted: true }
+        ? { table, fileName, type, deleted: true, ...(action.target !== table ? { named: action.target } : {}) }
         : { table, fileName, type, uncheckedReason: `deleted, and no table in ${project(table)}` };
 }
 

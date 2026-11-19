@@ -120,16 +120,28 @@ function escapeRegExp(text: string): string {
 }
 
 /**
- * Whether `sql` names `identifier` as a whole word, case-insensitively as BigQuery compares column names. Only a
- * hint: an alias or a `SELECT *` can make it wrong either way.
+ * Whether `sql` names `identifier` as a whole word, case-insensitively as BigQuery compares column names. A dotted
+ * identifier is a table path, `dataset.table`, and matches with backticks round each part too:
+ * `` `p.dataset.table` `` and `` `dataset`.`table` ``. Only a hint: an alias or a `SELECT *` can make it wrong
+ * either way.
  */
 export function mentions(sql: string, identifier: string): boolean {
-    return new RegExp(`(?<![\\w$])${escapeRegExp(identifier)}(?![\\w$])`, 'i').test(sql);
+    const pattern = identifier.split('.').map(escapeRegExp).join('`?\\.`?');
+    return new RegExp(`(?<![\\w$])${pattern}(?![\\w$])`, 'i').test(sql);
+}
+
+/**
+ * What a reader of the table `table` has to stop naming when it is deleted: `dataset.table`, its last two parts.
+ * The table name alone isn't enough: a branch that moves a table to another dataset leaves its readers naming the
+ * new table by the same name.
+ */
+export function tablePath(table: string): string {
+    return table.split('.').slice(-2).join('.');
 }
 
 /**
  * A reader as the summary shows it. `name`: what the reader would have to stop naming, the column for a dropped or
- * retyped column, the table name for a deleted table.
+ * retyped column, the table path (see `tablePath`) for a deleted table.
  */
 export function annotateReader(link: ColumnLink, name: string, context: ReaderContext): ImpactReader {
     const table = context.toProd?.(link.table) ?? link.table;
@@ -504,6 +516,11 @@ export interface ImpactCandidate {
     noTable?: boolean;
     /** Set when the table couldn't be compared, e.g. its dry run failed */
     uncheckedReason?: string;
+    /**
+     * A deleted table as the readers' compiled SQL names it, when that differs from `table`: its target in the
+     * compile with the user's compiler options, which may have a schema suffix the Prod Target hasn't
+     */
+    named?: string;
 }
 
 export interface ImpactResult {
@@ -558,7 +575,7 @@ export async function buildImpactSummary(
         if (candidate.deleted) {
             const entry: ImpactTable = { table, fileName, type, deleted: true, columns: [] };
             atRisk.push(entry);
-            const name = table.split('.').pop() ?? table;
+            const name = tablePath(candidate.named ?? table);
             lookups.push(async () => {
                 try {
                     const links = source.tableReaders ? await source.tableReaders(table) : [];
