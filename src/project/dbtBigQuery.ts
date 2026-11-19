@@ -4,7 +4,7 @@ import { queryDryRun } from '../bigqueryDryRun';
 import { formatTimestamp } from '../utils';
 import { DryRunResult, RunDryRun, dryRunActions } from '../bigquery/dryRunService';
 import { jobPlace } from '../bigquery/jobPlace';
-import { previewQuery } from '../bigquery/preview';
+import { CtePreviewOptions, previewQuery } from '../bigquery/preview';
 import { Action, ActionId, CompiledGraph, Target, buildsTable, dryRunScripts, targetId } from '../shared/compiledGraph';
 import type { TableState } from '../shared/panelContract';
 
@@ -118,9 +118,9 @@ export async function tablesOfActions(actions: Action[]): Promise<Record<ActionI
  * Runs the compiled query of an action's section and shows its rows in the results view, as a preview does for
  * Dataform: what the code would produce, not what was last built. A test's rows are its failures.
  */
-export async function previewDbtAction(graph: CompiledGraph | undefined, target: Target, section: string) {
+export async function previewDbtAction(graph: CompiledGraph | undefined, target: Target, section: string, cte?: CtePreviewOptions) {
     const action = graph?.actions[targetId(target)];
-    const query = action && previewQuery(action, section)?.sql;
+    const query = action && previewQuery(action, section, { cte })?.sql;
     if (!action || !query) {
         vscode.window.showWarningMessage('No compiled query to run');
         return;

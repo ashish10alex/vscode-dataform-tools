@@ -36,6 +36,7 @@ A dash means not in a dbt project yet. Each name links to its description at [da
 | [Compiled query and dry run](https://dataformtools.com/features#compilation) | ✅ | ✅ | Beside the file on save, with the size and cost of a dry run and the schema of the result |
 | [Errors in the editor](https://dataformtools.com/features#diagnostics) | ✅ | ✅ | Compile errors and BigQuery's dry-run errors, on the line you wrote |
 | [Preview query results](https://dataformtools.com/features#preview_query_results) | ✅ | ✅ | Runs the compiled query and shows its rows; for a dbt test, the rows that fail it |
+| Preview a CTE | ✅ | ✅ | `▶ Preview CTE` above each CTE (or the light bulb, or `Preview CTE results` in the context menu) runs the compiled `WITH` clause up to that CTE and shows its rows, without changing the file. Turn the CodeLens off with `ctePreviewCodeLens` |
 | Scratch queries | ✅ | ✅ | `New scratch query` opens a file for ad hoc BigQuery SQL: run it with Cmd/Ctrl+Enter, with a dry run on save. From a model, it can start from that model's table; `New empty scratch query` always opens an empty one. `Query table in scratch query` starts one that selects from the open model's table |
 | [Run files and tags](https://dataformtools.com/features#filetagruns) | ✅ | ✅ | With dependencies, dependents or a full refresh. Dataform: the CLI or the Dataform API. dbt: `dbt build` |
 | [Run changed actions](https://dataformtools.com/features#run_changed_actions) | ✅ | ✅ | Runs only what differs from the default branch, like dbt's `state:modified`, with a tick per file |

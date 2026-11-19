@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { Action, CompiledGraph, RunOptions } from '../shared/compiledGraph';
 import { actionsInFile, isRunnable, isTestKind, previewSection, siblingsOf } from '../shared/compiledGraph';
 import { previewDbtAction } from './dbtBigQuery';
+import { CtePreviewOptions, previewQuery } from '../bigquery/preview';
 import { compileDbtProject } from './dbtCompile';
 import { describeComparison } from '../shared/changeComparison';
 import { noChangesMessage } from '../changedActions';
@@ -242,18 +243,25 @@ export async function dbtRunChanged(target: DbtFile, scope?: Partial<RunScope>) 
     await runDbtChangedActions(target.project, { ...reach, fullRefresh: refresh === 'yes' }, result);
 }
 
-/** Runs the compiled query of the file's first action that has one, and shows its rows */
-export async function dbtPreviewFile(target: DbtFile) {
+/**
+ * Runs the compiled query of the file's first action that has one, and shows its rows. With `cte`, the rows of that
+ * CTE of the query instead. False when no action of the file has the CTE, which the caller then says.
+ */
+export async function dbtPreviewFile(target: DbtFile, cte?: CtePreviewOptions): Promise<boolean> {
     const graph = await graphFor(target, true);
     if (!graph) {
-        return;
+        return true;
     }
     for (const action of actionsInFile(graph, target.file)) {
         const section = action.sqlPresent ? previewSection(action) : undefined;
-        if (section) {
-            await previewDbtAction(graph, action.target, section);
-            return;
+        // With a CTE, the action whose query has it
+        if (section && (!cte || previewQuery(action, section, { cte }))) {
+            await previewDbtAction(graph, action.target, section, cte);
+            return true;
         }
     }
-    vscode.window.showInformationMessage(`${target.file} has no compiled query to preview.`);
+    if (!cte) {
+        vscode.window.showInformationMessage(`${target.file} has no compiled query to preview.`);
+    }
+    return false;
 }
