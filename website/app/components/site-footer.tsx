@@ -44,6 +44,7 @@ export function SiteFooter() {
           <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground/70">Get it</span>
           <a href={site.marketplace.vscode} target="_blank" rel="noopener noreferrer" className={linkClass}>VS Code Marketplace</a>
           <a href={site.marketplace.openVsx} target="_blank" rel="noopener noreferrer" className={linkClass}>Open VSX</a>
+          <a href={site.xf.url} target="_blank" rel="noopener noreferrer" className={linkClass}>xf (CI &amp; agents)</a>
           <a href={site.marketplace.npm} target="_blank" rel="noopener noreferrer" className={linkClass}>npm</a>
           <a href={site.marketplace.pypi} target="_blank" rel="noopener noreferrer" className={linkClass}>PyPI</a>
         </nav>

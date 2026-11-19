@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Menu } from "lucide-react";
+import { ArrowUpRight, Github, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,15 @@ export function SiteHeader() {
                   {link.label}
                 </Link>
               ))}
+              <a
+                href={site.xf.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                xf CLI
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+              </a>
             </nav>
           </SheetContent>
         </Sheet>
@@ -75,6 +84,15 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          <a
+            href={site.xf.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            xf CLI
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+          </a>
         </nav>
 
         <div className="ml-auto flex items-center gap-1">

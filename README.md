@@ -23,6 +23,8 @@ A VS Code extension for [Dataform](https://github.com/dataform-co/dataform) and 
 
 These are pictures. You can click through the real panel, with made-up data, at [dataformtools.com](https://dataformtools.com).
 
+Want the same BigQuery dry-run cost, Dataplex column impact, and defer-to-prod checks in CI or coding agents? See **[xf](https://xf.dataformtools.com)** ([GitHub](https://github.com/ashish10alex/xf)).
+
 ---
 
 ## Features
@@ -140,6 +142,7 @@ Every command is in the Command Palette (<kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <k
 | --- | --- | --- | --- |
 | Dataform Tools | [VS Code marketplace](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) | [![VS Code marketplace](https://img.shields.io/visual-studio-marketplace/v/ashishalex.dataform-lsp-vscode)![Downloads](https://img.shields.io/vscode-marketplace/i/ashishalex.dataform-lsp-vscode.svg)](https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode) | This extension. |
 | Dataform Tools | [Open VSX](https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode) | [![Open VSX version](https://img.shields.io/open-vsx/v/ashishalex/dataform-lsp-vscode)![Open VSX downloads](https://img.shields.io/open-vsx/dt/ashishalex/dataform-lsp-vscode)](https://open-vsx.org/extension/ashishalex/dataform-lsp-vscode) | The same build, for forks such as [Cursor](https://cursor.com) and [Antigravity](https://antigravity.google/). |
+| `xf` | [xf.dataformtools.com](https://xf.dataformtools.com) · [GitHub](https://github.com/ashish10alex/xf) | [![GitHub release](https://img.shields.io/github/v/release/ashish10alex/xf)](https://github.com/ashish10alex/xf/releases) | Companion CLI, GitHub Action, GitLab CI template, and Agent Skills for BigQuery & Databricks cost, column impact, and defer-to-prod. |
 | `@ashishalex/dataform-graph` | [npm](https://www.npmjs.com/package/@ashishalex/dataform-graph) | [![NPM version](https://img.shields.io/npm/v/%40ashishalex%2Fdataform-graph)![NPM downloads](https://img.shields.io/npm/dm/%40ashishalex%2Fdataform-graph)](https://www.npmjs.com/package/@ashishalex/dataform-graph) | `dataform-graph` CLI: serves the dependency graph in your browser, without VS Code ([readme](./packages/dataform-graph-cli/README.md)). |
 | `@ashishalex/dataform-tools` | [npm](https://www.npmjs.com/package/@ashishalex/dataform-tools) | [![NPM version](https://img.shields.io/npm/v/%40ashishalex%2Fdataform-tools)](https://www.npmjs.com/package/@ashishalex/dataform-tools) | Programmatic wrapper around the `@google-cloud/dataform` npm package. |
 | `dataform-tools` | [PyPI](https://pypi.org/project/dataform-tools/) | [![PyPI version](https://img.shields.io/pypi/v/dataform-tools)](https://pypi.org/project/dataform-tools/) | Programmatic wrapper around the `google-cloud-dataform` Python package. |

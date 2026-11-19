@@ -15,6 +15,10 @@ export const site = {
   faqUrl: "https://github.com/ashish10alex/vscode-dataform-tools/blob/main/FAQ.md",
   googleRecommendationUrl:
     "https://github.com/dataform-co/dataform/blob/main/vscode/README.md",
+  xf: {
+    url: "https://xf.dataformtools.com",
+    repoUrl: "https://github.com/ashish10alex/xf",
+  },
   marketplace: {
     vscode:
       "https://marketplace.visualstudio.com/items?itemName=ashishalex.dataform-lsp-vscode",

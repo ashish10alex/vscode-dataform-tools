@@ -31,6 +31,18 @@ export function AboutAuthor() {
               It&apos;s open source and maintained independently. If something is missing or broken, please open an
               issue.
             </p>
+            <p>
+              Need the same BigQuery cost, Dataplex column impact, and defer-to-prod checks in CI or coding agents? See{" "}
+              <a
+                href={site.xf.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground underline underline-offset-4 hover:text-brand"
+              >
+                xf
+              </a>
+              , the companion CLI and GitHub Action.
+            </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
