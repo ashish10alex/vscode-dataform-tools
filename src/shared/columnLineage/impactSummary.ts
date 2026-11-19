@@ -27,6 +27,8 @@ export interface ImpactReader {
     stillNamed?: boolean;
     /** Removed on this branch, so it stops reading anything */
     deletedOnBranch?: boolean;
+    /** Set on a reader this branch renames: `table` is its new Prod Target, and it is judged by its new SQL */
+    renamedFrom?: string;
 }
 
 export interface ImpactColumn {
@@ -55,12 +57,21 @@ export interface ImpactTable {
     new?: boolean;
     /** A new action whose table is already in BigQuery, and so was compared: a run of the branch built it, or an action deleted earlier is back */
     exists?: boolean;
+    /** Set on a new action that is a deleted one renamed (a renamed file, or a new schema or name): the old Prod Target */
+    renamedFrom?: string;
+    /** A renamed action whose own table isn't in BigQuery yet, compared with the table of `renamedFrom` */
+    fromOld?: boolean;
+    /** Set on a deleted table whose action was renamed: the new Prod Target. Readers still on the old name keep reading a table nothing updates */
+    renamedTo?: string;
 }
 
 export interface UncheckedTable {
     table: string;
     fileName?: string;
     reason: string;
+    /** As for `ImpactTable`: the table is one half of a rename */
+    renamedFrom?: string;
+    renamedTo?: string;
 }
 
 export interface ImpactComparison {
@@ -113,6 +124,8 @@ export interface ReaderContext {
     deleted?: ReadonlySet<string>;
     /** Whether an action of this project is an assertion */
     isAssertion?: (table: string) => boolean;
+    /** The new Prod Targets of the deleted actions this branch renames, by the old */
+    renamed?: ReadonlyMap<string, string>;
 }
 
 function escapeRegExp(text: string): string {
@@ -144,10 +157,15 @@ export function tablePath(table: string): string {
  * retyped column, the table path (see `tablePath`) for a deleted table.
  */
 export function annotateReader(link: ColumnLink, name: string, context: ReaderContext): ImpactReader {
-    const table = context.toProd?.(link.table) ?? link.table;
+    let table = context.toProd?.(link.table) ?? link.table;
     const reader: ImpactReader = { table, dependencyType: link.dependencyType };
     if (link.column) {
         reader.column = link.column;
+    }
+    const renamedTo = context.renamed?.get(table);
+    if (renamedTo) {
+        reader.renamedFrom = table;
+        reader.table = table = renamedTo;
     }
     if (context.deleted?.has(table)) {
         reader.deletedOnBranch = true;
@@ -179,7 +197,8 @@ export function impactReaders(links: ColumnLink[], table: string, name: string, 
     return rankReaders(links.flatMap((link) => {
         const reader = annotateReader(link, name, context);
         const assertion = link.assertion || context.isAssertion?.(reader.table);
-        return reader.table === table || (assertion && !reader.deletedOnBranch) ? [] : [reader];
+        // An incremental table reads itself, under its old name too when renamed
+        return reader.table === table || reader.renamedFrom === table || (assertion && !reader.deletedOnBranch) ? [] : [reader];
     }));
 }
 
@@ -318,16 +337,26 @@ function cell(text: string): string {
     return text.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
 }
 
-/** What this branch does about a reader, or that it is outside the project */
-function readerNote(reader: ImpactReader): string {
+/**
+ * What this branch does about a reader, or that it is outside the project. `movedFrom`: the reader reads a whole
+ * table this branch renames, so one that no longer names it moved to the new name.
+ */
+export function readerNote(reader: ImpactReader, movedFrom = false): string {
     if (reader.deletedOnBranch) {
         return 'deleted here';
     }
+    if (movedFrom && reader.probablyUpdated && !reader.renamedFrom) {
+        return 'moved to the new name';
+    }
+    const note = reader.probablyUpdated ? 'probably updated' : reader.stillNamed ? 'still names it' : '';
+    if (reader.renamedFrom) {
+        return note ? `renamed here, ${note}` : 'renamed here';
+    }
     if (reader.probablyUpdated) {
-        return 'probably updated';
+        return note;
     }
     if (reader.changedOnBranch) {
-        return reader.stillNamed ? 'changed here, still names it' : 'changed here';
+        return reader.stillNamed ? `changed here, ${note}` : 'changed here';
     }
     return reader.filePath ? '' : 'outside project';
 }
@@ -342,7 +371,7 @@ const READ_COLUMNS = 3;
  * Rows of the readers table for one changed column (or a deleted table): one per reader table, with the columns it
  * reads. `wholeTable`: readers of a deleted table, which read it whatever their link says.
  */
-function readerRows(label: string, readers: ImpactReader[], table: string, wholeTable: boolean): string[] {
+function readerRows(label: string, readers: ImpactReader[], table: string, wholeTable: boolean, renamed = false): string[] {
     const byTable = new Map<string, ImpactReader[]>();
     readers.forEach((reader) => byTable.set(reader.table, [...(byTable.get(reader.table) ?? []), reader]));
     const rows = [...byTable.values()].map((group) => {
@@ -352,7 +381,7 @@ function readerRows(label: string, readers: ImpactReader[], table: string, whole
         const more = columns.length - READ_COLUMNS;
         const reads = columns.length ? `${columns.slice(0, READ_COLUMNS).join(', ')}${more > 0 ? `, +${more} more` : ''}` : '—';
         const link = wholeTable ? 'reads the table' : LINK_LABELS[first.dependencyType];
-        return `| ${label} | \`${name}\` | ${reads} | ${link} | ${readerNote(first)} |`;
+        return `| ${label} | \`${name}\` | ${reads} | ${link} | ${readerNote(first, wholeTable && renamed)} |`;
     });
     const more = rows.length - MARKDOWN_READER_LIST;
     return more > 0 ? [...rows.slice(0, MARKDOWN_READER_LIST), `| ${label} | +${more} more | | | |`] : rows;
@@ -388,9 +417,9 @@ function copiesCell(readers: ImpactReader[] | undefined, table: string): string 
     return `${shown.join(', ')}${more > 0 ? `, +${more} more` : ''}`;
 }
 
-function changeCell(change: ColumnChange | 'deleted'): string {
+function changeCell(change: ColumnChange | 'deleted', renamedTo?: string): string {
     if (change === 'deleted') {
-        return '**TABLE DELETED**';
+        return renamedTo ? `**RENAMED** to \`${shortTable(renamedTo)}\`` : '**TABLE DELETED**';
     }
     return change.kind === 'dropped' ? '**DROPPED**' : `\`${change.from} → ${change.to}\``;
 }
@@ -422,6 +451,14 @@ export const NEW_TAG = 'new on this branch';
 
 /** What the summary says of a new action with nothing to lose: "nothing reads it yet", or "table already in `acme-prod`, keeps every column" */
 export function newNote(table: ImpactTable): string {
+    if (table.renamedFrom) {
+        const from = `renamed from \`${shortTable(table.renamedFrom)}\``;
+        if (!table.fromOld) {
+            return `${from}; nothing reads it yet`;
+        }
+        const note = `${from}, keeps every column`;
+        return table.added?.length ? `${note} and adds ${codeList(table.added)}` : note;
+    }
     if (!table.exists) {
         return 'nothing reads it yet';
     }
@@ -457,12 +494,12 @@ export function impactMarkdown(view: ImpactView): string {
         lines.push('', 'No dropped or retyped columns, and no deleted tables.');
     }
     for (const table of view.atRisk) {
-        lines.push('', `**Target model:** \`${shortTable(table.table)}\`${table.new ? ` (${NEW_TAG})` : ''}`, '');
+        lines.push('', `**Target model:** ${modelTitle(table)}`, '');
         lines.push('| Column | Change | Severity | Downstream | Direct copies |', '| --- | --- | --- | --- | --- |');
         const readers: string[] = [];
         const row = (column: string, change: ColumnChange | 'deleted', columnReaders: ImpactReader[] | undefined, error?: string) => {
-            lines.push(`| ${column} | ${changeCell(change)} | ${SEVERITY_LABELS[impactSeverity(change, columnReaders, error)]} | ${downstreamCell(columnReaders, error)} | ${copiesCell(columnReaders, table.table)} |`);
-            readers.push(...readerRows(column, columnReaders ?? [], table.table, change === 'deleted'));
+            lines.push(`| ${column} | ${changeCell(change, table.renamedTo)} | ${SEVERITY_LABELS[impactSeverity(change, columnReaders, error)]} | ${downstreamCell(columnReaders, error)} | ${copiesCell(columnReaders, table.table)} |`);
+            readers.push(...readerRows(column, columnReaders ?? [], table.table, change === 'deleted', !!table.renamedTo));
         };
         if (table.deleted) {
             row('*whole table*', 'deleted', table.readers, table.readersError);
@@ -477,7 +514,7 @@ export function impactMarkdown(view: ImpactView): string {
     }
     if (view.safe.length) {
         lines.push('', `<details><summary>${safeSummary(view.safe.length, view.against)}</summary>`, '');
-        view.safe.forEach((entry) => lines.push(`- \`${shortTable(entry.table)}\`${entry.added?.length ? `: adds ${entry.added.map((column) => `\`${column}\``).join(', ')}` : ''}`));
+        view.safe.forEach((entry) => lines.push(`- ${modelTitle(entry)}${entry.added?.length ? `: adds ${entry.added.map((column) => `\`${column}\``).join(', ')}` : ''}`));
         lines.push('', '</details>');
     }
     if (view.new.length) {
@@ -487,17 +524,30 @@ export function impactMarkdown(view: ImpactView): string {
     }
     if (view.unchecked.length) {
         lines.push('', `<details><summary>Not checked (${view.unchecked.length})</summary>`, '');
-        view.unchecked.forEach((entry) => lines.push(`- \`${shortTable(entry.table)}\`: ${entry.reason}`));
+        view.unchecked.forEach((entry) => lines.push(`- ${modelTitle(entry)}: ${entry.reason}`));
         lines.push('', '</details>');
     }
     lines.push('', '_Downstream readers come from Dataplex lineage of prod runs in the last 30 days, about 2 h behind. '
         + '"Probably updated": changed on this branch, and its new SQL no longer names the column. '
-        + '"Deleted here": the reader is deleted on this branch too._');
+        + '"Deleted here": the reader is deleted on this branch too. '
+        + 'A renamed table is compared with the table it had, and a reader of its old name that no longer names it moved to the new one._');
     const hint = unsetHint(view);
     if (hint) {
         lines.push('', `<sub>${hint}</sub>`);
     }
     return lines.join('\n');
+}
+
+/** How a table at risk is titled: its name, and whether it is new on this branch or one half of a rename */
+export function modelTitle(table: Pick<ImpactTable, 'table' | 'new' | 'renamedFrom' | 'renamedTo'>): string {
+    const name = `\`${shortTable(table.table)}\``;
+    if (table.renamedFrom) {
+        return `${name} (renamed from \`${shortTable(table.renamedFrom)}\`)`;
+    }
+    if (table.renamedTo) {
+        return `${name} (renamed to \`${shortTable(table.renamedTo)}\`)`;
+    }
+    return table.new ? `${name} (${NEW_TAG})` : name;
 }
 
 /** A changed or deleted table, after the host read its prod schema and dry ran it */
@@ -521,6 +571,12 @@ export interface ImpactCandidate {
      * compile with the user's compiler options, which may have a schema suffix the Prod Target hasn't
      */
     named?: string;
+    /** The table `prod` was read from, whose readers are looked up, when it isn't `table`: see `fromOld` */
+    target?: string;
+    /** As for `ImpactTable` */
+    renamedFrom?: string;
+    fromOld?: boolean;
+    renamedTo?: string;
 }
 
 export interface ImpactResult {
@@ -564,16 +620,18 @@ export async function buildImpactSummary(
 
     for (const candidate of candidates) {
         const { table, fileName, type } = candidate;
+        const renamedFrom = candidate.renamedFrom ? { renamedFrom: candidate.renamedFrom } : {};
+        const renamedTo = candidate.renamedTo ? { renamedTo: candidate.renamedTo } : {};
         if (candidate.uncheckedReason) {
-            unchecked.push({ table, fileName, reason: candidate.uncheckedReason });
+            unchecked.push({ table, fileName, reason: candidate.uncheckedReason, ...renamedFrom, ...renamedTo });
             continue;
         }
         if (candidate.noTable) {
-            fresh.push({ table, fileName, type, columns: [], new: true });
+            fresh.push({ table, fileName, type, columns: [], new: true, ...renamedFrom });
             continue;
         }
         if (candidate.deleted) {
-            const entry: ImpactTable = { table, fileName, type, deleted: true, columns: [] };
+            const entry: ImpactTable = { table, fileName, type, deleted: true, columns: [], ...renamedTo };
             atRisk.push(entry);
             const name = tablePath(candidate.named ?? table);
             lookups.push(async () => {
@@ -591,13 +649,19 @@ export async function buildImpactSummary(
         const prodNames = new Set(prod.map((field) => field.name.toLowerCase()));
         const added = dev.filter((field) => !prodNames.has(field.name.toLowerCase())).map((field) => field.name);
         const columns: ImpactColumn[] = diffSchemas(dev, prod).map(({ column, change }) => ({ column, change, readers: [] }));
-        const entry: ImpactTable = { table, fileName, type, columns, ...(added.length ? { added } : {}), ...(candidate.new ? { new: true, exists: true } : {}) };
+        const entry: ImpactTable = {
+            table, fileName, type, columns, ...(added.length ? { added } : {}),
+            ...(candidate.new ? { new: true, ...(candidate.fromOld ? {} : { exists: true }) } : {}),
+            ...renamedFrom, ...(candidate.fromOld ? { fromOld: true } : {}),
+        };
+        // A renamed table compared with its old one: the readers to look up are the old one's
+        const readersOf = candidate.target ?? table;
         // A new action that keeps every column of the table already there has nothing to lose either
         (columns.length ? atRisk : candidate.new ? fresh : safe).push(entry);
         for (const column of columns) {
             lookups.push(async () => {
                 try {
-                    const links = await columnReaders(source, table, column.column);
+                    const links = await columnReaders(source, readersOf, column.column);
                     column.readers = impactReaders(links, table, column.column, context);
                 } catch (error) {
                     column.readersError = errorMessage(error);

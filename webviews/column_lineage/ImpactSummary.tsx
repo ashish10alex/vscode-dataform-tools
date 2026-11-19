@@ -70,7 +70,15 @@ function TableLink({ table, fileName, bridge }: { table: string; fileName?: stri
         : <span title={table}>{shortTable(table)}</span>;
 }
 
-function ReaderNotes({ reader }: { reader: ImpactReader }) {
+/** `moved`: the reader reads a whole table this branch renames */
+function ReaderNotes({ reader, moved }: { reader: ImpactReader; moved?: boolean }) {
+    if (reader.renamedFrom) {
+        const note = reader.probablyUpdated ? ', probably updated' : reader.stillNamed ? ', still names it' : '';
+        return <span className="ln-impact-note" title={`Renamed on this branch from ${shortTable(reader.renamedFrom)}, and judged by its new SQL`}>renamed here{note}</span>;
+    }
+    if (moved && reader.probablyUpdated) {
+        return <span className="ln-impact-note" title="Changed on this branch, and its new SQL names the new table, not the old one">moved to the new name</span>;
+    }
     return (
         <>
             {!reader.filePath && !reader.deletedOnBranch && <span className="ln-impact-note ln-impact-outside">outside project</span>}
@@ -86,8 +94,11 @@ function ReaderNotes({ reader }: { reader: ImpactReader }) {
     );
 }
 
-/** Readers of `table`. `wholeTable`: readers of a deleted table, which read it whatever their link says */
-function ReaderRows({ table, readers, error, bridge, wholeTable }: { table: string; readers: ImpactReader[]; error?: string; bridge: Bridge; wholeTable?: boolean }) {
+/**
+ * Readers of `table`. `wholeTable`: readers of a deleted table, which read it whatever their link says; `renamed`:
+ * the deleted table is renamed on this branch
+ */
+function ReaderRows({ table, readers, error, bridge, wholeTable, renamed }: { table: string; readers: ImpactReader[]; error?: string; bridge: Bridge; wholeTable?: boolean; renamed?: boolean }) {
     if (error) {
         return <tr className="ln-group-item"><td colSpan={3} className="ln-side-error">Readers couldn't be looked up: {error}</td></tr>;
     }
@@ -111,7 +122,7 @@ function ReaderRows({ table, readers, error, bridge, wholeTable }: { table: stri
                             {reader.column && <span className="ln-impact-reader-col">.{reader.column}</span>}
                         </td>
                         <td><span className={`ln-rel ${relation.className}`}>{relation.label}</span></td>
-                        <td><ReaderNotes reader={reader} /></td>
+                        <td><ReaderNotes reader={reader} moved={wholeTable && renamed} /></td>
                     </tr>
                 );
             })}
@@ -163,10 +174,12 @@ function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; is
         <section className="ln-list-section">
             <h2 className="ln-list-heading ln-impact-table">
                 <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
-                {entry.new && <span className="ln-chip" title="The base branch doesn't have this action, but its table is already there">{NEW_TAG}</span>}
+                {entry.renamedFrom
+                    ? <span className="ln-chip" title={entry.fromOld ? 'Its table isn\'t built yet, so it was compared with the table it had' : undefined}>renamed from {shortTable(entry.renamedFrom)}</span>
+                    : entry.new && <span className="ln-chip" title="The base branch doesn't have this action, but its table is already there">{NEW_TAG}</span>}
                 <span className="ln-list-count">
                     {entry.deleted
-                        ? 'deleted on this branch'
+                        ? entry.renamedTo ? `renamed to ${shortTable(entry.renamedTo)} on this branch` : 'deleted on this branch'
                         : plural(entry.columns.length, 'dropped or retyped column')}
                 </span>
             </h2>
@@ -176,8 +189,8 @@ function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; is
                     {entry.deleted
                         ? (
                             <tbody className="ln-group">
-                                <GroupHead label="whole table" change="deleted" severity={impactSeverity('deleted', entry.readers, entry.readersError)} readers={entry.readers} error={entry.readersError} open={isOpen()} onToggle={() => toggle()} />
-                                {isOpen() && <ReaderRows table={entry.table} readers={entry.readers ?? []} error={entry.readersError} bridge={bridge} wholeTable />}
+                                <GroupHead label="whole table" change={entry.renamedTo ? 'renamed' : 'deleted'} severity={impactSeverity('deleted', entry.readers, entry.readersError)} readers={entry.readers} error={entry.readersError} open={isOpen()} onToggle={() => toggle()} />
+                                {isOpen() && <ReaderRows table={entry.table} readers={entry.readers ?? []} error={entry.readersError} bridge={bridge} wholeTable renamed={!!entry.renamedTo} />}
                             </tbody>
                         )
                         : entry.columns.map((column) => (
@@ -268,6 +281,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                                 {impact.safe.map((entry) => (
                                     <li key={entry.table}>
                                         <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
+                                        {entry.renamedFrom ? <span className="ln-dataset"> · renamed from {shortTable(entry.renamedFrom)}</span> : null}
                                         {entry.added?.length ? <span className="ln-dataset"> · adds {entry.added.join(', ')}</span> : null}
                                     </li>
                                 ))}
@@ -294,6 +308,8 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                                 {impact.unchecked.map((entry) => (
                                     <li key={entry.table}>
                                         <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
+                                        {entry.renamedFrom ? <span className="ln-dataset"> · renamed from {shortTable(entry.renamedFrom)}</span> : null}
+                                        {entry.renamedTo ? <span className="ln-dataset"> · renamed to {shortTable(entry.renamedTo)}</span> : null}
                                         <span className="ln-dataset">: {entry.reason}</span>
                                     </li>
                                 ))}

@@ -165,6 +165,53 @@ suite('Column impact summary: build', () => {
         assert.deepStrictEqual(suffixed!.atRisk[0].readers?.map((reader) => reader.stillNamed), [true]);
     });
 
+    test('compares a renamed table with the one it had, and judges readers by their new name and SQL', async () => {
+        // orders moved from marts to sales and dropped discount; revenue moved too, and still names discount
+        const source = fakeSource({
+            'p.marts.orders#discount': [
+                { table: 'p.marts.revenue', column: 'net', dependencyType: 'OTHER' },
+                { table: 'p.marts.orders', column: 'discount', dependencyType: 'EXACT_COPY' },
+            ],
+        }, { 'p.marts.orders': [{ table: 'p.marts.daily', dependencyType: 'TABLE_ONLY' }] });
+        const ctx: ReaderContext = {
+            ...context(['p.sales.orders', 'p.sales.revenue', 'p.marts.daily'], {
+                'p.sales.revenue': 'SELECT discount AS net FROM `p.sales.orders`',
+                'p.marts.daily': 'SELECT * FROM `p.sales.orders`',
+            }),
+            deleted: new Set(['p.marts.orders', 'p.marts.revenue']),
+            renamed: new Map([['p.marts.orders', 'p.sales.orders'], ['p.marts.revenue', 'p.sales.revenue']]),
+        };
+        const result = await buildImpactSummary([
+            { ...orders, table: 'p.sales.orders', new: true, target: 'p.marts.orders', renamedFrom: 'p.marts.orders', fromOld: true },
+            { table: 'p.marts.orders', type: 'table', deleted: true, renamedTo: 'p.sales.orders' },
+        ], source, ctx);
+
+        const [renamed, old] = result!.atRisk;
+        assert.deepStrictEqual([renamed.table, renamed.renamedFrom, renamed.fromOld, renamed.exists], ['p.sales.orders', 'p.marts.orders', true, undefined]);
+        const discount = renamed.columns.find((column) => column.column === 'discount')!;
+        assert.deepStrictEqual(discount.readers.map((reader) => [reader.table, reader.renamedFrom, reader.stillNamed, reader.probablyUpdated]), [
+            ['p.sales.revenue', 'p.marts.revenue', true, undefined],
+            ['p.marts.daily', undefined, undefined, true],
+        ], 'the old table reading itself is left out, and revenue is judged under its new name');
+        assert.ok(source.calls.includes('downstream p.marts.orders#discount'), 'the readers looked up are the old table\'s');
+        assert.deepStrictEqual([old.table, old.renamedTo], ['p.marts.orders', 'p.sales.orders']);
+        assert.deepStrictEqual(old.readers?.map((reader) => reader.probablyUpdated), [true]);
+        assert.strictEqual(isLowImpact(old), true);
+
+        const markdown = impactMarkdown({ status: 'ready', changedCount: 2, ...result!, unchecked: [] });
+        assert.ok(markdown.includes('**Target model:** `sales.orders` (renamed from `marts.orders`)'), markdown);
+        assert.ok(markdown.includes('**Target model:** `marts.orders` (renamed to `sales.orders`)'), markdown);
+        assert.ok(markdown.includes('| *whole table* | **RENAMED** to `sales.orders` |'), markdown);
+        assert.ok(markdown.includes('| *whole table* | `marts.daily` | — | reads the table | moved to the new name |'), markdown);
+        assert.ok(markdown.includes('| `discount` | `sales.revenue` | `net` | derived or filtered | renamed here, still names it |'), markdown);
+    });
+
+    test('says what a renamed table with nothing to lose was renamed from', () => {
+        assert.strictEqual(newNote({ table: 'p.sales.orders', type: 'table', columns: [], new: true, renamedFrom: 'p.marts.orders' }), 'renamed from `marts.orders`; nothing reads it yet');
+        assert.strictEqual(newNote({ table: 'p.sales.orders', type: 'table', columns: [], new: true, renamedFrom: 'p.marts.orders', fromOld: true, added: ['channel'] }),
+            'renamed from `marts.orders`, keeps every column and adds `channel`');
+    });
+
     test('lists a new action as new: with no table it has nothing to lose, and with one it is still compared', async () => {
         const result = await buildImpactSummary([
             // No table yet: not dry run, so no schemas
@@ -458,6 +505,21 @@ suite('Column impact summary: host helpers', () => {
         // Its table is already there: compared like any other
         const built = await checkChanged({ ...scratch, reasons: ['new'] }, action, counting);
         assert.deepStrictEqual([built.new, built.noTable, built.dev?.length, dryRuns], [true, undefined, 1, 1]);
+    });
+
+    test('compares a renamed action with the table it had while its own isn\'t built', async () => {
+        const fake = deps((dev) => dev.replace(/^dev\./, 'prod.'), {
+            'prod.marts.orders': { columns: [{ name: 'order_id', type: 'INT64' }, { name: 'discount', type: 'NUMERIC' }] },
+        });
+        const moved = { target: 'dev.sales.orders', fileName: 'definitions/orders.sqlx', type: 'table', reasons: ['new'], renamedFrom: 'dev.marts.orders' };
+        const candidate = await checkChanged(moved, action, fake, 'prod.marts.orders');
+        assert.deepStrictEqual(fake.reads, ['prod.sales.orders', 'prod.marts.orders']);
+        assert.deepStrictEqual([candidate.table, candidate.target, candidate.fromOld, candidate.renamedFrom, candidate.prod?.length], ['prod.sales.orders', 'prod.marts.orders', true, 'prod.marts.orders', 2]);
+
+        const gone = await checkDeleted({ target: 'dev.marts.orders', type: 'table', renamedTo: 'dev.sales.orders' }, 'prod.marts.orders', fake.read, 'prod.sales.orders');
+        assert.deepStrictEqual([gone.deleted, gone.renamedTo, gone.named], [true, 'prod.sales.orders', 'dev.marts.orders']);
+        const unknown = await checkDeleted({ target: 'dev.marts.orders', type: 'table', renamedTo: 'dev.sales.orders' }, undefined, fake.read, 'prod.sales.orders');
+        assert.strictEqual(unknown.uncheckedReason, `renamed to prod.sales.orders, and ${UNKNOWN_PROD_TARGET}`);
     });
 
     test('names the project with no such table, and why a table could not be read', async () => {

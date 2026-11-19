@@ -111,23 +111,37 @@ export interface CheckDeps {
     dryRun: (action: CompiledAction) => Promise<{ fields: SchemaField[]; error?: string }>;
 }
 
-type ActionRef = { target: string; fileName?: string; type: string; reasons?: string[] };
+type ActionRef = { target: string; fileName?: string; type: string; reasons?: string[]; renamedFrom?: string; renamedTo?: string };
 
 /**
  * Reads a changed table's Prod Target and dry runs it. `action`: the changed action in the head compile. An
- * action the base doesn't have, with no table yet, has nothing to compare and isn't dry run.
+ * action the base doesn't have, with no table yet, has nothing to compare and isn't dry run. `oldTable`: the Prod
+ * Target of the deleted action a renamed one was, which it is compared with while its own table isn't built yet.
  */
-export async function checkChanged(change: ActionRef, action: CompiledAction | undefined, deps: CheckDeps): Promise<ImpactCandidate> {
+export async function checkChanged(change: ActionRef, action: CompiledAction | undefined, deps: CheckDeps, oldTable?: string): Promise<ImpactCandidate> {
     const type = action?.type ?? change.type;
     const table = deps.prodTarget(change.target);
+    const renamedFrom = change.renamedFrom ? { renamedFrom: oldTable ?? change.renamedFrom } : {};
     if (!table) {
-        return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET };
+        return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET, ...renamedFrom };
     }
-    const candidate: ImpactCandidate = { table, fileName: change.fileName, type };
+    const candidate: ImpactCandidate = { table, fileName: change.fileName, type, ...renamedFrom };
     if (change.reasons?.includes('new')) {
         candidate.new = true;
     }
-    const prod = await deps.read(table);
+    let prod = await deps.read(table);
+    if (!prod.error && !prod.columns?.length && candidate.new && change.renamedFrom && oldTable) {
+        // Its table is yet to be built: what it replaces is the table of the action it was renamed from
+        const old = await deps.read(oldTable);
+        if (old.error) {
+            return { ...candidate, uncheckedReason: `renamed from ${oldTable}, and ${oldTable} could not be read: ${old.error}` };
+        }
+        if (old.columns?.length) {
+            prod = old;
+            candidate.target = oldTable;
+            candidate.fromOld = true;
+        }
+    }
     if (prod.error) {
         candidate.uncheckedReason = `${table} could not be read: ${prod.error}`;
     } else if (!prod.columns?.length) {
@@ -154,19 +168,24 @@ export async function checkChanged(change: ActionRef, action: CompiledAction | u
     return candidate;
 }
 
-/** Reads a deleted table's guessed Prod Target, `table`; undefined when it has none */
-export async function checkDeleted(action: ActionRef, table: string | undefined, read: CheckDeps['read']): Promise<ImpactCandidate> {
+/**
+ * Reads a deleted table's guessed Prod Target, `table`; undefined when it has none. `renamedTo`: the Prod Target
+ * of the new action a renamed one became.
+ */
+export async function checkDeleted(action: ActionRef, table: string | undefined, read: CheckDeps['read'], renamedTo?: string): Promise<ImpactCandidate> {
     const { fileName, type } = action;
+    const to = action.renamedTo ? { renamedTo: renamedTo ?? action.renamedTo } : {};
+    const gone = to.renamedTo ? `renamed to ${to.renamedTo}` : 'deleted';
     if (!table) {
-        return { table: action.target, fileName, type, uncheckedReason: `deleted, and ${UNKNOWN_PROD_TARGET}` };
+        return { table: action.target, fileName, type, uncheckedReason: `${gone}, and ${UNKNOWN_PROD_TARGET}`, ...to };
     }
     const prod = await read(table);
     if (prod.error) {
-        return { table, fileName, type, uncheckedReason: `deleted, and ${table} could not be read: ${prod.error}` };
+        return { table, fileName, type, uncheckedReason: `${gone}, and ${table} could not be read: ${prod.error}`, ...to };
     }
     return prod.columns?.length
-        ? { table, fileName, type, deleted: true, ...(action.target !== table ? { named: action.target } : {}) }
-        : { table, fileName, type, uncheckedReason: `deleted, and no table in ${project(table)}` };
+        ? { table, fileName, type, deleted: true, ...(action.target !== table ? { named: action.target } : {}), ...to }
+        : { table, fileName, type, uncheckedReason: `${gone}, and no table in ${project(table)}`, ...to };
 }
 
 /** Changes when the branch's changed actions or their compiled SQL do, so a summary can tell it's out of date */
@@ -242,6 +261,13 @@ export async function computeColumnImpact(
         },
     };
 
+    const devToProd = [...devIndex.keys()].flatMap((dev): [string, string][] => {
+        const prod = prodTarget(dev);
+        return prod ? [[dev, prod]] : [];
+    });
+    // Every deleted action, assertions and operations too, by dev target: readers may be any of them, in prod or a dev run
+    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd) ?? prodTarget(action.target)]));
+
     const candidates: ImpactCandidate[] = [];
     let done = 0;
     emit(view('running', { progress: { phase: 'Dry running', done, total: changed.length } }));
@@ -249,21 +275,17 @@ export async function computeColumnImpact(
         if (cancelled()) {
             return;
         }
-        candidates.push(await checkChanged(change, actions.get(change.target), deps));
+        const oldTable = change.renamedFrom ? deletedToProd.get(change.renamedFrom) : undefined;
+        candidates.push(await checkChanged(change, actions.get(change.target), deps, oldTable));
         emit(view('running', { progress: { phase: 'Dry running', done: ++done, total: changed.length } }));
     });
     if (cancelled()) {
         return { view: view('cancelled'), resolveFile };
     }
 
-    const devToProd = [...devIndex.keys()].flatMap((dev): [string, string][] => {
-        const prod = prodTarget(dev);
-        return prod ? [[dev, prod]] : [];
-    });
-    // Every deleted action, assertions and operations too, by dev target: readers may be any of them, in prod or a dev run
-    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd) ?? prodTarget(action.target)]));
     for (const action of deleted) {
-        candidates.push(await checkDeleted(action, deletedToProd.get(action.target), deps.read));
+        const renamedTo = action.renamedTo ? prodTarget(action.renamedTo) : undefined;
+        candidates.push(await checkDeleted(action, deletedToProd.get(action.target), deps.read, renamedTo));
     }
     // What the candidates were compared with: those with no Prod Target weren't
     const compared = [...changed.map((change) => prodTarget(change.target)), ...deleted.map((action) => deletedToProd.get(action.target))]
@@ -273,6 +295,12 @@ export async function computeColumnImpact(
     const readerToProd = (table: string) => deletedToProd.get(table) ?? toProd(table);
     const deletedTables = new Set(result.deleted.map((action) => deletedToProd.get(action.target) ?? action.target));
     const changedProd = new Set(changed.map((change) => toProd(change.target)));
+    // A renamed reader is judged by its new SQL, under its new name
+    const renamed = new Map(result.deleted.flatMap((action): [string, string][] => {
+        const from = deletedToProd.get(action.target);
+        const to = action.renamedTo ? toProd(action.renamedTo) : undefined;
+        return from && to && changedProd.has(to) ? [[from, to]] : [];
+    }));
     const sqlByProd = new Map(changed.map((change) => {
         const action = actions.get(change.target);
         return [toProd(change.target), action ? actionSql(action) : undefined] as const;
@@ -288,6 +316,7 @@ export async function computeColumnImpact(
             toProd: readerToProd,
             deleted: deletedTables,
             isAssertion: (table) => index.get(table)?.type === 'assertion',
+            renamed,
         },
         (lookups, of) => emit(view('running', { progress: { phase: 'Looking up readers', done: lookups, total: of } })),
         cancelled,

@@ -15,6 +15,7 @@ import { compileDataform, isCompilationStale, parseCompiledString, runCompilatio
 import { compileRemoteCommit } from './utils/remoteCompiler';
 import { runIncludedTargets } from './utils/dataformHelpers';
 import { extractSnapshot, mirrorTree } from './utils/gitSnapshot';
+import { withRenames } from './utils/renames';
 import { perfCount } from './perf';
 import { getDataformCompilerOptions, isRemoteMode, resolveDataformOptions } from './project/dataformOptions';
 import { extensionConfiguration } from './project/settings';
@@ -86,6 +87,8 @@ export interface ChangeBase {
     defaultBranch: string;
     /** True when the checked-out branch is the one being compared against */
     onDefaultBranch: boolean;
+    /** The pushed commit compared in remote mode; undefined when the working tree is */
+    headSha?: string;
 }
 
 /**
@@ -112,7 +115,7 @@ export async function resolveChangeBase(workspaceFolder: string, remote = isRemo
         headLabel = `pushed commit ${head.slice(0, 7)}`;
     }
     const mergeBaseSha = await git(workspaceFolder, ['merge-base', baseRef, head]);
-    return { baseRef, mergeBaseSha, headLabel, headRef, remote, defaultBranch, onDefaultBranch };
+    return { baseRef, mergeBaseSha, headLabel, headRef, remote, defaultBranch, onDefaultBranch, ...(remote ? { headSha: head } : {}) };
 }
 
 function shortHash(value: string): string {
@@ -251,7 +254,8 @@ export async function computeChangedActions(workspaceFolder: string, head: Dataf
     if (!baseGraph) {
         return undefined;
     }
-    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, headRef: base.headRef, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diffCompiledGraphs(baseGraph, head) };
+    const diff = await withRenames(diffCompiledGraphs(baseGraph, head), workspaceFolder, base.mergeBaseSha, base.headSha);
+    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, headRef: base.headRef, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diff };
 }
 
 export function toChangedActionsView(result: ChangedActionsResult): ChangedActionsView {
