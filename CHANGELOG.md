@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.17](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.16...v2.0.17) (2026-11-19)
+
+
+### Features
+
+* column impact at parity with xf ([#552](https://github.com/ashish10alex/vscode-dataform-tools/issues/552)) ([a1aa46f](https://github.com/ashish10alex/vscode-dataform-tools/commit/a1aa46f2d908fd3bef6621d8151b8ace276e04b5))
+
 ### [2.0.16](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.15...v2.0.16) (2026-11-10)
 
 
