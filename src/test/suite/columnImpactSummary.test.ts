@@ -163,6 +163,10 @@ suite('Column impact summary: build', () => {
         const suffixed = await buildImpactSummary([{ table: 'p.marts.customers', type: 'table', deleted: true, named: 'dev.marts_ashish.customers' }], source,
             context(['p.marts.revenue'], { 'p.marts.revenue': 'SELECT amount AS net FROM `dev.marts_ashish.customers`' }));
         assert.deepStrictEqual(suffixed!.atRisk[0].readers?.map((reader) => reader.stillNamed), [true]);
+        // Or one that names its Prod Target outright
+        const outright = await buildImpactSummary([{ table: 'p.marts.customers', type: 'table', deleted: true, named: 'dev.marts_ashish.customers' }], source,
+            context(['p.marts.revenue'], { 'p.marts.revenue': 'SELECT amount AS net FROM `p.marts.customers`' }));
+        assert.deepStrictEqual(outright!.atRisk[0].readers?.map((reader) => reader.stillNamed), [true]);
     });
 
     test('compares a renamed table with the one it had, and judges readers by their new name and SQL', async () => {
@@ -242,6 +246,9 @@ suite('Column impact summary: build', () => {
         assert.deepStrictEqual(columns.note, { kind: 'dropped', onBase: true, breaksRun: 'table', baseBreaksRun: 'table' });
         assert.strictEqual(impactSeverity(columns.id, []), 'critical', 'nothing reads it, but its own run fails');
         assert.strictEqual(impactSeverity(columns.note, []), 'low');
+        // A table the branch makes incremental: the base's drop breaks a run the base didn't have
+        assert.strictEqual(impactSeverity({ kind: 'dropped', onBase: true, breaksRun: 'table' }, []), 'critical');
+        assert.strictEqual(impactSeverity({ kind: 'dropped', onBase: true, breaksRun: 'table', baseBreaksRun: 'uniqueKey' }, []), 'low', 'it fixes the base\'s worse break');
         const markdown = impactMarkdown({ status: 'ready', changedCount: 1, ...result! });
         assert.ok(markdown.includes('**Its own incremental run fails every time: `uniqueKey` still names `id`, which its query no longer returns.**'), markdown);
         assert.ok(markdown.includes("Its own incremental run fails, as on the base branch: Dataform's MERGE or INSERT names `note`"), markdown);

@@ -11,7 +11,7 @@ import { inBatches } from '../shared/columnLineage/traceController';
 import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
 import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf, sortTables } from '../shared/columnLineage/impactSummary';
-import { verifyReaders } from './verifyReaders';
+import { codeOnly, verifyReaders } from './verifyReaders';
 import { graphReaders } from '../shared/columnLineage/graphReaders';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
@@ -382,7 +382,13 @@ export async function computeColumnImpact(
     await verifyReaders(summary.atRisk, {
         readerSql: (reader) => {
             const action = actionOf(reader);
-            return action && action.type !== 'operations' && action.type !== 'operation' ? dryRunQuery(action, skipPreOps) : undefined;
+            if (!action || action.type === 'operations' || action.type === 'operation') {
+                return undefined;
+            }
+            // BigQuery doesn't check what follows a CALL in a script it dry runs, so a pass then proves nothing of the
+            // query that reads the changed table: that is dry run alone
+            const calls = (action.preOps ?? []).some((op) => /\bCALL\b/i.test(codeOnly(op)));
+            return dryRunQuery(action, skipPreOps || calls);
         },
         changedTable: (table) => {
             const action = actionOf(table);

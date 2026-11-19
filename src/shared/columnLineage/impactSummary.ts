@@ -174,9 +174,9 @@ export function tablePath(table: string): string {
 
 /**
  * A reader as the summary shows it. `name`: what the reader would have to stop naming, the column for a dropped or
- * retyped column, the table path (see `tablePath`) for a deleted table.
+ * retyped column, the table path (see `tablePath`) for a deleted table; it still names it when it names any of them.
  */
-export function annotateReader(link: ColumnLink, name: string, context: ReaderContext): ImpactReader {
+export function annotateReader(link: ColumnLink, name: string | string[], context: ReaderContext): ImpactReader {
     let table = context.toProd?.(link.table) ?? link.table;
     const reader: ImpactReader = { table, dependencyType: link.dependencyType };
     if (link.column) {
@@ -202,7 +202,7 @@ export function annotateReader(link: ColumnLink, name: string, context: ReaderCo
         reader.changedOnBranch = true;
         const sql = context.sqlOf(table);
         if (sql !== undefined) {
-            if (mentions(sql, name)) {
+            if ((Array.isArray(name) ? name : [name]).some((each) => mentions(sql, each))) {
                 reader.stillNamed = true;
             } else {
                 reader.probablyUpdated = true;
@@ -216,7 +216,7 @@ export function annotateReader(link: ColumnLink, name: string, context: ReaderCo
  * The readers of `table` as the summary shows them: dev runs folded into their action, the table itself left out,
  * and assertions left out unless this branch deletes them.
  */
-export function impactReaders(links: ColumnLink[], table: string, name: string, context: ReaderContext): ImpactReader[] {
+export function impactReaders(links: ColumnLink[], table: string, name: string | string[], context: ReaderContext): ImpactReader[] {
     return rankReaders(links.flatMap((link) => {
         const reader = annotateReader(link, name, context);
         const assertion = link.assertion || context.isAssertion?.(reader.table);
@@ -331,9 +331,15 @@ export function breaksRun(change: ColumnChange, column: string, ownRun: boolean,
     return (key ?? []).some((name) => name.replace(/`/g, '').toLowerCase() === column.toLowerCase()) ? 'uniqueKey' : 'table';
 }
 
-/** The change is the base branch's but the run break isn't: this branch's uniqueKey names the dropped column and the base's doesn't */
+/**
+ * The change is the base branch's but the run break isn't: the base's action didn't break its run (it wasn't an
+ * incremental table, say), or this branch's uniqueKey names the dropped column and the base's doesn't
+ */
 function keyedHere(change: ColumnChange): boolean {
-    return !!change.onBase && change.breaksRun === 'uniqueKey' && change.baseBreaksRun !== 'uniqueKey';
+    if (!change.onBase || !change.breaksRun) {
+        return false;
+    }
+    return !change.baseBreaksRun || (change.breaksRun === 'uniqueKey' && change.baseBreaksRun !== 'uniqueKey');
 }
 
 /**
@@ -744,7 +750,8 @@ export async function buildImpactSummary(
         if (candidate.deleted) {
             const entry: ImpactTable = { table, fileName, type, deleted: true, columns: [], ...renamedTo };
             atRisk.push(entry);
-            const name = tablePath(candidate.named ?? table);
+            // As the compile names it, and as a reader that names its Prod Target outright does
+            const name = [...new Set([tablePath(candidate.named ?? table), tablePath(table)])];
             lookups.push(async () => {
                 let links: ColumnLink[] = [];
                 try {

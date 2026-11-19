@@ -1,4 +1,4 @@
-import { ImpactReader, ImpactTable, rankReaders } from '../shared/columnLineage/impactSummary';
+import { ImpactReader, ImpactTable, mentions, rankReaders } from '../shared/columnLineage/impactSummary';
 import { inBatches } from '../shared/columnLineage/traceController';
 import { Target } from '../types';
 
@@ -17,17 +17,87 @@ function escapeRegExp(text: string): string {
 }
 
 /**
+ * `sql` with its comments and string literals blanked out, so that what is left is code, at the same positions:
+ * `--`, `#` and block comments, and quoted strings, triple-quoted ones included. Backticked names are kept.
+ */
+export function codeOnly(sql: string): string {
+    const out = sql.split('');
+    const blank = (from: number, to: number) => {
+        for (let i = from; i < to; i++) {
+            if (out[i] !== '\n') {
+                out[i] = ' ';
+            }
+        }
+    };
+    let i = 0;
+    while (i < sql.length) {
+        const rest = (length: number) => sql.slice(i, i + length);
+        if (rest(2) === '--' || sql[i] === '#') {
+            const end = sql.indexOf('\n', i);
+            const to = end < 0 ? sql.length : end;
+            blank(i, to);
+            i = to;
+        } else if (rest(2) === '/*') {
+            const end = sql.indexOf('*/', i + 2);
+            const to = end < 0 ? sql.length : end + 2;
+            blank(i, to);
+            i = to;
+        } else if (sql[i] === "'" || sql[i] === '"') {
+            const quote = rest(3) === sql[i].repeat(3) ? sql[i].repeat(3) : sql[i];
+            let j = i + quote.length;
+            while (j < sql.length && sql.slice(j, j + quote.length) !== quote) {
+                j += sql[j] === '\\' ? 2 : 1;
+            }
+            const to = Math.min(sql.length, j + quote.length);
+            blank(i, to);
+            i = to;
+        } else if (sql[i] === '`') {
+            const end = sql.indexOf('`', i + 1);
+            i = end < 0 ? sql.length : end + 1;
+        } else {
+            i++;
+        }
+    }
+    return out.join('');
+}
+
+/** Words that may follow a table in FROM without being its alias */
+const NOT_ALIASES = new Set([
+    'where', 'join', 'inner', 'left', 'right', 'full', 'cross', 'outer', 'on', 'using', 'group', 'order', 'limit', 'union',
+    'except', 'intersect', 'window', 'qualify', 'having', 'for', 'tablesample', 'pivot', 'unpivot', 'with', 'when', 'then',
+    'select', 'natural', 'lateral',
+]);
+
+/**
  * `sql` with every reference to `target`, as Dataform compiles them (`` `project.dataset.table` ``, or each part
- * quoted on its own), replaced by `query` as a subquery; undefined when `sql` has none.
+ * quoted on its own), replaced by `query` as a subquery; undefined when there is no telling. A reference in a comment
+ * or a string isn't one, and a reference written another way (unquoted, or without its project) would still read the
+ * table, so none may be left. A subquery has no implicit alias, so one without an alias is given the table's name.
  */
 export function swapTable(sql: string, target: Target, query: string): string | undefined {
     const parts = [target.database, target.schema, target.name].filter((part): part is string => !!part).map(escapeRegExp);
     const pattern = new RegExp(`\`${parts.join('\\.')}\`|\`${parts.join('`\\.`')}\``, 'gi');
-    if (!pattern.test(sql)) {
+    const code = codeOnly(sql);
+    const matches = [...code.matchAll(pattern)];
+    if (!matches.length) {
         return undefined;
     }
     const subquery = `(\n${query.trim().replace(/;+$/, '')}\n)`;
-    return sql.replace(pattern, () => subquery);
+    let swapped = '';
+    let left = '';
+    let from = 0;
+    for (const match of matches) {
+        const end = match.index! + match[0].length;
+        const alias = /^\s+(as\s+)?([A-Za-z_][A-Za-z0-9_]*|`[^`]+`)/i.exec(code.slice(end));
+        const named = !!alias && (!!alias[1] || !NOT_ALIASES.has(alias[2].toLowerCase()));
+        swapped += sql.slice(from, match.index) + subquery + (named ? '' : ` AS \`${target.name}\``);
+        left += code.slice(from, match.index) + ' '.repeat(match[0].length);
+        from = end;
+    }
+    swapped += sql.slice(from);
+    left += code.slice(from);
+    const path = [target.schema, target.name].filter(Boolean).join('.');
+    return mentions(left, path) ? undefined : swapped;
 }
 
 /** Whether a BigQuery error is about `column` not being there: "Unrecognized name: X", or "Name X not found inside Y" */
