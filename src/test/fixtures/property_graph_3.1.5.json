@@ -1,0 +1,346 @@
+{
+  "tables": [
+    {
+      "type": "view",
+      "target": {
+        "schema": "dataform",
+        "name": "author_books",
+        "database": "my-gcp-project"
+      },
+      "query": "\nSELECT a.name AS author_name FROM GRAPH_TABLE(`my-gcp-project.dataform.LibraryGraph` MATCH (a:Author)<-[:Wrote]-(:Authorship) COLUMNS (a.name AS name))\n",
+      "disabled": false,
+      "fileName": "definitions/author_books.sqlx",
+      "dependencyTargets": [
+        {
+          "schema": "dataform",
+          "name": "LibraryGraph",
+          "database": "my-gcp-project"
+        }
+      ],
+      "hermeticity": "NON_HERMETIC",
+      "canonicalTarget": {
+        "schema": "dataform",
+        "name": "author_books",
+        "database": "my-gcp-project"
+      },
+      "enumType": "VIEW"
+    },
+    {
+      "type": "table",
+      "target": {
+        "schema": "dataform",
+        "name": "authors",
+        "database": "my-gcp-project"
+      },
+      "query": "\nSELECT 1 AS id, \"Alice\" AS name, DATE \"2020-01-15\" AS joined_date, STRUCT(\"PL\" AS country) AS address\n",
+      "disabled": false,
+      "fileName": "definitions/authors.sqlx",
+      "hermeticity": "NON_HERMETIC",
+      "canonicalTarget": {
+        "schema": "dataform",
+        "name": "authors",
+        "database": "my-gcp-project"
+      },
+      "enumType": "TABLE"
+    },
+    {
+      "type": "table",
+      "target": {
+        "schema": "dataform",
+        "name": "books",
+        "database": "my-gcp-project"
+      },
+      "query": "\nSELECT 10 AS id, \"Graph Systems\" AS title, 320 AS pages\n",
+      "disabled": false,
+      "fileName": "definitions/books.sqlx",
+      "hermeticity": "NON_HERMETIC",
+      "canonicalTarget": {
+        "schema": "dataform",
+        "name": "books",
+        "database": "my-gcp-project"
+      },
+      "enumType": "TABLE"
+    },
+    {
+      "type": "table",
+      "target": {
+        "schema": "dataform",
+        "name": "wrote",
+        "database": "my-gcp-project"
+      },
+      "query": "\nSELECT 1 AS author_id, 10 AS book_id\n",
+      "disabled": false,
+      "fileName": "definitions/wrote.sqlx",
+      "hermeticity": "NON_HERMETIC",
+      "canonicalTarget": {
+        "schema": "dataform",
+        "name": "wrote",
+        "database": "my-gcp-project"
+      },
+      "enumType": "TABLE"
+    }
+  ],
+  "projectConfig": {
+    "warehouse": "bigquery",
+    "defaultSchema": "dataform",
+    "defaultDatabase": "my-gcp-project",
+    "defaultLocation": "US"
+  },
+  "graphErrors": {},
+  "dataformCoreVersion": "3.1.5",
+  "targets": [
+    {
+      "schema": "dataform",
+      "name": "LibraryGraph",
+      "database": "my-gcp-project"
+    },
+    {
+      "schema": "dataform",
+      "name": "author_books",
+      "database": "my-gcp-project"
+    },
+    {
+      "schema": "dataform",
+      "name": "authors",
+      "database": "my-gcp-project"
+    },
+    {
+      "schema": "dataform",
+      "name": "books",
+      "database": "my-gcp-project"
+    },
+    {
+      "schema": "dataform",
+      "name": "wrote",
+      "database": "my-gcp-project"
+    }
+  ],
+  "propertyGraphs": [
+    {
+      "target": {
+        "schema": "dataform",
+        "name": "LibraryGraph",
+        "database": "my-gcp-project"
+      },
+      "canonicalTarget": {
+        "schema": "dataform",
+        "name": "LibraryGraph",
+        "database": "my-gcp-project"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "dataform",
+          "name": "authors",
+          "database": "my-gcp-project"
+        },
+        {
+          "schema": "dataform",
+          "name": "books",
+          "database": "my-gcp-project"
+        },
+        {
+          "schema": "dataform",
+          "name": "wrote",
+          "database": "my-gcp-project"
+        }
+      ],
+      "fileName": "definitions/graph.yaml",
+      "description": "Library authorship semantic model",
+      "nodes": [
+        {
+          "name": "Author",
+          "dataSource": {
+            "schema": "dataform",
+            "name": "authors",
+            "database": "my-gcp-project"
+          },
+          "keys": [
+            "id"
+          ],
+          "labels": [
+            {
+              "name": "Author",
+              "description": "Library author",
+              "fields": [
+                {
+                  "name": "id",
+                  "expression": "id",
+                  "description": ""
+                },
+                {
+                  "name": "name",
+                  "expression": "name",
+                  "description": "Author Name"
+                },
+                {
+                  "name": "upper_name",
+                  "expression": "UPPER(name)",
+                  "description": ""
+                },
+                {
+                  "name": "joined_date",
+                  "expression": "joined_date",
+                  "description": "Time dimension."
+                },
+                {
+                  "name": "country",
+                  "expression": "address.country",
+                  "description": ""
+                }
+              ],
+              "importAll": false,
+              "isDefault": true
+            }
+          ]
+        },
+        {
+          "name": "Book",
+          "dataSource": {
+            "schema": "dataform",
+            "name": "books",
+            "database": "my-gcp-project"
+          },
+          "keys": [
+            "id"
+          ],
+          "labels": [
+            {
+              "name": "Book",
+              "fields": [
+                {
+                  "name": "id",
+                  "expression": "id",
+                  "description": ""
+                },
+                {
+                  "name": "title",
+                  "expression": "title",
+                  "description": ""
+                },
+                {
+                  "name": "pages",
+                  "expression": "pages",
+                  "description": ""
+                },
+                {
+                  "name": "book_count",
+                  "expression": "MEASURE(COUNT(id))",
+                  "description": ""
+                },
+                {
+                  "name": "total_pages",
+                  "expression": "MEASURE(SUM(pages))",
+                  "description": ""
+                }
+              ],
+              "importAll": false,
+              "isDefault": true
+            }
+          ]
+        },
+        {
+          "name": "Authorship",
+          "dataSource": {
+            "schema": "dataform",
+            "name": "wrote",
+            "database": "my-gcp-project"
+          },
+          "keys": [
+            "author_id",
+            "book_id"
+          ]
+        },
+        {
+          "name": "Shelf",
+          "dataSource": {
+            "schema": "raw",
+            "name": "shelves",
+            "database": "my-gcp-project"
+          },
+          "keys": [
+            "shelf_id"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "name": "Wrote",
+          "dataSource": {
+            "schema": "dataform",
+            "name": "wrote",
+            "database": "my-gcp-project"
+          },
+          "keys": [
+            "author_id",
+            "book_id"
+          ],
+          "source": {
+            "node": "Authorship",
+            "edgeColumns": [
+              "author_id",
+              "book_id"
+            ],
+            "nodeColumns": [
+              "author_id",
+              "book_id"
+            ]
+          },
+          "destination": {
+            "node": "Author",
+            "edgeColumns": [
+              "author_id"
+            ],
+            "nodeColumns": [
+              "id"
+            ]
+          },
+          "labels": [
+            {
+              "name": "Wrote",
+              "description": "Links an authorship record to its author",
+              "importAll": false,
+              "isDefault": true
+            }
+          ]
+        },
+        {
+          "name": "WroteBook",
+          "dataSource": {
+            "schema": "dataform",
+            "name": "wrote",
+            "database": "my-gcp-project"
+          },
+          "keys": [
+            "author_id",
+            "book_id"
+          ],
+          "source": {
+            "node": "Authorship",
+            "edgeColumns": [
+              "author_id",
+              "book_id"
+            ],
+            "nodeColumns": [
+              "author_id",
+              "book_id"
+            ]
+          },
+          "destination": {
+            "node": "Book",
+            "edgeColumns": [
+              "book_id"
+            ],
+            "nodeColumns": [
+              "id"
+            ]
+          }
+        }
+      ],
+      "graphBody": "NODE TABLES (\n  `my-gcp-project.dataform.authors` AS Author KEY (id) DEFAULT LABEL OPTIONS(description=\"Library author\") PROPERTIES (id, name OPTIONS(description=\"Author Name\"), UPPER(name) AS upper_name, joined_date OPTIONS(description=\"Time dimension.\"), address.country AS country),\n  `my-gcp-project.dataform.books` AS Book KEY (id) PROPERTIES (id, title, pages, MEASURE(COUNT(id)) AS book_count, MEASURE(SUM(pages)) AS total_pages),\n  `my-gcp-project.dataform.wrote` AS Authorship KEY (author_id, book_id) PROPERTIES ALL COLUMNS,\n  `my-gcp-project.raw.shelves` AS Shelf KEY (shelf_id) PROPERTIES ALL COLUMNS\n)\nEDGE TABLES (\n  `my-gcp-project.dataform.wrote` AS Wrote KEY (author_id, book_id) SOURCE KEY (author_id, book_id) REFERENCES Authorship (author_id, book_id) DESTINATION KEY (author_id) REFERENCES Author (id) DEFAULT LABEL OPTIONS(description=\"Links an authorship record to its author\") NO PROPERTIES,\n  `my-gcp-project.dataform.wrote` AS WroteBook KEY (author_id, book_id) SOURCE KEY (author_id, book_id) REFERENCES Authorship (author_id, book_id) DESTINATION KEY (book_id) REFERENCES Book (id) NO PROPERTIES\n)",
+      "disabled": false,
+      "tags": [
+        "graph"
+      ]
+    }
+  ]
+}

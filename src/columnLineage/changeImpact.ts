@@ -1,16 +1,18 @@
 import crypto from 'crypto';
 import { logger } from '../logger';
 import { queryDryRun } from '../bigqueryDryRun';
-import { ChangedActionsResult } from '../changedActions';
+import { ChangedActionsResult, baseGraphOf } from '../changedActions';
 import { resolveDeferralForActions } from '../defer';
 import { rewriteSql } from '../defer/deferRules';
 import { DataformCompiledJson, Target } from '../types';
 import { targetKey } from '../utils/compiledGraphDiff';
 import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
 import { inBatches } from '../shared/columnLineage/traceController';
-import { SchemaField } from '../shared/columnLineage/impactRules';
+import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
-import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf } from '../shared/columnLineage/impactSummary';
+import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf, sortTables } from '../shared/columnLineage/impactSummary';
+import { codeOnly, verifyReaders } from './verifyReaders';
+import { graphReaders } from '../shared/columnLineage/graphReaders';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
 import { resolveProdIndex } from './prodIndex';
@@ -40,6 +42,7 @@ export interface CompiledAction {
     incrementalPostOps?: string[];
     queries?: string[];
     dependencyTargets?: Target[];
+    uniqueKey?: string[];
 }
 
 function compiledActions(graph: DataformCompiledJson): Map<string, CompiledAction> {
@@ -109,25 +112,63 @@ export interface CheckDeps {
     read: (table: string) => Promise<TableRead>;
     /** The dry run's columns, or why it failed */
     dryRun: (action: CompiledAction) => Promise<{ fields: SchemaField[]; error?: string }>;
+    /** The action with dev target `target` as it is at the merge-base; undefined when there is no base, or it has no such action */
+    baseAction?: (target: string) => CompiledAction | undefined;
 }
 
-type ActionRef = { target: string; fileName?: string; type: string; reasons?: string[] };
+/** A Dataform incremental table, whose incremental run names every column its table has, and its uniqueKey */
+function incrementalRun(action: CompiledAction | undefined): { ownRun?: boolean; uniqueKey?: string[] } {
+    return action?.type === 'incremental' ? { ownRun: true, ...(action.uniqueKey?.length ? { uniqueKey: action.uniqueKey } : {}) } : {};
+}
+
+/**
+ * The schema of a dry run of the action with dev target `target` as it is at the merge-base, with its incremental
+ * run; undefined when there is no telling: no base, an action it doesn't have or can't dry run, or a failed dry run.
+ */
+async function baseSchema(target: string, deps: CheckDeps): Promise<Pick<ImpactCandidate, 'base' | 'baseOwnRun' | 'baseUniqueKey'> | undefined> {
+    const action = deps.baseAction?.(target);
+    if (!action || action.type === 'operations' || action.type === 'operation') {
+        return undefined;
+    }
+    const dryRun = await deps.dryRun(action);
+    if (dryRun.error || !dryRun.fields.length) {
+        return undefined;
+    }
+    const { ownRun, uniqueKey } = incrementalRun(action);
+    return { base: dryRun.fields, ...(ownRun ? { baseOwnRun: true } : {}), ...(uniqueKey ? { baseUniqueKey: uniqueKey } : {}) };
+}
+
+type ActionRef = { target: string; fileName?: string; type: string; reasons?: string[]; renamedFrom?: string; renamedTo?: string };
 
 /**
  * Reads a changed table's Prod Target and dry runs it. `action`: the changed action in the head compile. An
- * action the base doesn't have, with no table yet, has nothing to compare and isn't dry run.
+ * action the base doesn't have, with no table yet, has nothing to compare and isn't dry run. `oldTable`: the Prod
+ * Target of the deleted action a renamed one was, which it is compared with while its own table isn't built yet.
  */
-export async function checkChanged(change: ActionRef, action: CompiledAction | undefined, deps: CheckDeps): Promise<ImpactCandidate> {
+export async function checkChanged(change: ActionRef, action: CompiledAction | undefined, deps: CheckDeps, oldTable?: string): Promise<ImpactCandidate> {
     const type = action?.type ?? change.type;
     const table = deps.prodTarget(change.target);
+    const renamedFrom = change.renamedFrom ? { renamedFrom: oldTable ?? change.renamedFrom } : {};
     if (!table) {
-        return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET };
+        return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET, ...renamedFrom };
     }
-    const candidate: ImpactCandidate = { table, fileName: change.fileName, type };
+    const candidate: ImpactCandidate = { table, fileName: change.fileName, type, ...renamedFrom, ...incrementalRun(action) };
     if (change.reasons?.includes('new')) {
         candidate.new = true;
     }
-    const prod = await deps.read(table);
+    let prod = await deps.read(table);
+    if (!prod.error && !prod.columns?.length && candidate.new && change.renamedFrom && oldTable) {
+        // Its table is yet to be built: what it replaces is the table of the action it was renamed from
+        const old = await deps.read(oldTable);
+        if (old.error) {
+            return { ...candidate, uncheckedReason: `renamed from ${oldTable}, and ${oldTable} could not be read: ${old.error}` };
+        }
+        if (old.columns?.length) {
+            prod = old;
+            candidate.target = oldTable;
+            candidate.fromOld = true;
+        }
+    }
     if (prod.error) {
         candidate.uncheckedReason = `${table} could not be read: ${prod.error}`;
     } else if (!prod.columns?.length) {
@@ -149,24 +190,33 @@ export async function checkChanged(change: ActionRef, action: CompiledAction | u
         } else {
             candidate.prod = prod.columns;
             candidate.dev = dryRun.fields;
+            // A change the action at the merge-base makes too is the base branch's, not this one's
+            if (diffSchemas(dryRun.fields, prod.columns).length && (candidate.fromOld || !candidate.new)) {
+                Object.assign(candidate, await baseSchema(candidate.fromOld ? change.renamedFrom! : change.target, deps));
+            }
         }
     }
     return candidate;
 }
 
-/** Reads a deleted table's guessed Prod Target, `table`; undefined when it has none */
-export async function checkDeleted(action: ActionRef, table: string | undefined, read: CheckDeps['read']): Promise<ImpactCandidate> {
+/**
+ * Reads a deleted table's guessed Prod Target, `table`; undefined when it has none. `renamedTo`: the Prod Target
+ * of the new action a renamed one became.
+ */
+export async function checkDeleted(action: ActionRef, table: string | undefined, read: CheckDeps['read'], renamedTo?: string): Promise<ImpactCandidate> {
     const { fileName, type } = action;
+    const to = action.renamedTo ? { renamedTo: renamedTo ?? action.renamedTo } : {};
+    const gone = to.renamedTo ? `renamed to ${to.renamedTo}` : 'deleted';
     if (!table) {
-        return { table: action.target, fileName, type, uncheckedReason: `deleted, and ${UNKNOWN_PROD_TARGET}` };
+        return { table: action.target, fileName, type, uncheckedReason: `${gone}, and ${UNKNOWN_PROD_TARGET}`, ...to };
     }
     const prod = await read(table);
     if (prod.error) {
-        return { table, fileName, type, uncheckedReason: `deleted, and ${table} could not be read: ${prod.error}` };
+        return { table, fileName, type, uncheckedReason: `${gone}, and ${table} could not be read: ${prod.error}`, ...to };
     }
     return prod.columns?.length
-        ? { table, fileName, type, deleted: true }
-        : { table, fileName, type, uncheckedReason: `deleted, and no table in ${project(table)}` };
+        ? { table, fileName, type, deleted: true, ...(action.target !== table ? { named: action.target } : {}), ...to }
+        : { table, fileName, type, uncheckedReason: `${gone}, and no table in ${project(table)}`, ...to };
 }
 
 /** Changes when the branch's changed actions or their compiled SQL do, so a summary can tell it's out of date */
@@ -220,7 +270,9 @@ export async function computeColumnImpact(
         return { view: view('error', { message: `Nothing was checked: the prod tables to compare with are unknown. ${message}` }), resolveFile: () => undefined };
     }
     const { index, toProd, prodTarget } = prodIndex;
-    const resolveFile = (table: string) => index.get(table)?.fileName;
+    // Property graphs aren't in the index: lineage has nothing to trace through them
+    const graphFiles = new Map((head.propertyGraphs ?? []).map((graph) => [toProd(targetKey(graph.target)), graph.fileName]));
+    const resolveFile = (table: string) => index.get(table)?.fileName ?? graphFiles.get(table);
 
     const schemas = new SchemaCache();
     const skipPreOps = extensionConfiguration().get<boolean>('skipPreOpsInDryRun') === true;
@@ -232,7 +284,12 @@ export async function computeColumnImpact(
     } catch (error: any) {
         logger.error(`Column impact: defer to prod not applied: ${error?.message ?? error}`);
     }
+    const baseActions = (() => {
+        const graph = baseGraphOf(result);
+        return graph ? compiledActions(graph) : undefined;
+    })();
     const deps: CheckDeps = {
+        baseAction: (target) => baseActions?.get(target),
         prodTarget,
         read: (table) => schemas.read(table),
         dryRun: async (action) => {
@@ -242,6 +299,13 @@ export async function computeColumnImpact(
         },
     };
 
+    const devToProd = [...devIndex.keys()].flatMap((dev): [string, string][] => {
+        const prod = prodTarget(dev);
+        return prod ? [[dev, prod]] : [];
+    });
+    // Every deleted action, assertions and operations too, by dev target: readers may be any of them, in prod or a dev run
+    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd) ?? prodTarget(action.target)]));
+
     const candidates: ImpactCandidate[] = [];
     let done = 0;
     emit(view('running', { progress: { phase: 'Dry running', done, total: changed.length } }));
@@ -249,21 +313,17 @@ export async function computeColumnImpact(
         if (cancelled()) {
             return;
         }
-        candidates.push(await checkChanged(change, actions.get(change.target), deps));
+        const oldTable = change.renamedFrom ? deletedToProd.get(change.renamedFrom) : undefined;
+        candidates.push(await checkChanged(change, actions.get(change.target), deps, oldTable));
         emit(view('running', { progress: { phase: 'Dry running', done: ++done, total: changed.length } }));
     });
     if (cancelled()) {
         return { view: view('cancelled'), resolveFile };
     }
 
-    const devToProd = [...devIndex.keys()].flatMap((dev): [string, string][] => {
-        const prod = prodTarget(dev);
-        return prod ? [[dev, prod]] : [];
-    });
-    // Every deleted action, assertions and operations too, by dev target: readers may be any of them, in prod or a dev run
-    const deletedToProd = new Map(result.deleted.map((action) => [action.target, guessProdTarget(action.target, devToProd) ?? prodTarget(action.target)]));
     for (const action of deleted) {
-        candidates.push(await checkDeleted(action, deletedToProd.get(action.target), deps.read));
+        const renamedTo = action.renamedTo ? prodTarget(action.renamedTo) : undefined;
+        candidates.push(await checkDeleted(action, deletedToProd.get(action.target), deps.read, renamedTo));
     }
     // What the candidates were compared with: those with no Prod Target weren't
     const compared = [...changed.map((change) => prodTarget(change.target)), ...deleted.map((action) => deletedToProd.get(action.target))]
@@ -273,6 +333,12 @@ export async function computeColumnImpact(
     const readerToProd = (table: string) => deletedToProd.get(table) ?? toProd(table);
     const deletedTables = new Set(result.deleted.map((action) => deletedToProd.get(action.target) ?? action.target));
     const changedProd = new Set(changed.map((change) => toProd(change.target)));
+    // A renamed reader is judged by its new SQL, under its new name
+    const renamed = new Map(result.deleted.flatMap((action): [string, string][] => {
+        const from = deletedToProd.get(action.target);
+        const to = action.renamedTo ? toProd(action.renamedTo) : undefined;
+        return from && to && changedProd.has(to) ? [[from, to]] : [];
+    }));
     const sqlByProd = new Map(changed.map((change) => {
         const action = actions.get(change.target);
         return [toProd(change.target), action ? actionSql(action) : undefined] as const;
@@ -288,6 +354,10 @@ export async function computeColumnImpact(
             toProd: readerToProd,
             deleted: deletedTables,
             isAssertion: (table) => index.get(table)?.type === 'assertion',
+            renamed,
+            // Lineage doesn't record what a property graph reads
+            projectReaders: (table, column) => graphReaders(head.propertyGraphs, table, column, (target) => toProd(targetKey(target))),
+            isGraph: (table) => graphFiles.has(table),
         },
         (lookups, of) => emit(view('running', { progress: { phase: 'Looking up readers', done: lookups, total: of } })),
         cancelled,
@@ -295,6 +365,59 @@ export async function computeColumnImpact(
     if (!summary) {
         return { view: view('cancelled'), resolveFile };
     }
+
+    // A changed reader that still names a dropped column is dry run with the changed table's query swapped in
+    const prodToDev = new Map(devToProd.map(([dev, prod]) => [prod, dev]));
+    const actionOf = (prod: string) => actions.get(prodToDev.get(prod) ?? prod);
+    const readers = summary.atRisk.flatMap((table) => table.columns.flatMap((column) => column.readers.filter((reader) => reader.stillNamed)));
+    let readerEntries = deferral?.entries ?? [];
+    if (readers.length) {
+        try {
+            const readerActions = readers.map((reader) => actionOf(reader.table)).filter((action): action is CompiledAction => !!action);
+            readerEntries = [...readerEntries, ...((await resolveDeferralForActions(readerActions, head, workspaceFolder))?.entries ?? [])];
+        } catch (error: any) {
+            logger.error(`Column impact: defer to prod not applied to readers: ${error?.message ?? error}`);
+        }
+    }
+    await verifyReaders(summary.atRisk, {
+        readerSql: (reader) => {
+            const action = actionOf(reader);
+            if (!action || action.type === 'operations' || action.type === 'operation') {
+                return undefined;
+            }
+            // BigQuery doesn't check what follows a CALL in a script it dry runs, so a pass then proves nothing of the
+            // query that reads the changed table: that is dry run alone
+            const calls = (action.preOps ?? []).some((op) => /\bCALL\b/i.test(codeOnly(op)));
+            return dryRunQuery(action, skipPreOps || calls);
+        },
+        changedTable: (table) => {
+            const action = actionOf(table);
+            return action?.target && action.query ? { target: action.target, query: action.query } : undefined;
+        },
+        dryRun: async (_reader, sql) => {
+            const dryRun = await queryDryRun(rewriteSql(sql, readerEntries));
+            return dryRun.error?.hasError ? dryRun.error.message ?? 'the dry run failed' : undefined;
+        },
+    }, (done, of) => emit(view('running', { progress: { phase: 'Dry running readers', done, total: of } })), cancelled);
+    if (cancelled()) {
+        return { view: view('cancelled'), resolveFile };
+    }
+    summary.atRisk = sortTables(summary.atRisk);
+    // A new table with nothing to lose: what on the branch reads it
+    const dependents = new Map<string, string[]>();
+    for (const action of [...actions.values(), ...(head.propertyGraphs ?? [])] as CompiledAction[]) {
+        for (const dependency of action.dependencyTargets ?? []) {
+            const of = targetKey(dependency);
+            dependents.set(of, [...(dependents.get(of) ?? []), toProd(targetKey(action.target!))]);
+        }
+    }
+    summary.new.forEach((entry) => {
+        const readBy = [...new Set(dependents.get(prodToDev.get(entry.table) ?? entry.table) ?? [])].sort();
+        if (readBy.length) {
+            entry.readBy = readBy;
+        }
+    });
+
     // Nothing sets prodCompilerOptions: the summary says it compared with the default targets
     const unset = isProdCompilerOptionsSet(workspaceFolder) ? {} : { unset: 'prodCompilerOptions' };
     return { view: view('ready', { ...summary, ...unset, against: projectsOf(compared), checkedAt: Date.now() }), source, resolveFile };

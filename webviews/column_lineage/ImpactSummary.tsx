@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import type { ImpactColumn, ImpactReader, ImpactSeverity, ImpactTable, ImpactView } from '../../src/shared/columnLineage/impactSummary';
 import {
-    LINK_LABELS, NEW_TAG, describeChange, impactSeverity, isSettled, newNote, openReaders, otherProject, safeSummary, shortTable, summaryCounts, unsetHint,
+    LINK_LABELS, NEW_TAG, describeChange, impactSeverity, isSettled, newNote, openReaders, otherProject, runBreaks, safeSummary, shortTable, summaryCounts, unsetHint,
 } from '../../src/shared/columnLineage/impactSummary';
 import type { Bridge } from './bridge';
 
@@ -54,9 +54,9 @@ function formatChecked(checkedAt: number | undefined, now: number): string {
 }
 
 const SEVERITY_TITLES: Record<ImpactSeverity, string> = {
-    critical: 'Dropped or deleted, and still read',
+    critical: 'Dropped or deleted, and still read, or it breaks its own incremental run',
     warning: 'Retyped, and still read',
-    low: 'Nothing found still reading it',
+    low: 'Nothing found still reading it, or the base branch made the change too',
     unknown: "Readers couldn't be looked up",
 };
 
@@ -70,7 +70,21 @@ function TableLink({ table, fileName, bridge }: { table: string; fileName?: stri
         : <span title={table}>{shortTable(table)}</span>;
 }
 
-function ReaderNotes({ reader }: { reader: ImpactReader }) {
+/** `moved`: the reader reads a whole table this branch renames */
+function ReaderNotes({ reader, moved }: { reader: ImpactReader; moved?: boolean }) {
+    if (reader.checked) {
+        const where = reader.renamedFrom ? 'renamed here' : 'changed here';
+        return reader.checked === 'clear'
+            ? <span className="ln-impact-note" title="Its new SQL still names the column, but a dry run of it against the branch's table passes">{where}, no longer reads it (dry run passes)</span>
+            : <span className="ln-impact-note" title="A dry run of it against the branch's table can't find the column">{where}, still reads it (dry run fails)</span>;
+    }
+    if (reader.renamedFrom) {
+        const note = reader.probablyUpdated ? ', probably updated' : reader.stillNamed ? ', still names it' : '';
+        return <span className="ln-impact-note" title={`Renamed on this branch from ${shortTable(reader.renamedFrom)}, and judged by its new SQL`}>renamed here{note}</span>;
+    }
+    if (moved && reader.probablyUpdated) {
+        return <span className="ln-impact-note" title="Changed on this branch, and its new SQL names the new table, not the old one">moved to the new name</span>;
+    }
     return (
         <>
             {!reader.filePath && !reader.deletedOnBranch && <span className="ln-impact-note ln-impact-outside">outside project</span>}
@@ -86,8 +100,11 @@ function ReaderNotes({ reader }: { reader: ImpactReader }) {
     );
 }
 
-/** Readers of `table`. `wholeTable`: readers of a deleted table, which read it whatever their link says */
-function ReaderRows({ table, readers, error, bridge, wholeTable }: { table: string; readers: ImpactReader[]; error?: string; bridge: Bridge; wholeTable?: boolean }) {
+/**
+ * Readers of `table`. `wholeTable`: readers of a deleted table, which read it whatever their link says; `renamed`:
+ * the deleted table is renamed on this branch
+ */
+function ReaderRows({ table, readers, error, bridge, wholeTable, renamed }: { table: string; readers: ImpactReader[]; error?: string; bridge: Bridge; wholeTable?: boolean; renamed?: boolean }) {
     if (error) {
         return <tr className="ln-group-item"><td colSpan={3} className="ln-side-error">Readers couldn't be looked up: {error}</td></tr>;
     }
@@ -109,9 +126,10 @@ function ReaderRows({ table, readers, error, bridge, wholeTable }: { table: stri
                             {project && <span className="ln-dataset">{project}.</span>}
                             <TableLink table={reader.table} fileName={reader.filePath} bridge={bridge} />
                             {reader.column && <span className="ln-impact-reader-col">.{reader.column}</span>}
+                            {reader.graph && <span className="ln-chip" title="Found in the compile, as lineage doesn't record what a property graph reads">property graph</span>}
                         </td>
                         <td><span className={`ln-rel ${relation.className}`}>{relation.label}</span></td>
-                        <td><ReaderNotes reader={reader} /></td>
+                        <td><ReaderNotes reader={reader} moved={wholeTable && renamed} /></td>
                     </tr>
                 );
             })}
@@ -147,10 +165,11 @@ function GroupHead({ label, change, severity, readers, error, open, onToggle, ch
     );
 }
 
-function ColumnGroup({ table, column, open, onToggle, bridge }: { table: string; column: ImpactColumn; open: boolean; onToggle: () => void; bridge: Bridge }) {
+function ColumnGroup({ table, column, open, onToggle, bridge, base }: { table: string; column: ImpactColumn; open: boolean; onToggle: () => void; bridge: Bridge; base?: string }) {
+    const change = column.change.onBase ? `${describeChange(column.change)}, already on ${base ?? 'the base branch'}` : describeChange(column.change);
     return (
         <tbody className="ln-group">
-            <GroupHead label={column.column} change={describeChange(column.change)} severity={impactSeverity(column.change, column.readers, column.readersError)} readers={column.readers} error={column.readersError} open={open} onToggle={onToggle}>
+            <GroupHead label={column.column} change={change} severity={impactSeverity(column.change, column.readers, column.readersError)} readers={column.readers} error={column.readersError} open={open} onToggle={onToggle}>
                 <button type="button" className="ln-link" onClick={() => bridge.post({ type: 'traceImpactColumn', table, column: column.column })}>Trace</button>
             </GroupHead>
             {open && <ReaderRows table={table} readers={column.readers} error={column.readersError} bridge={bridge} />}
@@ -158,30 +177,34 @@ function ColumnGroup({ table, column, open, onToggle, bridge }: { table: string;
     );
 }
 
-function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; isOpen: (column?: string) => boolean; toggle: (column?: string) => void; bridge: Bridge }) {
+function AtRiskTable({ entry, isOpen, toggle, bridge, base }: { entry: ImpactTable; isOpen: (column?: string) => boolean; toggle: (column?: string) => void; bridge: Bridge; base?: string }) {
+    const breaks = runBreaks(entry, base).map((line) => line.replace(/\*\*|`/g, ''));
     return (
         <section className="ln-list-section">
             <h2 className="ln-list-heading ln-impact-table">
                 <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
-                {entry.new && <span className="ln-chip" title="The base branch doesn't have this action, but its table is already there">{NEW_TAG}</span>}
+                {entry.renamedFrom
+                    ? <span className="ln-chip" title={entry.fromOld ? 'Its table isn\'t built yet, so it was compared with the table it had' : undefined}>renamed from {shortTable(entry.renamedFrom)}</span>
+                    : entry.new && <span className="ln-chip" title="The base branch doesn't have this action, but its table is already there">{NEW_TAG}</span>}
                 <span className="ln-list-count">
                     {entry.deleted
-                        ? 'deleted on this branch'
+                        ? entry.renamedTo ? `renamed to ${shortTable(entry.renamedTo)} on this branch` : 'deleted on this branch'
                         : plural(entry.columns.length, 'dropped or retyped column')}
                 </span>
             </h2>
+            {breaks.map((line) => <div key={line} className="ln-banner" role="note">{line}</div>)}
             <div className="ln-table-wrap">
                 <table className="ln-table-list ln-impact-list">
                     <thead><tr><th>Reader</th><th>Link</th><th>On this branch</th></tr></thead>
                     {entry.deleted
                         ? (
                             <tbody className="ln-group">
-                                <GroupHead label="whole table" change="deleted" severity={impactSeverity('deleted', entry.readers, entry.readersError)} readers={entry.readers} error={entry.readersError} open={isOpen()} onToggle={() => toggle()} />
-                                {isOpen() && <ReaderRows table={entry.table} readers={entry.readers ?? []} error={entry.readersError} bridge={bridge} wholeTable />}
+                                <GroupHead label="whole table" change={entry.renamedTo ? 'renamed' : 'deleted'} severity={impactSeverity('deleted', entry.readers, entry.readersError)} readers={entry.readers} error={entry.readersError} open={isOpen()} onToggle={() => toggle()} />
+                                {isOpen() && <ReaderRows table={entry.table} readers={entry.readers ?? []} error={entry.readersError} bridge={bridge} wholeTable renamed={!!entry.renamedTo} />}
                             </tbody>
                         )
                         : entry.columns.map((column) => (
-                            <ColumnGroup key={column.column} table={entry.table} column={column} open={isOpen(column.column)} onToggle={() => toggle(column.column)} bridge={bridge} />
+                            <ColumnGroup key={column.column} table={entry.table} column={column} open={isOpen(column.column)} onToggle={() => toggle(column.column)} bridge={bridge} base={base} />
                         ))}
                 </table>
             </div>
@@ -259,6 +282,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                             isOpen={(column) => isOpen(groupKey(entry.table, column))}
                             toggle={(column) => setOpen(groupKey(entry.table, column), !isOpen(groupKey(entry.table, column)))}
                             bridge={bridge}
+                            base={impact.comparison?.baseRef}
                         />
                     ))}
                     {impact.safe.length > 0 && (
@@ -268,6 +292,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                                 {impact.safe.map((entry) => (
                                     <li key={entry.table}>
                                         <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
+                                        {entry.renamedFrom ? <span className="ln-dataset"> · renamed from {shortTable(entry.renamedFrom)}</span> : null}
                                         {entry.added?.length ? <span className="ln-dataset"> · adds {entry.added.join(', ')}</span> : null}
                                     </li>
                                 ))}
@@ -294,6 +319,8 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                                 {impact.unchecked.map((entry) => (
                                     <li key={entry.table}>
                                         <TableLink table={entry.table} fileName={entry.fileName} bridge={bridge} />
+                                        {entry.renamedFrom ? <span className="ln-dataset"> · renamed from {shortTable(entry.renamedFrom)}</span> : null}
+                                        {entry.renamedTo ? <span className="ln-dataset"> · renamed to {shortTable(entry.renamedTo)}</span> : null}
                                         <span className="ln-dataset">: {entry.reason}</span>
                                     </li>
                                 ))}
@@ -302,7 +329,8 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                     )}
                     <p className="ln-list-hidden">
                         Readers come from Dataplex lineage of prod runs in the last 30 days, about 2 h behind. Readers changed on this branch are
-                        checked by whether their new SQL still names the column, which an alias or SELECT * can fool.
+                        checked by whether their new SQL still names the column, which an alias or SELECT * can fool; one that still names a dropped
+                        column is dry run against the branch's table, and a pass means it no longer reads it.
                     </p>
                 </div>
             )}

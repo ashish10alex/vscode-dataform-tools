@@ -16,12 +16,21 @@ export interface ChangedAction {
     fileName: string;
     type: string;
     reasons: ChangeReason[];
+    /**
+     * Set on a new action that is a deleted one renamed (see `pairRenames`): the deleted action's target, and its
+     * file. `similarity` is how alike git says the two files are, in percent; 0 when the file kept its path.
+     */
+    renamedFrom?: string;
+    renamedFromFile?: string;
+    similarity?: number;
 }
 
 export interface DeletedAction {
     target: string;
     fileName: string;
     type: string;
+    /** Set on a deleted action renamed to a new one: the new one's target */
+    renamedTo?: string;
 }
 
 export interface CompiledGraphDiff {
@@ -84,6 +93,15 @@ function collectRunnableActions(graph: DataformCompiledJson): Map<string, Compar
             type: 'notebook',
             sql: { notebookContents: n.notebookContents },
             config: { disabled: n.disabled },
+        });
+    }
+    // From definitions/**/graph.yaml: the compiled body is what CREATE PROPERTY GRAPH runs
+    for (const graphAction of graph.propertyGraphs ?? []) {
+        add(graphAction.target, {
+            fileName: graphAction.fileName,
+            type: 'propertyGraph',
+            sql: { graphBody: graphAction.graphBody },
+            config: { disabled: graphAction.disabled },
         });
     }
     return actions;

@@ -3,14 +3,15 @@ import clsx from "clsx";
 import { AlertCircle, ChevronDown, ChevronRight, GitCompare, Loader2, Play, RefreshCw } from "lucide-react";
 import { ChangedActionsView } from "../types";
 import { vscode } from "../utils/vscode";
-import { changedFileKey, describeComparison } from "../../../src/shared/changeComparison";
-import { countTypeNames, describeTypeCounts } from "../../../src/shared/actionTypes";
+import { changedFileKey, describeComparison, displayReasons, renamedFromLabels } from "../../../src/shared/changeComparison";
+import { countTypeNames, describeTypeCounts, typeLabel } from "../../../src/shared/actionTypes";
 import { ACTION_TYPE_BADGE_STYLES, DEFAULT_BADGE_STYLE } from "../utils/constants";
 
-const REASONS = ["new", "sql", "config", "macro"] as const;
+const REASONS = ["new", "renamed", "sql", "config", "macro"] as const;
 
 const REASON_LABELS: Record<string, { label: string; title: string }> = {
   new: { label: "new", title: "Not in the default branch" },
+  renamed: { label: "renamed", title: "A renamed file, or a new schema or name: the action it was is gone from the default branch's list" },
   sql: { label: "SQL", title: "Compiled query, incremental query or pre/post operations differ" },
   config: { label: "config", title: "Materialization settings differ (type, partitioning, clustering, unique key, ...)" },
 };
@@ -67,11 +68,13 @@ function splitFile(rawFileName: string): { base: string; dir: string } {
   return { base: slash >= 0 ? fileName.slice(slash + 1) : fileName, dir };
 }
 
-const FileHeading: React.FC<{ fileName: string }> = ({ fileName }) => {
+/** `renamedFrom`: what the file's renamed action was, e.g. "← old.sqlx (95%)" */
+const FileHeading: React.FC<{ fileName: string; renamedFrom?: string }> = ({ fileName, renamedFrom }) => {
   const { base, dir } = splitFile(fileName);
   return (
     <div className="flex items-baseline gap-2 min-w-0" title={fileName}>
       <span className="font-semibold text-[var(--vscode-foreground)] break-all">{base}</span>
+      {renamedFrom && <span className="text-xs text-[var(--vscode-descriptionForeground)] whitespace-nowrap" title="Renamed from">{renamedFrom}</span>}
       {dir && <span className="text-xs text-[var(--vscode-descriptionForeground)] truncate">{dir}</span>}
     </div>
   );
@@ -107,13 +110,14 @@ const ReasonBadge: React.FC<{ reason: string }> = ({ reason }) => {
  */
 const ChangedFileGroup: React.FC<{
   fileName: string;
+  renamedFrom?: string;
   actions: ChangedAction[];
   expanded: boolean;
   onToggle: () => void;
   selected: boolean;
   onSelect: (selected: boolean) => void;
-}> = ({ fileName, actions, expanded, onToggle, selected, onSelect }) => {
-  const reasons = REASONS.filter((reason) => actions.some((a) => a.reasons.includes(reason)));
+}> = ({ fileName, renamedFrom, actions, expanded, onToggle, selected, onSelect }) => {
+  const reasons = REASONS.filter((reason) => actions.some((a) => displayReasons(a).includes(reason)));
   return (
     <div className="py-1.5 border-t first:border-t-0 border-[var(--vscode-widget-border)]">
       <div className="grid grid-cols-[auto_1fr] items-center gap-1.5">
@@ -131,7 +135,7 @@ const ChangedFileGroup: React.FC<{
           className={`w-full grid grid-cols-[auto_1fr_auto] items-center gap-1.5 rounded text-left hover:bg-[var(--vscode-toolbar-hoverBackground)] ${selected ? "" : "opacity-50"}`}
         >
           {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          <FileHeading fileName={fileName} />
+          <FileHeading fileName={fileName} renamedFrom={renamedFrom} />
           <span className="flex items-center gap-1 whitespace-nowrap">
             <span className="text-xs text-[var(--vscode-descriptionForeground)]">{describeTypeCounts(countTypeNames(actions.map((a) => a.type)))}</span>
             {reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
@@ -146,8 +150,8 @@ const ChangedFileGroup: React.FC<{
               <li key={action.target} className="grid grid-cols-[1fr_auto] items-start gap-3 pl-10">
                 <ActionName target={action.target} />
                 <span className="flex items-center gap-1 whitespace-nowrap">
-                  <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{action.type}</span>
-                  {action.reasons.map((reason) => <ReasonBadge key={reason} reason={reason} />)}
+                  <span className={`px-1 rounded border text-[10px] ${badge.bg} ${badge.text} ${badge.border}`}>{typeLabel(action.type)}</span>
+                  {displayReasons(action).map((reason) => <ReasonBadge key={reason} reason={reason} />)}
                 </span>
               </li>
             );
@@ -231,7 +235,10 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
   const changed = changedActions?.changed ?? NONE_CHANGED;
   const deleted = changedActions?.deleted ?? NONE_DELETED;
   const changedGroups = useMemo(() => groupByFile(changed), [changed]);
-  const deletedGroups = useMemo(() => groupByFile(deleted), [deleted]);
+  const renamedFrom = useMemo(() => renamedFromLabels(changed), [changed]);
+  // A renamed action is listed once, under its new name
+  const removed = useMemo(() => deleted.filter((action) => !action.renamedTo), [deleted]);
+  const deletedGroups = useMemo(() => groupByFile(removed), [removed]);
 
   // A file that drops out of the change set is forgotten, so it comes back included if it changes again.
   // Only a finished result counts: while recomputing there is no list, and the selection must survive it.
@@ -279,7 +286,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
 
   const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
   const reasonCounts = REASONS
-    .map((reason) => [reason, selectedActions.filter((a) => a.reasons.includes(reason)).length] as const)
+    .map((reason) => [reason, selectedActions.filter((a) => displayReasons(a).includes(reason)).length] as const)
     .filter(([, count]) => count > 0)
     .map(([reason, count]) => `${count} ${REASON_LABELS[reason]?.label ?? reason}`);
   const typeCounts = describeTypeCounts(countTypeNames(selectedActions.map((a) => a.type)));
@@ -469,6 +476,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
               <ChangedFileGroup
                 key={fileName}
                 fileName={fileName}
+                renamedFrom={renamedFrom.get(fileName)}
                 actions={actions}
                 expanded={isExpanded(fileName)}
                 onToggle={() => toggleFile(fileName)}
@@ -476,7 +484,7 @@ export const RunChangedButton: React.FC<RunChangedButtonProps> = ({
                 onSelect={(selected) => setFileSelected(fileName, selected)}
               />
             ))}
-            {status === "ready" && deleted.length > 0 && (
+            {status === "ready" && removed.length > 0 && (
               <div className="mt-2 pt-2 border-t border-[var(--vscode-widget-border)] opacity-60">
                 <p className="mb-1">Removed on this branch (not run):</p>
                 {deletedGroups.map(([fileName, actions]) => (

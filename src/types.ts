@@ -754,8 +754,13 @@ export interface ChangedActionsView {
     /** The checked-out branch is the one being compared against, so only local edits can show up */
     onDefaultBranch?: boolean;
     /** `macro` is a dbt Project's only: a macro the action calls differs */
-    changed?: { target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config' | 'macro')[] }[];
-    deleted?: { target: string; fileName: string; type: string }[];
+    changed?: {
+        target: string; fileName: string; type: string; reasons: ('new' | 'sql' | 'config' | 'macro')[];
+        /** Set on a new action that is a deleted one renamed, see `ChangedAction` */
+        renamedFrom?: string; renamedFromFile?: string; similarity?: number;
+    }[];
+    /** `renamedTo` is set on a deleted action renamed to a changed one */
+    deleted?: { target: string; fileName: string; type: string; renamedTo?: string }[];
     error?: string;
 }
 
