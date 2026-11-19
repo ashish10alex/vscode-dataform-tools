@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.18](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.17...v2.0.18) (2026-11-19)
+
+
+### Features
+
+* preview the rows of a single CTE ([#553](https://github.com/ashish10alex/vscode-dataform-tools/issues/553)) ([d79044f](https://github.com/ashish10alex/vscode-dataform-tools/commit/d79044fc4b88ec40ccb1a3bb948835f26917f6fc))
+
+
+### Documentation
+
+* link xf companion CLI from README and website ([4975a70](https://github.com/ashish10alex/vscode-dataform-tools/commit/4975a70a82d4a4be36b196a6a231cc0f1111cde5))
+
 ### [2.0.17](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.16...v2.0.17) (2026-11-19)
 
 
