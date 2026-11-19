@@ -2,6 +2,8 @@ import * as assert from 'assert';
 import { suite, test } from 'mocha';
 import { CompiledGraphDiff } from '../../utils/compiledGraphDiff';
 import { hasRenameCandidates, pairRenames, parseRenames } from '../../utils/renames';
+import { displayReasons, renamedFromLabels } from '../../shared/changeComparison';
+import { ChangedActionsResult, toChangedActionsView } from '../../changedActions';
 
 const target = { database: 'p', schema: 'ds', name: 'x' };
 
@@ -57,5 +59,34 @@ suite('renames', () => {
         pairRenames(diff, parseRenames('R090\0b.sqlx\0b_new.sqlx\0'));
         assert.deepStrictEqual(diff.changed.map((action) => action.renamedFrom), ['ds.b_old', undefined]);
         assert.strictEqual(diff.deleted[0].renamedTo, 'ds.b');
+    });
+
+    test('lists a renamed action as renamed, under what its file was', () => {
+        const actions = [
+            { fileName: 'definitions/customers.sqlx', reasons: ['new', 'sql'], renamedFrom: 'p.marts.customers', renamedFromFile: 'definitions/customers.sqlx', similarity: 0 },
+            { fileName: 'definitions/orders_v2.sqlx', reasons: ['new'], renamedFrom: 'p.marts.orders', renamedFromFile: 'definitions/orders.sqlx', similarity: 95 },
+            { fileName: 'definitions/sales/daily.sqlx', reasons: ['new'], renamedFrom: 'p.marts.daily', renamedFromFile: 'definitions/daily.sqlx', similarity: 80 },
+            { fileName: 'definitions/fresh.sqlx', reasons: ['new'] },
+        ];
+        assert.deepStrictEqual(actions.map(displayReasons), [['renamed', 'sql'], ['renamed'], ['renamed'], ['new']]);
+        assert.deepStrictEqual([...renamedFromLabels(actions)], [
+            ['definitions/customers.sqlx', '← marts.customers'],
+            ['definitions/orders_v2.sqlx', '← orders.sqlx (95%)'],
+            ['definitions/sales/daily.sqlx', '← definitions/daily.sqlx (80%)'],
+        ]);
+    });
+
+    test('carries renames into the Run Changed view', () => {
+        const result = {
+            baseRef: 'origin/main', mergeBaseSha: 'abc', headLabel: 'working tree', headRef: 'feat', defaultBranch: 'main', onDefaultBranch: false,
+            changed: [{ ...added('crm.customers', 'customers.sqlx'), renamedFrom: 'marts.customers', renamedFromFile: 'customers.sqlx', similarity: 0 }, added('ds.fresh', 'fresh.sqlx')],
+            deleted: [{ target: 'marts.customers', fileName: 'customers.sqlx', type: 'table', renamedTo: 'crm.customers' }],
+        } as ChangedActionsResult;
+        const view = toChangedActionsView(result);
+        assert.deepStrictEqual(view.changed, [
+            { target: 'crm.customers', fileName: 'customers.sqlx', type: 'table', reasons: ['new'], renamedFrom: 'marts.customers', renamedFromFile: 'customers.sqlx', similarity: 0 },
+            { target: 'ds.fresh', fileName: 'fresh.sqlx', type: 'table', reasons: ['new'] },
+        ]);
+        assert.strictEqual(view.deleted?.[0].renamedTo, 'crm.customers');
     });
 });

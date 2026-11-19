@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ExecutionMode } from './types';
 import { getWorkspaceFolder } from './utils';
 import { resolveExecutionMode } from './utils/remoteCompiler';
-import { describeComparison } from './shared/changeComparison';
+import { changedFileKey, describeComparison, displayReasons, renamedFromLabels } from './shared/changeComparison';
 import { ChangedActionsResult, dispatchChangedActions, noChangesMessage, prepareChangedActions } from './changedActions';
 import { ColumnLineagePanel } from './views/columnLineagePanel';
 
@@ -28,14 +28,17 @@ function pickRunType(result: ChangedActionsResult): Promise<RunTypeItem['runType
         { label: '$(symbol-field) Show column impact', description: 'dropped and retyped columns, and who reads them', runType: 'impact' },
     ];
     let currentFile: string | undefined;
+    const renamedFrom = renamedFromLabels(result.changed);
     for (const action of result.changed) {
         if (action.fileName !== currentFile) {
             currentFile = action.fileName;
-            items.push({ label: action.fileName, kind: vscode.QuickPickItemKind.Separator });
+            const from = renamedFrom.get(changedFileKey(action.fileName));
+            items.push({ label: from ? `${action.fileName}  ${from}` : action.fileName, kind: vscode.QuickPickItemKind.Separator });
         }
-        items.push({ label: action.target.split('.').slice(1).join('.'), description: `${action.type} · ${action.reasons.join(', ')}` });
+        items.push({ label: action.target.split('.').slice(1).join('.'), description: `${action.type} · ${displayReasons(action).join(', ')}` });
     }
-    for (const action of result.deleted) {
+    // A renamed action is listed once, under its new name
+    for (const action of result.deleted.filter((deleted) => !deleted.renamedTo)) {
         items.push({ label: `$(trash) ${action.target.split('.').slice(1).join('.')}`, description: 'removed on this branch, not run' });
     }
 

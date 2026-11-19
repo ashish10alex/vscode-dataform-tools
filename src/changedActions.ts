@@ -268,7 +268,8 @@ export async function computeChangedActions(workspaceFolder: string, head: Dataf
 }
 
 export function toChangedActionsView(result: ChangedActionsResult): ChangedActionsView {
-    const strip = ({ target, fileName, type, reasons }: ChangedAction) => ({ target, fileName, type, reasons });
+    const strip = ({ target, fileName, type, reasons, renamedFrom, renamedFromFile, similarity }: ChangedAction) =>
+        ({ target, fileName, type, reasons, ...(renamedFrom ? { renamedFrom, renamedFromFile, similarity } : {}) });
     return {
         status: 'ready',
         baseRef: result.baseRef,
