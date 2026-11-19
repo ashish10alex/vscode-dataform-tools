@@ -71,6 +71,11 @@ export interface ImpactTable {
     fromOld?: boolean;
     /** Set on a deleted table whose action was renamed: the new Prod Target. Readers still on the old name keep reading a table nothing updates */
     renamedTo?: string;
+    /**
+     * On a new table with nothing to lose, the actions that read it, assertions aside: each is new or changed on the
+     * branch too, as the base has no table for it to read
+     */
+    readBy?: string[];
 }
 
 export interface UncheckedTable {
@@ -534,16 +539,17 @@ export const NEW_TAG = 'new on this branch';
 
 /** What the summary says of a new action with nothing to lose: "nothing reads it yet", or "table already in `acme-prod`, keeps every column" */
 export function newNote(table: ImpactTable): string {
+    const readers = table.readBy?.length ? `read by ${codeList(table.readBy.map(shortTable))} on this branch` : 'nothing reads it yet';
     if (table.renamedFrom) {
         const from = `renamed from \`${shortTable(table.renamedFrom)}\``;
         if (!table.fromOld) {
-            return `${from}; nothing reads it yet`;
+            return `${from}; ${readers}`;
         }
         const note = `${from}, keeps every column`;
         return table.added?.length ? `${note} and adds ${codeList(table.added)}` : note;
     }
     if (!table.exists) {
-        return 'nothing reads it yet';
+        return readers;
     }
     const note = `table already in \`${table.table.split('.')[0]}\`, keeps every column`;
     return table.added?.length ? `${note} and adds ${codeList(table.added)}` : note;

@@ -251,6 +251,9 @@ suite('Column impact summary: build', () => {
         assert.strictEqual(newNote({ table: 'p.sales.orders', type: 'table', columns: [], new: true, renamedFrom: 'p.marts.orders' }), 'renamed from `marts.orders`; nothing reads it yet');
         assert.strictEqual(newNote({ table: 'p.sales.orders', type: 'table', columns: [], new: true, renamedFrom: 'p.marts.orders', fromOld: true, added: ['channel'] }),
             'renamed from `marts.orders`, keeps every column and adds `channel`');
+        assert.strictEqual(newNote({ table: 'p.marts.fresh', type: 'table', columns: [], new: true, readBy: ['p.marts.daily', 'p.rep.r1'] }), 'read by `marts.daily`, `rep.r1` on this branch');
+        assert.strictEqual(newNote({ table: 'p.sales.orders', type: 'table', columns: [], new: true, renamedFrom: 'p.marts.orders', readBy: ['p.marts.daily'] }),
+            'renamed from `marts.orders`; read by `marts.daily` on this branch');
     });
 
     test('lists a new action as new: with no table it has nothing to lose, and with one it is still compared', async () => {

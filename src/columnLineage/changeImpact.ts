@@ -397,6 +397,20 @@ export async function computeColumnImpact(
         return { view: view('cancelled'), resolveFile };
     }
     summary.atRisk = sortTables(summary.atRisk);
+    // A new table with nothing to lose: what on the branch reads it
+    const dependents = new Map<string, string[]>();
+    for (const action of [...actions.values(), ...(head.propertyGraphs ?? [])] as CompiledAction[]) {
+        for (const dependency of action.dependencyTargets ?? []) {
+            const of = targetKey(dependency);
+            dependents.set(of, [...(dependents.get(of) ?? []), toProd(targetKey(action.target!))]);
+        }
+    }
+    summary.new.forEach((entry) => {
+        const readBy = [...new Set(dependents.get(prodToDev.get(entry.table) ?? entry.table) ?? [])].sort();
+        if (readBy.length) {
+            entry.readBy = readBy;
+        }
+    });
 
     // Nothing sets prodCompilerOptions: the summary says it compared with the default targets
     const unset = isProdCompilerOptionsSet(workspaceFolder) ? {} : { unset: 'prodCompilerOptions' };
