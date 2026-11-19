@@ -126,6 +126,7 @@ function ReaderRows({ table, readers, error, bridge, wholeTable, renamed }: { ta
                             {project && <span className="ln-dataset">{project}.</span>}
                             <TableLink table={reader.table} fileName={reader.filePath} bridge={bridge} />
                             {reader.column && <span className="ln-impact-reader-col">.{reader.column}</span>}
+                            {reader.graph && <span className="ln-chip" title="Found in the compile, as lineage doesn't record what a property graph reads">property graph</span>}
                         </td>
                         <td><span className={`ln-rel ${relation.className}`}>{relation.label}</span></td>
                         <td><ReaderNotes reader={reader} moved={wholeTable && renamed} /></td>

@@ -12,6 +12,7 @@ import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
 import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf, sortTables } from '../shared/columnLineage/impactSummary';
 import { verifyReaders } from './verifyReaders';
+import { graphReaders } from '../shared/columnLineage/graphReaders';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
 import { resolveProdIndex } from './prodIndex';
@@ -269,7 +270,9 @@ export async function computeColumnImpact(
         return { view: view('error', { message: `Nothing was checked: the prod tables to compare with are unknown. ${message}` }), resolveFile: () => undefined };
     }
     const { index, toProd, prodTarget } = prodIndex;
-    const resolveFile = (table: string) => index.get(table)?.fileName;
+    // Property graphs aren't in the index: lineage has nothing to trace through them
+    const graphFiles = new Map((head.propertyGraphs ?? []).map((graph) => [toProd(targetKey(graph.target)), graph.fileName]));
+    const resolveFile = (table: string) => index.get(table)?.fileName ?? graphFiles.get(table);
 
     const schemas = new SchemaCache();
     const skipPreOps = extensionConfiguration().get<boolean>('skipPreOpsInDryRun') === true;
@@ -352,6 +355,9 @@ export async function computeColumnImpact(
             deleted: deletedTables,
             isAssertion: (table) => index.get(table)?.type === 'assertion',
             renamed,
+            // Lineage doesn't record what a property graph reads
+            projectReaders: (table, column) => graphReaders(head.propertyGraphs, table, column, (target) => toProd(targetKey(target))),
+            isGraph: (table) => graphFiles.has(table),
         },
         (lookups, of) => emit(view('running', { progress: { phase: 'Looking up readers', done: lookups, total: of } })),
         cancelled,

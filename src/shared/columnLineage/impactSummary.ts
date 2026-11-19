@@ -35,6 +35,8 @@ export interface ImpactReader {
      * find the column. Undefined when it wasn't dry run or there was no telling.
      */
     checked?: 'clear' | 'reads';
+    /** A Dataform property graph, found in the compile, as lineage doesn't record what one reads */
+    graph?: boolean;
 }
 
 export interface ImpactColumn {
@@ -132,6 +134,13 @@ export interface ReaderContext {
     isAssertion?: (table: string) => boolean;
     /** The new Prod Targets of the deleted actions this branch renames, by the old */
     renamed?: ReadonlyMap<string, string>;
+    /**
+     * The readers of a table's column, or of the table when `column` is undefined, that the project's compile knows
+     * and lineage may not: its property graphs
+     */
+    projectReaders?: (table: string, column?: string) => ColumnLink[];
+    /** Whether an action of this project is a property graph */
+    isGraph?: (table: string) => boolean;
 }
 
 function escapeRegExp(text: string): string {
@@ -172,6 +181,9 @@ export function annotateReader(link: ColumnLink, name: string, context: ReaderCo
     if (renamedTo) {
         reader.renamedFrom = table;
         reader.table = table = renamedTo;
+    }
+    if (context.isGraph?.(table)) {
+        reader.graph = true;
     }
     if (context.deleted?.has(table)) {
         reader.deletedOnBranch = true;
@@ -609,6 +621,10 @@ export function impactMarkdown(view: ImpactView): string {
         + 'A renamed table is compared with the table it had, and a reader of its old name that no longer names it moved to the new one. '
         + '"Already on" the base branch: the base branch made the change too, so the table in BigQuery is behind it, and it counts as low. '
         + 'A changed reader that still names a dropped column is dry run against the branch\'s table: a pass means it no longer reads it._');
+    const graphs = (readers: ImpactReader[] | undefined) => (readers ?? []).some((reader) => reader.graph);
+    if (view.atRisk.some((table) => graphs(table.readers) || table.columns.some((column) => graphs(column.readers)))) {
+        lines.push('', '_Property graphs come from the compile, as lineage doesn\'t record what one reads._');
+    }
     const hint = unsetHint(view);
     if (hint) {
         lines.push('', `<sub>${hint}</sub>`);
@@ -724,11 +740,15 @@ export async function buildImpactSummary(
             atRisk.push(entry);
             const name = tablePath(candidate.named ?? table);
             lookups.push(async () => {
+                let links: ColumnLink[] = [];
                 try {
-                    const links = source.tableReaders ? await source.tableReaders(table) : [];
-                    entry.readers = impactReaders(links, table, name, context);
+                    links = source.tableReaders ? await source.tableReaders(table) : [];
                 } catch (error) {
                     entry.readersError = errorMessage(error);
+                }
+                links = [...links, ...(context.projectReaders?.(table) ?? [])];
+                if (links.length || !entry.readersError) {
+                    entry.readers = impactReaders(links, table, name, context);
                 }
             });
             continue;
@@ -765,11 +785,15 @@ export async function buildImpactSummary(
         (columns.length ? atRisk : candidate.new ? fresh : safe).push(entry);
         for (const column of columns) {
             lookups.push(async () => {
+                let links: ColumnLink[] = [];
                 try {
-                    const links = await columnReaders(source, readersOf, column.column);
-                    column.readers = impactReaders(links, table, column.column, context);
+                    links = await columnReaders(source, readersOf, column.column);
                 } catch (error) {
                     column.readersError = errorMessage(error);
+                }
+                links = [...links, ...(context.projectReaders?.(readersOf, column.column) ?? [])];
+                if (links.length || !column.readersError) {
+                    column.readers = impactReaders(links, table, column.column, context);
                 }
             });
         }
