@@ -10,7 +10,8 @@ import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
 import { inBatches } from '../shared/columnLineage/traceController';
 import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
-import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf } from '../shared/columnLineage/impactSummary';
+import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf, sortTables } from '../shared/columnLineage/impactSummary';
+import { verifyReaders } from './verifyReaders';
 import { tableActions } from '../shared/columnLineage/tableActions';
 import { DataplexTraceSource } from './dataplexSource';
 import { resolveProdIndex } from './prodIndex';
@@ -358,6 +359,39 @@ export async function computeColumnImpact(
     if (!summary) {
         return { view: view('cancelled'), resolveFile };
     }
+
+    // A changed reader that still names a dropped column is dry run with the changed table's query swapped in
+    const prodToDev = new Map(devToProd.map(([dev, prod]) => [prod, dev]));
+    const actionOf = (prod: string) => actions.get(prodToDev.get(prod) ?? prod);
+    const readers = summary.atRisk.flatMap((table) => table.columns.flatMap((column) => column.readers.filter((reader) => reader.stillNamed)));
+    let readerEntries = deferral?.entries ?? [];
+    if (readers.length) {
+        try {
+            const readerActions = readers.map((reader) => actionOf(reader.table)).filter((action): action is CompiledAction => !!action);
+            readerEntries = [...readerEntries, ...((await resolveDeferralForActions(readerActions, head, workspaceFolder))?.entries ?? [])];
+        } catch (error: any) {
+            logger.error(`Column impact: defer to prod not applied to readers: ${error?.message ?? error}`);
+        }
+    }
+    await verifyReaders(summary.atRisk, {
+        readerSql: (reader) => {
+            const action = actionOf(reader);
+            return action && action.type !== 'operations' && action.type !== 'operation' ? dryRunQuery(action, skipPreOps) : undefined;
+        },
+        changedTable: (table) => {
+            const action = actionOf(table);
+            return action?.target && action.query ? { target: action.target, query: action.query } : undefined;
+        },
+        dryRun: async (_reader, sql) => {
+            const dryRun = await queryDryRun(rewriteSql(sql, readerEntries));
+            return dryRun.error?.hasError ? dryRun.error.message ?? 'the dry run failed' : undefined;
+        },
+    }, (done, of) => emit(view('running', { progress: { phase: 'Dry running readers', done, total: of } })), cancelled);
+    if (cancelled()) {
+        return { view: view('cancelled'), resolveFile };
+    }
+    summary.atRisk = sortTables(summary.atRisk);
+
     // Nothing sets prodCompilerOptions: the summary says it compared with the default targets
     const unset = isProdCompilerOptionsSet(workspaceFolder) ? {} : { unset: 'prodCompilerOptions' };
     return { view: view('ready', { ...summary, ...unset, against: projectsOf(compared), checkedAt: Date.now() }), source, resolveFile };

@@ -29,6 +29,12 @@ export interface ImpactReader {
     deletedOnBranch?: boolean;
     /** Set on a reader this branch renames: `table` is its new Prod Target, and it is judged by its new SQL */
     renamedFrom?: string;
+    /**
+     * What a dry run of a changed reader that still names a dropped column found, reading the changed table as the
+     * branch builds it: clear, it no longer reads the column (and is probably updated); reads, BigQuery couldn't
+     * find the column. Undefined when it wasn't dry run or there was no telling.
+     */
+    checked?: 'clear' | 'reads';
 }
 
 export interface ImpactColumn {
@@ -374,7 +380,9 @@ export function readerNote(reader: ImpactReader, movedFrom = false): string {
     if (movedFrom && reader.probablyUpdated && !reader.renamedFrom) {
         return 'moved to the new name';
     }
-    const note = reader.probablyUpdated ? 'probably updated' : reader.stillNamed ? 'still names it' : '';
+    const note = reader.checked === 'clear' ? 'no longer reads it (dry run passes)'
+        : reader.checked === 'reads' ? 'still reads it (dry run fails)'
+            : reader.probablyUpdated ? 'probably updated' : reader.stillNamed ? 'still names it' : '';
     if (reader.renamedFrom) {
         return note ? `renamed here, ${note}` : 'renamed here';
     }
@@ -599,7 +607,8 @@ export function impactMarkdown(view: ImpactView): string {
         + '"Probably updated": changed on this branch, and its new SQL no longer names the column. '
         + '"Deleted here": the reader is deleted on this branch too. '
         + 'A renamed table is compared with the table it had, and a reader of its old name that no longer names it moved to the new one. '
-        + '"Already on" the base branch: the base branch made the change too, so the table in BigQuery is behind it, and it counts as low._');
+        + '"Already on" the base branch: the base branch made the change too, so the table in BigQuery is behind it, and it counts as low. '
+        + 'A changed reader that still names a dropped column is dry run against the branch\'s table: a pass means it no longer reads it._');
     const hint = unsetHint(view);
     if (hint) {
         lines.push('', `<sub>${hint}</sub>`);

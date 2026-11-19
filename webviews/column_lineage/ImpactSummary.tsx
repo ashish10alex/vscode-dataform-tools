@@ -72,6 +72,12 @@ function TableLink({ table, fileName, bridge }: { table: string; fileName?: stri
 
 /** `moved`: the reader reads a whole table this branch renames */
 function ReaderNotes({ reader, moved }: { reader: ImpactReader; moved?: boolean }) {
+    if (reader.checked) {
+        const where = reader.renamedFrom ? 'renamed here' : 'changed here';
+        return reader.checked === 'clear'
+            ? <span className="ln-impact-note" title="Its new SQL still names the column, but a dry run of it against the branch's table passes">{where}, no longer reads it (dry run passes)</span>
+            : <span className="ln-impact-note" title="A dry run of it against the branch's table can't find the column">{where}, still reads it (dry run fails)</span>;
+    }
     if (reader.renamedFrom) {
         const note = reader.probablyUpdated ? ', probably updated' : reader.stillNamed ? ', still names it' : '';
         return <span className="ln-impact-note" title={`Renamed on this branch from ${shortTable(reader.renamedFrom)}, and judged by its new SQL`}>renamed here{note}</span>;
@@ -322,7 +328,8 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                     )}
                     <p className="ln-list-hidden">
                         Readers come from Dataplex lineage of prod runs in the last 30 days, about 2 h behind. Readers changed on this branch are
-                        checked by whether their new SQL still names the column, which an alias or SELECT * can fool.
+                        checked by whether their new SQL still names the column, which an alias or SELECT * can fool; one that still names a dropped
+                        column is dry run against the branch's table, and a pass means it no longer reads it.
                     </p>
                 </div>
             )}
