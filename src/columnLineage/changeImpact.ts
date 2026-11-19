@@ -1,14 +1,14 @@
 import crypto from 'crypto';
 import { logger } from '../logger';
 import { queryDryRun } from '../bigqueryDryRun';
-import { ChangedActionsResult } from '../changedActions';
+import { ChangedActionsResult, baseGraphOf } from '../changedActions';
 import { resolveDeferralForActions } from '../defer';
 import { rewriteSql } from '../defer/deferRules';
 import { DataformCompiledJson, Target } from '../types';
 import { targetKey } from '../utils/compiledGraphDiff';
 import { GraphAction, indexGraph } from '../shared/columnLineage/graphLinks';
 import { inBatches } from '../shared/columnLineage/traceController';
-import { SchemaField } from '../shared/columnLineage/impactRules';
+import { SchemaField, diffSchemas } from '../shared/columnLineage/impactRules';
 import { CachedTraceSource } from '../shared/columnLineage/cachedSource';
 import { ImpactCandidate, ImpactView, buildImpactSummary, projectsOf } from '../shared/columnLineage/impactSummary';
 import { tableActions } from '../shared/columnLineage/tableActions';
@@ -40,6 +40,7 @@ export interface CompiledAction {
     incrementalPostOps?: string[];
     queries?: string[];
     dependencyTargets?: Target[];
+    uniqueKey?: string[];
 }
 
 function compiledActions(graph: DataformCompiledJson): Map<string, CompiledAction> {
@@ -109,6 +110,30 @@ export interface CheckDeps {
     read: (table: string) => Promise<TableRead>;
     /** The dry run's columns, or why it failed */
     dryRun: (action: CompiledAction) => Promise<{ fields: SchemaField[]; error?: string }>;
+    /** The action with dev target `target` as it is at the merge-base; undefined when there is no base, or it has no such action */
+    baseAction?: (target: string) => CompiledAction | undefined;
+}
+
+/** A Dataform incremental table, whose incremental run names every column its table has, and its uniqueKey */
+function incrementalRun(action: CompiledAction | undefined): { ownRun?: boolean; uniqueKey?: string[] } {
+    return action?.type === 'incremental' ? { ownRun: true, ...(action.uniqueKey?.length ? { uniqueKey: action.uniqueKey } : {}) } : {};
+}
+
+/**
+ * The schema of a dry run of the action with dev target `target` as it is at the merge-base, with its incremental
+ * run; undefined when there is no telling: no base, an action it doesn't have or can't dry run, or a failed dry run.
+ */
+async function baseSchema(target: string, deps: CheckDeps): Promise<Pick<ImpactCandidate, 'base' | 'baseOwnRun' | 'baseUniqueKey'> | undefined> {
+    const action = deps.baseAction?.(target);
+    if (!action || action.type === 'operations' || action.type === 'operation') {
+        return undefined;
+    }
+    const dryRun = await deps.dryRun(action);
+    if (dryRun.error || !dryRun.fields.length) {
+        return undefined;
+    }
+    const { ownRun, uniqueKey } = incrementalRun(action);
+    return { base: dryRun.fields, ...(ownRun ? { baseOwnRun: true } : {}), ...(uniqueKey ? { baseUniqueKey: uniqueKey } : {}) };
 }
 
 type ActionRef = { target: string; fileName?: string; type: string; reasons?: string[]; renamedFrom?: string; renamedTo?: string };
@@ -125,7 +150,7 @@ export async function checkChanged(change: ActionRef, action: CompiledAction | u
     if (!table) {
         return { table: change.target, fileName: change.fileName, type, uncheckedReason: UNKNOWN_PROD_TARGET, ...renamedFrom };
     }
-    const candidate: ImpactCandidate = { table, fileName: change.fileName, type, ...renamedFrom };
+    const candidate: ImpactCandidate = { table, fileName: change.fileName, type, ...renamedFrom, ...incrementalRun(action) };
     if (change.reasons?.includes('new')) {
         candidate.new = true;
     }
@@ -163,6 +188,10 @@ export async function checkChanged(change: ActionRef, action: CompiledAction | u
         } else {
             candidate.prod = prod.columns;
             candidate.dev = dryRun.fields;
+            // A change the action at the merge-base makes too is the base branch's, not this one's
+            if (diffSchemas(dryRun.fields, prod.columns).length && (candidate.fromOld || !candidate.new)) {
+                Object.assign(candidate, await baseSchema(candidate.fromOld ? change.renamedFrom! : change.target, deps));
+            }
         }
     }
     return candidate;
@@ -251,7 +280,12 @@ export async function computeColumnImpact(
     } catch (error: any) {
         logger.error(`Column impact: defer to prod not applied: ${error?.message ?? error}`);
     }
+    const baseActions = (() => {
+        const graph = baseGraphOf(result);
+        return graph ? compiledActions(graph) : undefined;
+    })();
     const deps: CheckDeps = {
+        baseAction: (target) => baseActions?.get(target),
         prodTarget,
         read: (table) => schemas.read(table),
         dryRun: async (action) => {

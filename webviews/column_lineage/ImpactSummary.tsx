@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import type { ImpactColumn, ImpactReader, ImpactSeverity, ImpactTable, ImpactView } from '../../src/shared/columnLineage/impactSummary';
 import {
-    LINK_LABELS, NEW_TAG, describeChange, impactSeverity, isSettled, newNote, openReaders, otherProject, safeSummary, shortTable, summaryCounts, unsetHint,
+    LINK_LABELS, NEW_TAG, describeChange, impactSeverity, isSettled, newNote, openReaders, otherProject, runBreaks, safeSummary, shortTable, summaryCounts, unsetHint,
 } from '../../src/shared/columnLineage/impactSummary';
 import type { Bridge } from './bridge';
 
@@ -54,9 +54,9 @@ function formatChecked(checkedAt: number | undefined, now: number): string {
 }
 
 const SEVERITY_TITLES: Record<ImpactSeverity, string> = {
-    critical: 'Dropped or deleted, and still read',
+    critical: 'Dropped or deleted, and still read, or it breaks its own incremental run',
     warning: 'Retyped, and still read',
-    low: 'Nothing found still reading it',
+    low: 'Nothing found still reading it, or the base branch made the change too',
     unknown: "Readers couldn't be looked up",
 };
 
@@ -158,10 +158,11 @@ function GroupHead({ label, change, severity, readers, error, open, onToggle, ch
     );
 }
 
-function ColumnGroup({ table, column, open, onToggle, bridge }: { table: string; column: ImpactColumn; open: boolean; onToggle: () => void; bridge: Bridge }) {
+function ColumnGroup({ table, column, open, onToggle, bridge, base }: { table: string; column: ImpactColumn; open: boolean; onToggle: () => void; bridge: Bridge; base?: string }) {
+    const change = column.change.onBase ? `${describeChange(column.change)}, already on ${base ?? 'the base branch'}` : describeChange(column.change);
     return (
         <tbody className="ln-group">
-            <GroupHead label={column.column} change={describeChange(column.change)} severity={impactSeverity(column.change, column.readers, column.readersError)} readers={column.readers} error={column.readersError} open={open} onToggle={onToggle}>
+            <GroupHead label={column.column} change={change} severity={impactSeverity(column.change, column.readers, column.readersError)} readers={column.readers} error={column.readersError} open={open} onToggle={onToggle}>
                 <button type="button" className="ln-link" onClick={() => bridge.post({ type: 'traceImpactColumn', table, column: column.column })}>Trace</button>
             </GroupHead>
             {open && <ReaderRows table={table} readers={column.readers} error={column.readersError} bridge={bridge} />}
@@ -169,7 +170,8 @@ function ColumnGroup({ table, column, open, onToggle, bridge }: { table: string;
     );
 }
 
-function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; isOpen: (column?: string) => boolean; toggle: (column?: string) => void; bridge: Bridge }) {
+function AtRiskTable({ entry, isOpen, toggle, bridge, base }: { entry: ImpactTable; isOpen: (column?: string) => boolean; toggle: (column?: string) => void; bridge: Bridge; base?: string }) {
+    const breaks = runBreaks(entry, base).map((line) => line.replace(/\*\*|`/g, ''));
     return (
         <section className="ln-list-section">
             <h2 className="ln-list-heading ln-impact-table">
@@ -183,6 +185,7 @@ function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; is
                         : plural(entry.columns.length, 'dropped or retyped column')}
                 </span>
             </h2>
+            {breaks.map((line) => <div key={line} className="ln-banner" role="note">{line}</div>)}
             <div className="ln-table-wrap">
                 <table className="ln-table-list ln-impact-list">
                     <thead><tr><th>Reader</th><th>Link</th><th>On this branch</th></tr></thead>
@@ -194,7 +197,7 @@ function AtRiskTable({ entry, isOpen, toggle, bridge }: { entry: ImpactTable; is
                             </tbody>
                         )
                         : entry.columns.map((column) => (
-                            <ColumnGroup key={column.column} table={entry.table} column={column} open={isOpen(column.column)} onToggle={() => toggle(column.column)} bridge={bridge} />
+                            <ColumnGroup key={column.column} table={entry.table} column={column} open={isOpen(column.column)} onToggle={() => toggle(column.column)} bridge={bridge} base={base} />
                         ))}
                 </table>
             </div>
@@ -272,6 +275,7 @@ export function ImpactSummary({ impact, bridge, now }: { impact: ImpactView; bri
                             isOpen={(column) => isOpen(groupKey(entry.table, column))}
                             toggle={(column) => setOpen(groupKey(entry.table, column), !isOpen(groupKey(entry.table, column)))}
                             bridge={bridge}
+                            base={impact.comparison?.baseRef}
                         />
                     ))}
                     {impact.safe.length > 0 && (

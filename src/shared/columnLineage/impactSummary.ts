@@ -1,6 +1,6 @@
 import { SchemaField, diffSchemas } from './impactRules';
 import { inBatches } from './traceController';
-import { ColumnChange, ColumnLink, DependencyType, TraceSource } from './types';
+import { ColumnChange, ColumnLink, DependencyType, RunBreak, TraceSource } from './types';
 
 // The column impact of a branch: for every table it changes against prod, the columns it drops or retypes and who
 // reads them, and the readers of the tables it deletes. Has no VS Code dependency, so the summary, its ordering and
@@ -296,10 +296,36 @@ function plural(count: number, word: string): string {
 export type ImpactSeverity = 'critical' | 'warning' | 'low' | 'unknown';
 
 /**
- * How urgent a change is: unknown when its readers couldn't be looked up, low when nothing still reads it (no
- * readers, or only ones this branch probably updated), else critical for a drop or deletion and a warning for a retype.
+ * Why dropping `column` breaks the incremental run of a table whose uniqueKey is `key`, or undefined when it doesn't.
+ * Dataform's incremental MERGE or INSERT names every column the table in BigQuery has, reading each from the query,
+ * so a dropped column fails the next run until a full refresh rebuilds the table ('table'); one uniqueKey still names
+ * fails every run, after a full refresh too ('uniqueKey'). `ownRun`: the table is a Dataform incremental table.
+ */
+export function breaksRun(change: ColumnChange, column: string, ownRun: boolean, key: string[] | undefined): RunBreak | undefined {
+    if (!ownRun || change.kind !== 'dropped') {
+        return undefined;
+    }
+    return (key ?? []).some((name) => name.replace(/`/g, '').toLowerCase() === column.toLowerCase()) ? 'uniqueKey' : 'table';
+}
+
+/** The change is the base branch's but the run break isn't: this branch's uniqueKey names the dropped column and the base's doesn't */
+function keyedHere(change: ColumnChange): boolean {
+    return !!change.onBase && change.breaksRun === 'uniqueKey' && change.baseBreaksRun !== 'uniqueKey';
+}
+
+/**
+ * How urgent a change is: low for a change the base branch already made, which this branch can do nothing about,
+ * unless its uniqueKey alone names the dropped column; else critical for a drop that breaks the table's own
+ * incremental run; else unknown when its readers couldn't be looked up, low when nothing still reads it (no readers,
+ * or only ones this branch probably updated), else critical for a drop or deletion and a warning for a retype.
  */
 export function impactSeverity(change: ColumnChange | 'deleted', readers: ImpactReader[] | undefined, error?: string): ImpactSeverity {
+    if (change !== 'deleted' && change.onBase && !keyedHere(change)) {
+        return 'low';
+    }
+    if (change !== 'deleted' && change.breaksRun) {
+        return 'critical';
+    }
     if (error) {
         return 'unknown';
     }
@@ -417,11 +443,48 @@ function copiesCell(readers: ImpactReader[] | undefined, table: string): string 
     return `${shown.join(', ')}${more > 0 ? `, +${more} more` : ''}`;
 }
 
-function changeCell(change: ColumnChange | 'deleted', renamedTo?: string): string {
+function changeCell(change: ColumnChange | 'deleted', renamedTo?: string, base = 'the base branch'): string {
     if (change === 'deleted') {
         return renamedTo ? `**RENAMED** to \`${shortTable(renamedTo)}\`` : '**TABLE DELETED**';
     }
-    return change.kind === 'dropped' ? '**DROPPED**' : `\`${change.from} → ${change.to}\``;
+    const text = change.kind === 'dropped' ? '**DROPPED**' : `\`${change.from} → ${change.to}\``;
+    return change.onBase ? `${text}, already on ${base}` : text;
+}
+
+/** "`a`, `b`" of the columns of `table` whose change `keep` picks */
+function columnsWhere(table: ImpactTable, keep: (change: ColumnChange) => boolean): string[] {
+    return table.columns.filter((column) => keep(column.change)).map((column) => column.column);
+}
+
+/**
+ * How the columns `table` drops break its own incremental run, as Markdown lines: this branch's in bold, then the
+ * base branch's, which it carries over or fixes. `base`: the base branch, as Markdown.
+ */
+export function runBreaks(table: ImpactTable, base = 'the base branch'): string[] {
+    const own = (change: ColumnChange) => !change.onBase || keyedHere(change);
+    const key = columnsWhere(table, (change) => own(change) && change.breaksRun === 'uniqueKey');
+    const whole = columnsWhere(table, (change) => own(change) && change.breaksRun === 'table');
+    const fixed = columnsWhere(table, (change) => !own(change) && change.baseBreaksRun === 'uniqueKey' && change.breaksRun !== 'uniqueKey');
+    const stillFails = table.columns.some(({ change }) => !own(change) && change.baseBreaksRun === 'uniqueKey' && change.breaksRun === 'table');
+    const baseKey = columnsWhere(table, (change) => !own(change) && change.breaksRun === 'uniqueKey');
+    const baseWhole = columnsWhere(table, (change) => !own(change) && change.breaksRun === 'table' && change.baseBreaksRun !== 'uniqueKey');
+    const lines: string[] = [];
+    if (key.length) {
+        lines.push(`**Its own incremental run fails every time: \`uniqueKey\` still names ${codeList(key)}, which its query no longer returns.**`);
+    }
+    if (whole.length) {
+        lines.push(`**Its own incremental run fails: Dataform's MERGE or INSERT names ${codeList(whole)}, which its table still has, until a full refresh rebuilds it.**`);
+    }
+    if (fixed.length) {
+        lines.push(`Its own incremental run is fixed here: ${base}'s \`uniqueKey\` names ${codeList(fixed)}, which its query no longer returns, and this branch's doesn't${stillFails ? '. The next run still fails until a full refresh rebuilds it' : ''}.`);
+    }
+    if (baseKey.length) {
+        lines.push(`Its own incremental run fails every time, as on ${base}: \`uniqueKey\` still names ${codeList(baseKey)}, which its query no longer returns.`);
+    }
+    if (baseWhole.length) {
+        lines.push(`Its own incremental run fails, as on ${base}: Dataform's MERGE or INSERT names ${codeList(baseWhole)}, which its table still has, until a full refresh rebuilds it.`);
+    }
+    return lines;
 }
 
 /** The projects of `tables`, sorted and without duplicates */
@@ -493,12 +556,17 @@ export function impactMarkdown(view: ImpactView): string {
     if (!view.atRisk.length) {
         lines.push('', 'No dropped or retyped columns, and no deleted tables.');
     }
+    const base = comparison ? `\`${comparison.baseRef}\`` : undefined;
     for (const table of view.atRisk) {
         lines.push('', `**Target model:** ${modelTitle(table)}`, '');
+        const breaks = runBreaks(table, base);
+        if (breaks.length) {
+            lines.push(...breaks, '');
+        }
         lines.push('| Column | Change | Severity | Downstream | Direct copies |', '| --- | --- | --- | --- | --- |');
         const readers: string[] = [];
         const row = (column: string, change: ColumnChange | 'deleted', columnReaders: ImpactReader[] | undefined, error?: string) => {
-            lines.push(`| ${column} | ${changeCell(change, table.renamedTo)} | ${SEVERITY_LABELS[impactSeverity(change, columnReaders, error)]} | ${downstreamCell(columnReaders, error)} | ${copiesCell(columnReaders, table.table)} |`);
+            lines.push(`| ${column} | ${changeCell(change, table.renamedTo, base)} | ${SEVERITY_LABELS[impactSeverity(change, columnReaders, error)]} | ${downstreamCell(columnReaders, error)} | ${copiesCell(columnReaders, table.table)} |`);
             readers.push(...readerRows(column, columnReaders ?? [], table.table, change === 'deleted', !!table.renamedTo));
         };
         if (table.deleted) {
@@ -530,7 +598,8 @@ export function impactMarkdown(view: ImpactView): string {
     lines.push('', '_Downstream readers come from Dataplex lineage of prod runs in the last 30 days, about 2 h behind. '
         + '"Probably updated": changed on this branch, and its new SQL no longer names the column. '
         + '"Deleted here": the reader is deleted on this branch too. '
-        + 'A renamed table is compared with the table it had, and a reader of its old name that no longer names it moved to the new one._');
+        + 'A renamed table is compared with the table it had, and a reader of its old name that no longer names it moved to the new one. '
+        + '"Already on" the base branch: the base branch made the change too, so the table in BigQuery is behind it, and it counts as low._');
     const hint = unsetHint(view);
     if (hint) {
         lines.push('', `<sub>${hint}</sub>`);
@@ -577,6 +646,17 @@ export interface ImpactCandidate {
     renamedFrom?: string;
     fromOld?: boolean;
     renamedTo?: string;
+    /**
+     * The schema of a dry run of the action as it is at the merge-base, when the dry run drops or retypes a column
+     * of `prod` and the base's could be dry run: a change it makes too is the base branch's
+     */
+    base?: SchemaField[];
+    /** A Dataform incremental table, whose incremental run names every column its table has, and its uniqueKey */
+    ownRun?: boolean;
+    uniqueKey?: string[];
+    /** `ownRun` and `uniqueKey` of the action at the merge-base, read with `base` */
+    baseOwnRun?: boolean;
+    baseUniqueKey?: string[];
 }
 
 export interface ImpactResult {
@@ -648,7 +728,23 @@ export async function buildImpactSummary(
         const dev = candidate.dev ?? [];
         const prodNames = new Set(prod.map((field) => field.name.toLowerCase()));
         const added = dev.filter((field) => !prodNames.has(field.name.toLowerCase())).map((field) => field.name);
-        const columns: ImpactColumn[] = diffSchemas(dev, prod).map(({ column, change }) => ({ column, change, readers: [] }));
+        const onBase = candidate.base?.length ? diffSchemas(candidate.base, prod).map((impact) => JSON.stringify(impact)) : [];
+        const columns: ImpactColumn[] = diffSchemas(dev, prod).map(({ column, change }) => {
+            const context: ColumnChange = { ...change };
+            if (onBase.includes(JSON.stringify({ column, change }))) {
+                context.onBase = true;
+            }
+            // A renamed table compared with its old one is built anew
+            const run = breaksRun(change, column, !!candidate.ownRun && !candidate.fromOld, candidate.uniqueKey);
+            if (run) {
+                context.breaksRun = run;
+            }
+            const baseRun = context.onBase ? breaksRun(change, column, !!candidate.baseOwnRun && !candidate.fromOld, candidate.baseUniqueKey) : undefined;
+            if (baseRun) {
+                context.baseBreaksRun = baseRun;
+            }
+            return { column, change: context, readers: [] };
+        });
         const entry: ImpactTable = {
             table, fileName, type, columns, ...(added.length ? { added } : {}),
             ...(candidate.new ? { new: true, ...(candidate.fromOld ? {} : { exists: true }) } : {}),

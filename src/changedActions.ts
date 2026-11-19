@@ -247,6 +247,13 @@ export interface ChangedActionsResult extends CompiledGraphDiff {
     onDefaultBranch: boolean;
 }
 
+const baseGraphs = new WeakMap<ChangedActionsResult, DataformCompiledJson>();
+
+/** The project compiled at the merge-base that `result` was worked out against */
+export function baseGraphOf(result: ChangedActionsResult): DataformCompiledJson | undefined {
+    return baseGraphs.get(result);
+}
+
 /** Undefined when the base is not cached and `allowCompile` is false. */
 export async function computeChangedActions(workspaceFolder: string, head: DataformCompiledJson, allowCompile: boolean): Promise<ChangedActionsResult | undefined> {
     const base = await resolveChangeBase(workspaceFolder);
@@ -255,7 +262,9 @@ export async function computeChangedActions(workspaceFolder: string, head: Dataf
         return undefined;
     }
     const diff = await withRenames(diffCompiledGraphs(baseGraph, head), workspaceFolder, base.mergeBaseSha, base.headSha);
-    return { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, headRef: base.headRef, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diff };
+    const result: ChangedActionsResult = { baseRef: base.baseRef, mergeBaseSha: base.mergeBaseSha, headLabel: base.headLabel, headRef: base.headRef, defaultBranch: base.defaultBranch, onDefaultBranch: base.onDefaultBranch, ...diff };
+    baseGraphs.set(result, baseGraph);
+    return result;
 }
 
 export function toChangedActionsView(result: ChangedActionsResult): ChangedActionsView {

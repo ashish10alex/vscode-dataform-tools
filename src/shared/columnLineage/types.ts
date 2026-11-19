@@ -40,9 +40,26 @@ export interface TraceSource {
     clearCache?(): void;
 }
 
-export type ColumnChange =
+/** Why a dropped column breaks a Dataform incremental table's own run: see `breaksRun` in impactSummary */
+export type RunBreak = 'table' | 'uniqueKey';
+
+/** What column impact knows of a change besides its kind */
+export interface ChangeContext {
+    /**
+     * The action at the merge-base already made this change, so it isn't this branch's: the table in BigQuery is
+     * behind the base branch. It counts as low whoever reads the column.
+     */
+    onBase?: boolean;
+    /** The dropped column fails the table's own incremental run, whoever else reads it */
+    breaksRun?: RunBreak;
+    /** `breaksRun` of the action at the merge-base, on an `onBase` drop: how the base branch's own version breaks the run */
+    baseBreaksRun?: RunBreak;
+}
+
+export type ColumnChange = (
     | { kind: 'dropped' }
-    | { kind: 'typeChanged'; from: string; to: string };
+    | { kind: 'typeChanged'; from: string; to: string }
+) & ChangeContext;
 
 export interface TraceFocus {
     table: string;
