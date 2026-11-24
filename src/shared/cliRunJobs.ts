@@ -76,13 +76,26 @@ export function helpListsJobPrefix(help: string): boolean {
 }
 
 /**
- * What the answer of `dataform help run` is remembered by: the file the CLI path leads to, and when that file last
- * changed and its size. `npm i -g @dataform/cli@<version>` keeps the path but writes a new file, so the CLI is asked
- * again after an install; the size covers an installer that keeps the package's own timestamps. `file` is undefined when the path leads to no file, such as a bare `dataform`; the answer is then not
- * remembered, so that a CLI installed later is found.
+ * Where the `@dataform/cli` package's own `bundle.js` may be, for a CLI path that leads to `realPath` once its links
+ * are followed: `realPath` itself, as npm's link in a `bin` or `node_modules/.bin` folder leads to it; else beside a
+ * shim that is a file of its own, such as npm's `dataform.cmd` on Windows, in a global prefix (`node_modules/`) or a
+ * Project's `node_modules/.bin`. A version manager's shim (mise, asdf, Volta) leads to the manager, and none of these
+ * is a bundle.
  */
-export function cliProbeKey(file: { realPath: string; mtimeMs: number; size: number } | undefined): string | undefined {
-    return file ? `${file.realPath}@${file.mtimeMs}:${file.size}` : undefined;
+export function cliBundleCandidates(realPath: string, paths: { dirname(p: string): string; join(...p: string[]): string }): string[] {
+    const dir = paths.dirname(realPath);
+    return [realPath, paths.join(dir, 'node_modules', '@dataform', 'cli', 'bundle.js'), paths.join(dir, '..', '@dataform', 'cli', 'bundle.js')];
+}
+
+/**
+ * What the answer of `dataform help run` is remembered by: the CLI's `bundle.js`, when that file last changed and its
+ * size. `npm i -g @dataform/cli@<version>` keeps the path but writes a new bundle, so the CLI is asked again after an
+ * install; the size covers an installer that keeps the package's own timestamps. `bundle` is undefined when the path
+ * leads to no bundle that can be told, such as a bare `dataform` or a version manager's shim; the CLI is then asked
+ * before every run (about 0.2s), as a shim stays the same when the CLI behind it changes.
+ */
+export function cliProbeKey(bundle: { realPath: string; mtimeMs: number; size: number } | undefined): string | undefined {
+    return bundle ? `${bundle.realPath}@${bundle.mtimeMs}:${bundle.size}` : undefined;
 }
 
 /**

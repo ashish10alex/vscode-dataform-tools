@@ -11,7 +11,7 @@ import { extensionConfiguration } from './project/settings';
 import { countActionTypes } from './shared/actionTypes';
 import {
     BigQueryJobMetadata, CLOCK_SKEW_MS, DRAIN_MS, ENDED_RUN_STATES, MatchedAction, NO_JOBS_MS, POLL_MS, QUIET_MS, RESUME_MAX_AGE_MS,
-    cliJobProject, cliProbeKey, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix, isActiveJob, jobIdPrefix, jobPrefixFlag,
+    cliBundleCandidates, cliJobProject, cliProbeKey, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix, isActiveJob, jobIdPrefix, jobPrefixFlag,
     isTerminalRun, jobTargetMatcher, newRunId, quietVerdict, runJobRows, withJobPrefix, withRunAdded,
 } from './shared/cliRunJobs';
 import {
@@ -105,7 +105,7 @@ interface TrackedRun {
 
 let extensionContext: vscode.ExtensionContext | undefined;
 const runs = new Map<string, TrackedRun>();
-/** Whether each Dataform CLI can prefix the IDs of a run's jobs, by its file and when that changed (cliProbeKey) */
+/** Whether each Dataform CLI can prefix the IDs of a run's jobs, by its bundle and when that changed (cliProbeKey) */
 const prefixes = new Map<string, Promise<boolean>>();
 let hint: string | undefined;
 
@@ -127,19 +127,43 @@ function trackingEnabled(workspaceFolder: string): boolean {
     return extensionConfiguration(vscode.Uri.file(workspaceFolder)).get<boolean>('trackCliRunJobs', true);
 }
 
-function cliFile(cliPath: string): { realPath: string; mtimeMs: number; size: number } | undefined {
+/** Whether `file` is the `bundle.js` of the `@dataform/cli` package */
+function isCliBundle(file: string): boolean {
+    if (path.basename(file) !== 'bundle.js') {
+        return false;
+    }
+    const pkg = readJson(path.join(path.dirname(file), 'package.json'));
+    return pkg.name === '@dataform/cli';
+}
+
+/** The Dataform CLI's own bundle behind `cliPath`, with when it last changed and its size; undefined when it can't be told */
+function cliBundle(cliPath: string): { realPath: string; mtimeMs: number; size: number } | undefined {
+    let realPath: string;
     try {
-        const realPath = fs.realpathSync(cliPath);
-        const { mtimeMs, size } = fs.statSync(realPath);
-        return { realPath, mtimeMs, size };
+        realPath = fs.realpathSync(cliPath);
     } catch {
         return undefined;
     }
+    for (const candidate of cliBundleCandidates(realPath, path)) {
+        try {
+            if (isCliBundle(candidate)) {
+                const bundle = fs.realpathSync(candidate);
+                const { mtimeMs, size } = fs.statSync(bundle);
+                return { realPath: bundle, mtimeMs, size };
+            }
+        } catch {
+            // Not there: try the next place
+        }
+    }
+    return undefined;
 }
 
-/** Whether the CLI at `cliPath` has `--job-prefix`. Asked again once the CLI's file changes, as an install changes it */
+/**
+ * Whether the CLI at `cliPath` has `--job-prefix`. Asked again once the CLI's bundle changes, as an install changes
+ * it, and before every run when there is no bundle to watch, such as behind a version manager's shim
+ */
 function cliPrefixesJobs(cliPath: string): Promise<boolean> {
-    const key = cliProbeKey(cliFile(cliPath));
+    const key = cliProbeKey(cliBundle(cliPath));
     let asked = key ? prefixes.get(key) : undefined;
     if (!asked) {
         asked = new Promise((resolve) => {
