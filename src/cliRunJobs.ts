@@ -11,7 +11,7 @@ import { extensionConfiguration } from './project/settings';
 import { countActionTypes } from './shared/actionTypes';
 import {
     BigQueryJobMetadata, CLOCK_SKEW_MS, DRAIN_MS, ENDED_RUN_STATES, MatchedAction, NO_JOBS_MS, POLL_MS, QUIET_MS, RESUME_MAX_AGE_MS,
-    cliJobProject, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix, isActiveJob, jobIdPrefix, jobPrefixFlag,
+    cliBundleCandidates, cliJobProject, cliProbeKey, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix, isActiveJob, jobIdPrefix, jobPrefixFlag,
     isTerminalRun, jobTargetMatcher, newRunId, quietVerdict, runJobRows, withJobPrefix, withRunAdded,
 } from './shared/cliRunJobs';
 import {
@@ -105,7 +105,7 @@ interface TrackedRun {
 
 let extensionContext: vscode.ExtensionContext | undefined;
 const runs = new Map<string, TrackedRun>();
-/** Whether each Dataform CLI can prefix the IDs of a run's jobs, by its path. Asked once in a session */
+/** Whether each Dataform CLI can prefix the IDs of a run's jobs, by its bundle and when that changed (cliProbeKey) */
 const prefixes = new Map<string, Promise<boolean>>();
 let hint: string | undefined;
 
@@ -127,8 +127,44 @@ function trackingEnabled(workspaceFolder: string): boolean {
     return extensionConfiguration(vscode.Uri.file(workspaceFolder)).get<boolean>('trackCliRunJobs', true);
 }
 
+/** Whether `file` is the `bundle.js` of the `@dataform/cli` package */
+function isCliBundle(file: string): boolean {
+    if (path.basename(file) !== 'bundle.js') {
+        return false;
+    }
+    const pkg = readJson(path.join(path.dirname(file), 'package.json'));
+    return pkg.name === '@dataform/cli';
+}
+
+/** The Dataform CLI's own bundle behind `cliPath`, with when it last changed and its size; undefined when it can't be told */
+function cliBundle(cliPath: string): { realPath: string; mtimeMs: number; size: number } | undefined {
+    let realPath: string;
+    try {
+        realPath = fs.realpathSync(cliPath);
+    } catch {
+        return undefined;
+    }
+    for (const candidate of cliBundleCandidates(realPath, path)) {
+        try {
+            if (isCliBundle(candidate)) {
+                const bundle = fs.realpathSync(candidate);
+                const { mtimeMs, size } = fs.statSync(bundle);
+                return { realPath: bundle, mtimeMs, size };
+            }
+        } catch {
+            // Not there: try the next place
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Whether the CLI at `cliPath` has `--job-prefix`. Asked again once the CLI's bundle changes, as an install changes
+ * it, and before every run when there is no bundle to watch, such as behind a version manager's shim
+ */
 function cliPrefixesJobs(cliPath: string): Promise<boolean> {
-    let asked = prefixes.get(cliPath);
+    const key = cliProbeKey(cliBundle(cliPath));
+    let asked = key ? prefixes.get(key) : undefined;
     if (!asked) {
         asked = new Promise((resolve) => {
             exec(`${quotedCli(cliPath)} help run`, { timeout: HELP_TIMEOUT_MS, windowsHide: true }, (error, stdout, stderr) => {
@@ -138,7 +174,9 @@ function cliPrefixesJobs(cliPath: string): Promise<boolean> {
                 resolve(helpListsJobPrefix(`${stdout}${stderr}`));
             });
         });
-        prefixes.set(cliPath, asked);
+        if (key) {
+            prefixes.set(key, asked);
+        }
     }
     return asked;
 }
@@ -557,7 +595,7 @@ export async function runDataformRunInTerminal(workspaceFolder: string, command:
     }
     const cliPath = resolveDataformOptions(workspaceFolder, 'cli').cli?.path ?? 'dataform';
     if (!(await cliPrefixesJobs(cliPath))) {
-        hint = `The BigQuery jobs of CLI runs are not listed: the Dataform CLI at ${cliPath} has no --job-prefix option. Update it with \`npm i -g @dataform/cli@latest\`.`;
+        hint = `The BigQuery jobs of CLI runs are not listed: the Dataform CLI at ${cliPath} has no --job-prefix option, which needs version 3.0.70 or later. Update it with \`npm i -g @dataform/cli@latest\`.`;
         showHistory();
         runSentUntracked(runCommandInTerminal(command));
         return;

@@ -1,7 +1,8 @@
 import * as assert from 'assert';
+import * as path from 'path';
 import { suite, test } from 'mocha';
 import {
-    BigQueryJobMetadata, NO_JOBS_MS, QUIET_MS, cliJobProject, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix,
+    BigQueryJobMetadata, NO_JOBS_MS, QUIET_MS, cliBundleCandidates, cliJobProject, cliProbeKey, countJobRows, failedJobRows, finalRunState, helpListsJobPrefix,
     jobIdPrefix, jobPrefixFlag, jobTargetMatcher, newRunId, quietVerdict, runJobRows, runProgress, withJobPrefix, withRunAdded,
 } from '../../shared/cliRunJobs';
 import type { WorkflowActionJobStats } from '../../types';
@@ -37,6 +38,24 @@ suite('cliRunJobs', () => {
     test('the help of a CLI tells whether it can prefix job IDs', () => {
         assert.strictEqual(helpListsJobPrefix('  --job-prefix   Adds an additional prefix in the form of `dataform-${jobPrefix}-`.'), true);
         assert.strictEqual(helpListsJobPrefix('  --tags   A list of tags'), false);
+    });
+
+    test('the CLI is asked again once its file changes, and every time when the path leads to no file', () => {
+        const bundle = '/usr/lib/node_modules/@dataform/cli/bundle.js';
+        const before = cliProbeKey({ realPath: bundle, mtimeMs: 1000, size: 500 });
+        assert.ok(before);
+        assert.strictEqual(before, cliProbeKey({ realPath: bundle, mtimeMs: 1000, size: 500 }));
+        assert.notStrictEqual(before, cliProbeKey({ realPath: bundle, mtimeMs: 2000, size: 500 }));
+        assert.notStrictEqual(before, cliProbeKey({ realPath: bundle, mtimeMs: 1000, size: 600 }));
+        assert.notStrictEqual(before, cliProbeKey({ realPath: '/other/bundle.js', mtimeMs: 1000, size: 500 }));
+        assert.strictEqual(cliProbeKey(undefined), undefined);
+    });
+
+    test("the CLI's bundle is looked for where npm puts it, beside a link or a Windows shim", () => {
+        const posix = { dirname: path.posix.dirname, join: path.posix.join };
+        assert.deepStrictEqual(cliBundleCandidates('/g/lib/node_modules/@dataform/cli/bundle.js', posix)[0], '/g/lib/node_modules/@dataform/cli/bundle.js');
+        assert.ok(cliBundleCandidates('/npm/dataform.cmd', posix).includes('/npm/node_modules/@dataform/cli/bundle.js'));
+        assert.ok(cliBundleCandidates('/p/node_modules/.bin/dataform.cmd', posix).includes('/p/node_modules/@dataform/cli/bundle.js'));
     });
 
     test("the jobs are looked for in the project of the CLI's credentials first, the Project's own last", () => {
