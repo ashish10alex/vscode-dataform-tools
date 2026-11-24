@@ -76,6 +76,16 @@ export function helpListsJobPrefix(help: string): boolean {
 }
 
 /**
+ * What the answer of `dataform help run` is remembered by: the file the CLI path leads to, and when that file last
+ * changed and its size. `npm i -g @dataform/cli@<version>` keeps the path but writes a new file, so the CLI is asked
+ * again after an install; the size covers an installer that keeps the package's own timestamps. `file` is undefined when the path leads to no file, such as a bare `dataform`; the answer is then not
+ * remembered, so that a CLI installed later is found.
+ */
+export function cliProbeKey(file: { realPath: string; mtimeMs: number; size: number } | undefined): string | undefined {
+    return file ? `${file.realPath}@${file.mtimeMs}:${file.size}` : undefined;
+}
+
+/**
  * The project the CLI runs its jobs in: that of its credentials file, else as Google's client finds one with the
  * Application Default Credentials, else the Project's own. The order was found against a real project (xf#69).
  */
