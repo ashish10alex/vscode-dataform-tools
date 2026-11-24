@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.19](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.18...v2.0.19) (2026-11-24)
+
+
+### Bug Fixes
+
+* ask the Dataform CLI about --job-prefix again after it is reinstalled ([#554](https://github.com/ashish10alex/vscode-dataform-tools/issues/554)) ([15664cd](https://github.com/ashish10alex/vscode-dataform-tools/commit/15664cd6091f2ea4472e2ecf7325e6432643f5df))
+
 ### [2.0.18](https://github.com/ashish10alex/vscode-dataform-tools/compare/v2.0.17...v2.0.18) (2026-11-19)
 
 
